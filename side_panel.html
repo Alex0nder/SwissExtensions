@@ -5,7 +5,7 @@
   <title>Tab Hibernate</title>
   <link rel="stylesheet" href="theme.css">
   <style>
-    /* Боковая панель: flex, контент сверху, About прижат к низу. */
+    /* Side panel: flex layout, content on top, About pinned to bottom. */
     html, body { height: 100%; margin: 0; box-sizing: border-box; }
     body {
       min-width: 280px;
@@ -190,6 +190,9 @@
   </div>
   <div class="row">
     <a id="openHistory" href="#" style="color: var(--th-accent-cyan); font-size: 13px;">History (export / import)</a>
+  </div>
+  <div class="row">
+    <button id="recoverLost" class="btn-secondary">Recover lost tabs</button>
   </div>
   <div class="stats" id="stats">Suspended / saved: <span class="stats-number" id="statsNumber">—</span></div>
   <div class="stats" id="statusLine">—</div>

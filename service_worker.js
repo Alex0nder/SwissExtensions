@@ -1,17 +1,16 @@
 /**
  * Tab Hibernate — Service Worker (MV3)
- * Управляет таймером неактивности, режимами suspend (discard/placeholder) и бэкапами вкладок.
- * Состояние переживает sleep/restart за счёт chrome.storage и chrome.alarms.
+ * Handles inactivity timer, suspend modes (discard/placeholder), and tab backups.
+ * State survives sleep/restart via chrome.storage and chrome.alarms.
  */
 
 const ALARM_CHECK_NAME = 'tabHibernateCheck';
 const ALARM_CHECK_PERIOD_MINUTES = 1;
 const INACTIVITY_MINUTES = 5;
-/** Хранить бэкапы по датам только за последние N дней; старые удалять. */
+/** Keep backup-by-date keys only for the last N days; remove older ones. */
 const BACKUP_RETENTION_DAYS = 30;
 
-// ——— Хранение последней активности по tabId (в памяти + синхронизация при сообщениях)
-// После сна SW память пуста — восстанавливаем из storage в начале onAlarmCheck.
+// Last activity per tabId (in memory + synced on messages). After SW sleep, memory is empty — restore from storage at start of onAlarmCheck.
 let lastActivityByTab = new Map();
 let lastPersistTime = 0;
 const PERSIST_THROTTLE_MS = 4000;
@@ -47,14 +46,13 @@ async function persistLastActivity() {
   }
 }
 
-/** Проверка по полному URL текущего расширения (для своих редиректов). */
+/** Check by full URL of current extension (for our own redirects). */
 function isSuspendedPlaceholderUrl(url) {
   const base = chrome.runtime.getURL('suspended.html');
   return url && url.startsWith(base.split('?')[0]);
 }
 
-/** Определяет заглушку по пути и tabId — работает и после обновления расширения,
- * когда вкладки ещё открыты со старым chrome-extension://OLD_ID/suspended.html. */
+/** Detect placeholder by path and tabId; works after extension update when tabs still have old chrome-extension://OLD_ID/suspended.html. */
 function isPlaceholderTabUrl(url) {
   if (!url) return false;
   try {
@@ -66,10 +64,9 @@ function isPlaceholderTabUrl(url) {
 }
 
 /**
- * Таб нельзя суспендить: активный, закреплённый, со звуком, системный, инкогнито, уже placeholder.
- * allowActive: при true разрешает суспендить активную вкладку (кнопка «Остановить текущую»).
- * ВАЖНО: Discard и Placeholder оба приводят к выгрузке страницы. Несохранённые формы и состояние
- * SPA будут потеряны — это ограничение Chrome API.
+ * Tab cannot be suspended: active, pinned, audible, system, incognito, or already a placeholder.
+ * allowActive: when true, allows suspending the active tab (e.g. "Suspend current" button).
+ * Note: Both Discard and Placeholder unload the page; unsaved forms and SPA state may be lost (Chrome API limitation).
  */
 async function isTabEligibleForSuspend(tab, { allowActive = false } = {}) {
   if (!tab || !tab.id) return false;
@@ -79,11 +76,11 @@ async function isTabEligibleForSuspend(tab, { allowActive = false } = {}) {
   if (tab.incognito) return false;
   const u = (tab.url || '').toLowerCase();
   if (u.startsWith('chrome://') || u.startsWith('chrome-extension://')) return false;
-  if (isSuspendedPlaceholderUrl(tab.url) || isPlaceholderTabUrl(tab.url)) return false; // уже заглушка (в т.ч. со старым ID после обновления)
+  if (isSuspendedPlaceholderUrl(tab.url) || isPlaceholderTabUrl(tab.url)) return false; // already a placeholder
   return true;
 }
 
-/** Достаём настройки из storage (дефолты не перезаписываются undefined из storage). */
+/** Get settings from storage (defaults not overwritten by undefined from storage). */
 async function getSettings() {
   const { settings } = await chrome.storage.local.get('settings');
   const s = settings || {};
@@ -94,7 +91,7 @@ async function getSettings() {
   };
 }
 
-/** Обновляем счётчик "приостановлено сегодня"; бейдж обновляется по числу текущих заглушек. */
+/** Increment "suspended today" counter; badge is updated from current placeholder count. */
 async function incrementSuspendedToday() {
   const today = new Date().toISOString().slice(0, 10);
   const { suspendedToday = 0, suspendedTodayDate } = await chrome.storage.local.get(['suspendedToday', 'suspendedTodayDate']);
@@ -103,13 +100,13 @@ async function incrementSuspendedToday() {
   await updateBadge();
 }
 
-/** Число вкладок, которые сейчас показывают заглушку (suspended.html). */
+/** Number of tabs currently showing the placeholder (suspended.html). */
 async function getCurrentlySuspendedTabCount() {
   const tabs = await chrome.tabs.query({});
   return tabs.filter((tab) => tab.url && isPlaceholderTabUrl(tab.url)).length;
 }
 
-/** Число «в гибернации»: вкладки в заглушке + записи в истории «Closed and saved». Для бейджа и popup. */
+/** "Hibernated" count: placeholder tabs + "Closed and saved" history entries. Used for badge and popup. */
 async function getHibernatedCount() {
   const [tabs, raw] = await Promise.all([
     chrome.tabs.query({}),
@@ -120,7 +117,7 @@ async function getHibernatedCount() {
   return placeholderCount + closedSaved.length;
 }
 
-/** Бейдж на иконке: число в гибернации (заглушки + closed and saved). */
+/** Badge on icon: hibernated count (placeholders + closed and saved). */
 async function updateBadge(count) {
   try {
     const n = typeof count === 'number' ? count : await getHibernatedCount();
@@ -139,7 +136,7 @@ async function getSuspendedTodayCount() {
   return suspendedTodayDate === today ? suspendedToday : 0;
 }
 
-/** Удалить из storage ключи backup_YYYY-MM-DD старше BACKUP_RETENTION_DAYS дней. */
+/** Remove from storage backup_YYYY-MM-DD keys older than BACKUP_RETENTION_DAYS. */
 async function pruneOldBackups() {
   try {
     const all = await chrome.storage.local.get(null);
@@ -159,23 +156,21 @@ async function pruneOldBackups() {
   }
 }
 
-/** Единая точка: пометить таб как активный по действию пользователя. */
+/** Single point to mark tab as active on user action. */
 function markTabActive(tabId) {
   const now = Date.now();
   lastActivityByTab.set(tabId, now);
   persistLastActivity(); // fire-and-forget
 }
 
-/** Проверка: прошло ли timeout минут с последней активности.
- * Вкладки без записи (новые или не успевшие попасть в storage) не считаем неактивными —
- * иначе при пробуждении SW по будильнику они суспендились бы «слишком рано». */
+/** Check if timeout minutes have passed since last activity. Tabs with no record (new or not yet in storage) are not treated as inactive to avoid suspending them too soon on alarm. */
 function isTabInactive(tabId, timeoutMinutes) {
   const last = lastActivityByTab.get(tabId);
-  if (last == null) return false; // неизвестная вкладка — не суспендим
+  if (last == null) return false; // unknown tab — do not suspend
   return (Date.now() - last) >= timeoutMinutes * 60 * 1000;
 }
 
-/** Режим Discard: сбрасываем таб через Chrome API. */
+/** Discard mode: unload tab via Chrome API. */
 async function suspendDiscard(tabId) {
   try {
     await chrome.tabs.get(tabId);
@@ -192,15 +187,14 @@ async function suspendDiscard(tabId) {
   }
 }
 
-/** URL можно сохранить и восстановить (не пустой, не about:blank). */
+/** URL that can be saved and restored (non-empty, not about:blank). */
 function hasRestorableUrl(url) {
   const u = (url || '').trim();
   return u.length > 0 && u !== 'about:blank' && !u.startsWith('about:');
 }
 
-/** Режим Placeholder: сохраняем url+title, редирект на suspended.html.
- * В query добавляем fallback-параметр u (URL), чтобы при потере storage заглушка могла восстановить. */
-const PLACEHOLDER_URL_PARAM_MAX = 1800;
+/** Placeholder mode: save url+title, redirect to suspended.html. Add fallback param u (URL) in query so stub can restore if storage is lost. */
+const PLACEHOLDER_URL_PARAM_MAX = 1900;
 
 async function suspendPlaceholder(tabId, url, title) {
   try {
@@ -213,6 +207,16 @@ async function suspendPlaceholder(tabId, url, title) {
   await chrome.storage.local.set({
     [restoreKey]: { url: safeUrl, title: title || '', tabId },
   });
+  try {
+    const folderId = await getOrCreateSuspendedRecoveryFolder();
+    await chrome.bookmarks.create({
+      parentId: folderId,
+      title: (title || safeUrl).slice(0, 255),
+      url: safeUrl,
+    });
+  } catch (e) {
+    console.warn('[TabHibernate] suspended bookmark backup failed', e);
+  }
   const params = new URLSearchParams({ tabId: String(tabId) });
   if (safeUrl && encodeURIComponent(safeUrl).length <= PLACEHOLDER_URL_PARAM_MAX) {
     params.set('u', safeUrl);
@@ -229,7 +233,7 @@ async function suspendPlaceholder(tabId, url, title) {
   }
 }
 
-/** Собрать все табы, подходящие под бэкап (то же правило, что и для suspend, но без учёта времени). */
+/** Get all tabs eligible for backup (same rules as suspend, minus inactivity check). */
 async function getEligibleTabsForBackup() {
   const tabs = await chrome.tabs.query({});
   const eligible = [];
@@ -243,7 +247,44 @@ async function getEligibleTabsForBackup() {
   return eligible;
 }
 
-/** Создать или получить папку закладок "Tab Backup / YYYY-MM-DD" (родитель "Tab Backup", дочерняя — дата). */
+/** Create or get "Tab Hibernate / Suspended Recovery" — survives extension reinstall. */
+async function getOrCreateSuspendedRecoveryFolder() {
+  const tree = await chrome.bookmarks.getTree();
+  const root = tree[0];
+  const findFolder = (nodes, title) => {
+    if (!nodes) return null;
+    for (const n of nodes) {
+      if (n.title === title) return n;
+      const inChild = findFolder(n.children || [], title);
+      if (inChild) return inChild;
+    }
+    return null;
+  };
+  let parent = findFolder(root.children, 'Tab Hibernate');
+  if (!parent) {
+    const created = await chrome.bookmarks.create({ parentId: root.id, title: 'Tab Hibernate' });
+    parent = { id: created.id };
+  }
+  let folder = findFolder([parent], 'Suspended Recovery');
+  if (folder?.id) return folder.id;
+  const created = await chrome.bookmarks.create({ parentId: parent.id, title: 'Suspended Recovery' });
+  return created.id;
+}
+
+async function removeSuspendedBookmark(url) {
+  if (!url) return;
+  try {
+    const found = await chrome.bookmarks.search({ url });
+    const folderId = await getOrCreateSuspendedRecoveryFolder();
+    for (const bm of found) {
+      if (bm.parentId === folderId) await chrome.bookmarks.remove(bm.id);
+    }
+  } catch (e) {
+    console.warn('[TabHibernate] removeSuspendedBookmark failed', e);
+  }
+}
+
+/** Create or get bookmarks folder "Tab Backup / YYYY-MM-DD" (parent "Tab Backup", child is date). */
 async function getOrCreateBackupFolder() {
   const dateStr = new Date().toISOString().slice(0, 10);
   const tree = await chrome.bookmarks.getTree();
@@ -270,7 +311,7 @@ async function getOrCreateBackupFolder() {
   return created.id;
 }
 
-/** Бэкап: закладки + JSON в storage; дубликаты URL в одной пачке пропускаем. */
+/** Backup: bookmarks + JSON in storage; skip duplicate URLs in one batch. */
 async function runBackup(source = 'manual') {
   const tabs = await getEligibleTabsForBackup();
   const seen = new Set();
@@ -307,7 +348,7 @@ async function runBackup(source = 'manual') {
   return { count: unique.length, folderId, folderPath };
 }
 
-/** Удаляем из lastActivityByTab записи по закрытым вкладкам, чтобы не раздувать storage. */
+/** Remove closed tab ids from lastActivityByTab to avoid bloating storage. */
 async function pruneStaleTabIds() {
   try {
     const tabs = await chrome.tabs.query({});
@@ -325,7 +366,7 @@ async function pruneStaleTabIds() {
   }
 }
 
-/** Ручная приостановка всех подходящих вкладок (без учёта таймаута неактивности). */
+/** Manually suspend all eligible tabs (no inactivity timeout check). */
 async function runSuspendAllNow() {
   await getStoredState();
   const settings = await getSettings();
@@ -383,7 +424,7 @@ async function runSuspendAllNow() {
   return { suspended };
 }
 
-/** Закрыть подходящие вкладки и сохранить их URL в closedAndSaved (лимит CLOSED_SAVED_MAX). */
+/** Close eligible tabs and save their URLs to closedAndSaved (limit CLOSED_SAVED_MAX). */
 const CLOSED_SAVED_MAX = 2000;
 async function runCloseAndSaveAll() {
   const tabs = await chrome.tabs.query({});
@@ -404,18 +445,32 @@ async function runCloseAndSaveAll() {
   return { closed: idsToClose.length };
 }
 
-/** Restore all tabs that are currently showing the suspended placeholder.
- * Сначала пробуем storage; если данных нет — восстанавливаем по fallback-параметру u в URL заглушки. */
+/** Задержка между восстановлениями вкладок (мс), чтобы не грузить память одновременно */
+const RESTORE_DELAY_MS = 1000;
+
+/** Restore all tabs: по одной вкладке с задержкой, пишет restoreProgress в storage. */
 async function runRestoreAllSuspended() {
   const tabs = await chrome.tabs.query({});
-  let restored = 0;
+  const placeholders = [];
   for (const tab of tabs) {
     if (!tab.url || !tab.id || !isPlaceholderTabUrl(tab.url)) continue;
+    const u = new URL(tab.url);
+    const tabIdParam = u.searchParams.get('tabId');
+    const tid = tabIdParam ? parseInt(tabIdParam, 10) : null;
+    if (tid == null) continue;
+    placeholders.push({ tab, tid, u });
+  }
+  const total = placeholders.length;
+  let restored = 0;
+
+  const setProgress = (r, t) => {
+    chrome.storage.local.set({
+      restoreProgress: { restored: r, total: t, remaining: t - r },
+    });
+  };
+
+  for (const { tab, tid, u } of placeholders) {
     try {
-      const u = new URL(tab.url);
-      const tabIdParam = u.searchParams.get('tabId');
-      const tid = tabIdParam ? parseInt(tabIdParam, 10) : null;
-      if (tid == null) continue;
       const key = `suspended_${tid}`;
       const data = await chrome.storage.local.get(key);
       const item = data[key];
@@ -427,17 +482,70 @@ async function runRestoreAllSuspended() {
       if (restoreUrl) {
         await chrome.tabs.update(tab.id, { url: restoreUrl });
         await chrome.storage.local.remove(key);
+        await removeSuspendedBookmark(restoreUrl);
         restored++;
+        setProgress(restored, total);
+        if (restored < total) {
+          await new Promise((r) => setTimeout(r, RESTORE_DELAY_MS));
+        }
       }
     } catch (e) {
       console.warn('[TabHibernate] restore tab failed', tab.id, e);
     }
   }
+
+  await chrome.storage.local.remove('restoreProgress');
   await updateBadge();
   return { restored };
 }
 
-/** Основная проверка по будильнику: суспенд неактивных и при необходимости бэкап. */
+/** Recover lost placeholder tabs: storage + bookmarks (survives reinstall). */
+async function runRecoverLostSuspended() {
+  const seen = new Set();
+  const urls = [];
+
+  const all = await chrome.storage.local.get(null);
+  const keysToRemove = [];
+  for (const [key, val] of Object.entries(all)) {
+    if (!key.startsWith('suspended_') || key === 'suspendedToday' || key === 'suspendedTodayDate') continue;
+    const item = val && typeof val === 'object' ? val : null;
+    const url = item && item.url && (item.url.startsWith('http') || item.url.startsWith('file'));
+    if (url && !seen.has(item.url)) {
+      seen.add(item.url);
+      urls.push(item.url);
+      keysToRemove.push(key);
+    }
+  }
+
+  try {
+    const folderId = await getOrCreateSuspendedRecoveryFolder();
+    const children = await chrome.bookmarks.getChildren(folderId);
+    for (const bm of children) {
+      if (bm.url && !seen.has(bm.url)) {
+        seen.add(bm.url);
+        urls.push(bm.url);
+      }
+    }
+  } catch (_) {}
+
+  for (const url of urls) {
+    await chrome.tabs.create({ url });
+  }
+  await chrome.storage.local.remove(keysToRemove);
+
+  try {
+    const folderId = await getOrCreateSuspendedRecoveryFolder();
+    const children = await chrome.bookmarks.getChildren(folderId);
+    for (const bm of children) {
+      await chrome.bookmarks.remove(bm.id);
+    }
+  } catch (_) {}
+
+  await updateBadge();
+  return { recovered: urls.length };
+}
+
+/** Main alarm check: suspend inactive tabs and backup if needed. */
 async function onAlarmCheck() {
   try {
     await chrome.storage.local.set({ lastAlarmRun: Date.now() });
@@ -512,7 +620,7 @@ async function onAlarmCheck() {
   }
 }
 
-/** Создаём/обновляем периодический alarm — вызывать при старте и после каждой проверки. */
+/** Create/update periodic alarm; call on startup and after each check. */
 async function ensureAlarm() {
   try {
     await chrome.alarms.create(ALARM_CHECK_NAME, { periodInMinutes: ALARM_CHECK_PERIOD_MINUTES });
@@ -521,7 +629,32 @@ async function ensureAlarm() {
   }
 }
 
+/** После обновления: вкладки с suspended от старого extension ID — мигрировать на наш. */
+async function migrateOrphanedSuspendedTabs() {
+  const ourId = chrome.runtime.id;
+  const ourOrigin = `chrome-extension://${ourId}`;
+  const tabs = await chrome.tabs.query({});
+  for (const tab of tabs) {
+    if (!tab.id || !tab.url) continue;
+    try {
+      const u = new URL(tab.url);
+      if (u.protocol !== 'chrome-extension:') continue;
+      if (!u.pathname.endsWith('suspended.html')) continue;
+      const tabIdParam = u.searchParams.get('tabId');
+      const fallback = u.searchParams.get('u');
+      if (!tabIdParam || !fallback) continue;
+      if (u.origin === ourOrigin) continue;
+      const newUrl = chrome.runtime.getURL('suspended.html') + '?tabId=' + tab.id + '&u=' + encodeURIComponent(fallback);
+      await chrome.storage.local.set({ [`suspended_${tab.id}`]: { url: fallback, title: '', tabId: tab.id } });
+      await chrome.tabs.update(tab.id, { url: newUrl });
+    } catch (e) {
+      console.warn('[TabHibernate] migrate tab failed', tab.id, e);
+    }
+  }
+}
+
 async function initOnStartup() {
+  await migrateOrphanedSuspendedTabs();
   await ensureAlarm();
   await getStoredState();
   const tabs = await chrome.tabs.query({});
@@ -535,7 +668,7 @@ async function initOnStartup() {
   await updateBadge();
 }
 
-/** Клик по иконке расширения открывает боковую панель вместо popup. */
+/** Extension icon click opens the side panel instead of popup. */
 async function setSidePanelBehavior() {
   try {
     await chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
@@ -586,12 +719,12 @@ chrome.tabs.onRemoved.addListener((tabId) => {
   updateBadge();
 });
 
-/** Бейдж обновляется при изменении closedAndSaved (импорт/очистка на странице History). */
+/** Badge updates when closedAndSaved changes (import/clear on History page). */
 chrome.storage.onChanged.addListener((changes, areaName) => {
   if (areaName === 'local' && changes.closedAndSaved) updateBadge();
 });
 
-/** При смене URL вкладки (в т.ч. restore одной вкладки) обновляем бейдж. */
+/** On tab URL change (e.g. single-tab restore) refresh badge. */
 chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
   if (changeInfo.url) updateBadge();
 });
@@ -670,6 +803,10 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     safeSend({ ok: true });
     return true;
   }
+  if (msg.type === 'removeSuspendedBookmark') {
+    removeSuspendedBookmark(msg.url).then(() => safeSend({ ok: true })).catch(() => safeSend({ ok: false }));
+    return true;
+  }
   if (msg.type === 'suspendCurrentTab') {
     (async () => {
       try {
@@ -702,6 +839,13 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     });
     return true;
   }
+  if (msg.type === 'recoverLostSuspended') {
+    runRecoverLostSuspended().then((res) => safeSend(res)).catch((e) => {
+      console.warn('[TabHibernate] recoverLostSuspended failed', e);
+      safeSend({ recovered: 0, error: String(e.message) });
+    });
+    return true;
+  }
   if (msg.type === 'restoreAllSuspended') {
     runRestoreAllSuspended().then((res) => safeSend(res)).catch((e) => {
       console.warn('[TabHibernate] restoreAllSuspended failed', e);
@@ -722,5 +866,5 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   return false;
 });
 
-// Инициализация при первом запуске SW (после sleep)
+// Init on first SW run (after sleep)
 initOnStartup();

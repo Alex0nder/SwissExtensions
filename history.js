@@ -1,6 +1,6 @@
 /**
  * History page: list closedAndSaved + backup_* from storage, export to JSON file, import from file, open selected as tabs.
- * Лимит closedSavedMax запрашивается у service worker (единый источник — service_worker.js).
+ * closedSavedMax limit is requested from the service worker (single source: service_worker.js).
  */
 
 async function loadAll() {
@@ -13,7 +13,7 @@ async function loadAll() {
   return { closedAndSaved, backups };
 }
 
-/** Рендер списка «Closed and saved» + показ/скрытие строки «Выбрать все» и привязка логики */
+/** Render "Closed and saved" list + show/hide "Select all" row and bind logic */
 function renderClosed(listEl, items) {
   const selectAllRow = document.getElementById('selectAllRow');
   const selectAllCb = document.getElementById('selectAllClosed');
@@ -44,7 +44,7 @@ function renderClosed(listEl, items) {
   bindSelectAll(listEl, selectAllCb);
 }
 
-/** Связка чекбокса «Выбрать все» с чекбоксами строк: один клик выделяет/снимает все; при изменении строк обновляем состояние */
+/** Wire "Select all" checkbox to row checkboxes; sync state when rows change */
 function bindSelectAll(listEl, selectAllCb) {
   if (!selectAllCb) return;
   const checkboxes = () => listEl.querySelectorAll('.cb-closed');
@@ -138,7 +138,7 @@ async function openSelected() {
   }
 }
 
-/** Открыть все страницы из «Closed and saved» в новых вкладках; после открытия — очистить историю. */
+/** Open all pages from "Closed and saved" in new tabs; clear history after opening. */
 async function openAll() {
   const items = window.__backupsCache?.closedAndSaved;
   if (!Array.isArray(items) || !items.length) return alert('No closed-and-saved tabs.');

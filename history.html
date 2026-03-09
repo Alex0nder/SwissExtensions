@@ -8,7 +8,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="theme.css">
   <style>
-    /* SaaS-style History: порядок компонентов, кастомный скроллбар, стильные чекбоксы */
+    /* SaaS-style History: layout, custom scrollbar, styled checkboxes */
     html, body {
       height: 100%;
       margin: 0;
@@ -27,7 +27,7 @@
       -webkit-font-smoothing: antialiased;
     }
 
-    /* ——— Header: заголовок + тулбар в одной полосе ——— */
+    /* ——— Header: title + toolbar ——— */
     .page-header {
       flex-shrink: 0;
       padding: 20px 24px;
@@ -75,7 +75,7 @@
     }
     input[type="file"] { display: none; }
 
-    /* ——— Основной контент ——— */
+    /* ——— Main content ——— */
     .main {
       flex: 1;
       min-height: 0;
@@ -98,7 +98,7 @@
       text-transform: uppercase;
     }
 
-    /* ——— Строка «Выбрать все» ——— */
+    /* ——— Select all row ——— */
     .select-all-row {
       display: flex;
       align-items: center;
@@ -115,7 +115,7 @@
       color: var(--th-text-secondary);
     }
 
-    /* ——— Кастомные чекбоксы (скрываем нативный, рисуем свой бокс) ——— */
+    /* ——— Custom checkboxes (hide native, custom box) ——— */
     .checkbox-wrap {
       position: relative;
       flex-shrink: 0;
@@ -175,7 +175,7 @@
       border-radius: 1px;
     }
 
-    /* ——— Список: карточки + кастомный скроллбар ——— */
+    /* ——— List: cards + custom scrollbar ——— */
     .list {
       list-style: none;
       padding: 0;
@@ -189,7 +189,7 @@
     .section-closed .list { flex: 1; min-height: 200px; }
     .section:not(.section-closed) .list { max-height: 320px; }
 
-    /* Кастомный скроллбар (Chrome/Safari/Edge) */
+    /* Custom scrollbar (Chrome/Safari/Edge) */
     .list::-webkit-scrollbar {
       width: 8px;
     }
@@ -205,7 +205,7 @@
     .list::-webkit-scrollbar-thumb:hover {
       background: var(--th-text-muted);
     }
-    /* Firefox */
+    /* Firefox scrollbar */
     .list {
       scrollbar-width: thin;
       scrollbar-color: var(--th-border) var(--th-bg-base);

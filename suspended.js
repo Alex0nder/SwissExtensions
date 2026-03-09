@@ -1,6 +1,6 @@
 /**
- * Placeholder page: показывает URL и кнопку Restore.
- * Restore по кнопке или по клику по фону/карточке (кроме клика по ссылке — там открытие в новой вкладке).
+ * Placeholder page: shows URL and Restore button.
+ * Restore on button click or click on background/card (except link clicks — open in new tab).
  */
 
 const params = new URLSearchParams(window.location.search);
@@ -13,10 +13,10 @@ const btn = document.getElementById('reload');
 const pageFaviconEl = document.getElementById('pageFavicon');
 const pageTitleEl = document.getElementById('pageTitle');
 
-/** Текущий URL для восстановления (если есть) — используется и кнопкой, и кликом по фону. */
+/** Current URL to restore (if any); used by both button and background click. */
 let currentRestoreUrl = null;
 
-/** Домен из URL для запроса favicon (только http(s)). */
+/** Domain from URL for favicon request (http(s) only). */
 function getDomainForFavicon(url) {
   try {
     const u = new URL(url);
@@ -26,7 +26,7 @@ function getDomainForFavicon(url) {
   }
 }
 
-/** URL иконки по домену (внешний сервис; при ошибке загрузки иконка скрывается). */
+/** Favicon URL by domain (external service; icon hidden on load error). */
 const FAVICON_BASE = 'https://www.google.com/s2/favicons?sz=32&domain=';
 
 function showError(msg) {
@@ -38,7 +38,7 @@ function isRestorableUrl(url) {
   return typeof url === 'string' && (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('file://'));
 }
 
-/** Показать заголовок страницы и favicon, затем URL и кнопку Restore. */
+/** Show page title and favicon, then URL and Restore button. */
 function showUrlAndRestore(url, title) {
   if (!url || !isRestorableUrl(url)) {
     showError('Restore data unavailable');
@@ -71,12 +71,13 @@ function showUrlAndRestore(url, title) {
   if (btn) btn.onclick = () => restore(url);
 }
 
-// Restore: загрузить URL в этой вкладке. getCurrent() нужен после перезапуска браузера (tabId в URL устарел).
+// Restore: load URL in this tab. getCurrent() needed after browser restart (tabId in URL may be stale).
 function restore(url) {
   if (!url || !isRestorableUrl(url)) return;
   if (btn) btn.disabled = true;
   const key = `suspended_${tabId}`;
   chrome.storage.local.remove(key);
+  chrome.runtime.sendMessage({ type: 'removeSuspendedBookmark', url }).catch(() => {});
   chrome.tabs.getCurrent((tab) => {
     const targetId = tab ? tab.id : tabId;
     chrome.tabs.update(targetId, { url }).then(() => {}).catch((e) => {
@@ -86,7 +87,7 @@ function restore(url) {
   });
 }
 
-// Клик по фону или по карточке — восстановить вкладку (кнопка и ссылка обрабатываются сами).
+// Click on background or card — restore tab (button and link handle themselves).
 document.body.addEventListener('click', (e) => {
   if (!currentRestoreUrl) return;
   if (e.target.closest('a') || e.target.closest('button')) return;

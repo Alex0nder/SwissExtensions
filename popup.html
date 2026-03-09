@@ -184,11 +184,17 @@
   <div class="row">
     <button id="restoreAll" class="btn-secondary">Restore all tabs</button>
   </div>
+  <div class="restore-progress" id="restoreProgress" style="display:none; font-size:11px; color:var(--th-text-muted); margin-top:-8px; margin-bottom:8px;">
+    Restored <span id="restoreDone">0</span> of <span id="restoreTotal">0</span>, left <span id="restoreRemain">0</span>
+  </div>
   <div class="row">
     <button id="closeAndSave" class="btn-secondary">Close all and save</button>
   </div>
   <div class="row">
     <a id="openHistory" href="#" style="color: var(--th-accent-cyan); font-size: 13px;">History (export / import)</a>
+  </div>
+  <div class="row">
+    <button id="recoverLost" class="btn-secondary">Recover lost tabs</button>
   </div>
   <div class="stats" id="stats">Suspended / saved: <span class="stats-number" id="statsNumber">—</span></div>
   <div class="stats" id="statusLine">—</div>
