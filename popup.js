@@ -84,7 +84,7 @@ async function refreshStats() {
   }
 }
 
-/** Обновлять счётчик при изменении closedAndSaved (очистка истории, импорт и т.д.). */
+/** Refresh counter when closedAndSaved changes (history clear, import, etc.). */
 chrome.storage.onChanged.addListener((changes, areaName) => {
   if (areaName === 'local' && changes.closedAndSaved) refreshStats();
 });
@@ -156,19 +156,44 @@ if (el.suspendAll) {
 }
 
 if (el.restoreAll) {
+  const restoreProgressEl = document.getElementById('restoreProgress');
+  const restoreDoneEl = document.getElementById('restoreDone');
+  const restoreTotalEl = document.getElementById('restoreTotal');
+  const restoreRemainEl = document.getElementById('restoreRemain');
+
   el.restoreAll.addEventListener('click', async () => {
     el.restoreAll.disabled = true;
     el.restoreAll.textContent = 'Restoring…';
+    if (restoreProgressEl) restoreProgressEl.style.display = 'block';
+
+    const onProgress = (changes, areaName) => {
+      if (areaName !== 'local' || !changes.restoreProgress?.newValue) return;
+      const { restored, total, remaining } = changes.restoreProgress.newValue;
+      if (restoreDoneEl) restoreDoneEl.textContent = restored;
+      if (restoreTotalEl) restoreTotalEl.textContent = total;
+      if (restoreRemainEl) restoreRemainEl.textContent = remaining;
+    };
+    chrome.storage.onChanged.addListener(onProgress);
+
+    const cleanup = () => {
+      chrome.storage.onChanged.removeListener(onProgress);
+      chrome.storage.local.remove('restoreProgress');
+      if (restoreProgressEl) restoreProgressEl.style.display = 'none';
+      el.restoreAll.disabled = false;
+    };
+
     try {
       const res = await sendMessageWithRetry({ type: 'restoreAllSuspended' });
+      cleanup();
       const n = res && typeof res.restored === 'number' ? res.restored : 0;
       el.restoreAll.textContent = n > 0 ? `Restored: ${n}` : 'Done';
+      refreshStats();
     } catch (e) {
+      cleanup();
       el.restoreAll.textContent = 'Error';
     }
     setTimeout(() => {
       el.restoreAll.textContent = 'Restore all tabs';
-      el.restoreAll.disabled = false;
     }, 2000);
   });
 }
@@ -196,6 +221,26 @@ if (el.openHistory) {
   el.openHistory.addEventListener('click', (e) => {
     e.preventDefault();
     chrome.tabs.create({ url: chrome.runtime.getURL('history.html') });
+  });
+}
+
+const recoverBtn = document.getElementById('recoverLost');
+if (recoverBtn) {
+  recoverBtn.addEventListener('click', async () => {
+    recoverBtn.disabled = true;
+    recoverBtn.textContent = 'Recovering…';
+    try {
+      const res = await sendMessageWithRetry({ type: 'recoverLostSuspended' });
+      const n = res?.recovered ?? 0;
+      recoverBtn.textContent = n > 0 ? `Recovered: ${n}` : 'No lost tabs';
+      refreshStats();
+    } catch {
+      recoverBtn.textContent = 'Error';
+    }
+    setTimeout(() => {
+      recoverBtn.textContent = 'Recover lost tabs';
+      recoverBtn.disabled = false;
+    }, 2000);
   });
 }
 

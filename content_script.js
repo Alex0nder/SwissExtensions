@@ -1,7 +1,7 @@
 /**
- * Content script: отправляет в service worker сообщения об активности пользователя
- * (mousemove, keydown), чтобы таб не считался неактивным.
- * Не инжектируется в chrome:// и chrome-extension:// (исключено в manifest).
+ * Content script: sends user activity (mousemove, keydown) to the service worker
+ * so the tab is not treated as inactive.
+ * Not injected into chrome:// or chrome-extension:// (excluded in manifest).
  */
 
 const REPORT_THROTTLE_MS = 2000;

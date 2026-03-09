@@ -35,6 +35,8 @@ Chrome extension (Manifest V3) that reduces memory usage by suspending inactive 
 
 When a tab is suspended (discard or placeholder), the page is unloaded. **Unsaved form data and SPA state may be lost** — save important data beforehand.
 
+**Before updating the extension:** Use "Restore all" first. After reinstalling (new extension ID), suspended placeholder tabs may be unrecoverable.
+
 ---
 
 ## Project structure
