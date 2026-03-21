@@ -42,6 +42,10 @@ It combines five focused tools:
 - Capture data is stored in IndexedDB `PdfCaptureDB`.
 - Blocker uses static rulesets (`blocker/ruleset_*.json`) plus dynamic user rules.
 
+## Privacy Policy
+
+- https://github.com/Alex0nder/SwissExtensions/blob/main/PRIVACY_POLICY.md
+
 ## License
 
 MIT
