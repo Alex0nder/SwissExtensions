@@ -1,33 +1,35 @@
 /**
- * Dark minimal theme — neutral tones, no green.
+ * Swiss design system — black/white, minimal, functional.
+ * High contrast, strict grid, sharp edges, no decorative accents.
  */
 :root {
   /* Backgrounds */
-  --th-bg-base: #0c0e12;
-  --th-bg-surface: #13161c;
-  --th-bg-elevated: #1a1e26;
-  --th-bg-card: #21262e;
-  --th-bg-input: #161b22;
+  --th-bg-base: #0a0a0a;
+  --th-bg-surface: #111;
+  --th-bg-elevated: #1a1a1a;
+  --th-bg-card: #222;
+  --th-bg-input: #0d0d0d;
   /* Borders */
-  --th-border: #2d333b;
-  --th-border-subtle: #21262d;
+  --th-border: #2a2a2a;
+  --th-border-subtle: #1a1a1a;
   /* Text */
-  --th-text-primary: #e6edf3;
-  --th-text-secondary: #8b949e;
-  --th-text-muted: #6e7681;
-  /* Accents — cool neutrals */
-  --th-accent: #7ca4d8;
-  --th-accent-cyan: #6b9bb5;
-  /* Buttons — minimal, neutral */
-  --th-btn-primary-bg: #2d333b;
-  --th-btn-primary-hover: #373e47;
-  --th-btn-primary-text: #e6edf3;
-  /* Checkbox / controls */
+  --th-text-primary: #f5f5f5;
+  --th-text-secondary: #999;
+  --th-text-muted: #666;
+  /* Accent — single red, used sparingly */
+  --th-accent: #e63946;
+  --th-accent-cyan: var(--th-text-primary);
+  /* Buttons */
+  --th-btn-primary-bg: #fff;
+  --th-btn-primary-hover: #eee;
+  --th-btn-primary-text: #0a0a0a;
+  /* Controls */
   --th-control-bg: var(--th-bg-input);
   --th-control-border: var(--th-border);
-  --th-control-accent: var(--th-accent-cyan);
-  /* Radius & shadow */
-  --th-radius: 8px;
-  --th-radius-lg: 12px;
-  --th-shadow: 0 4px 24px rgba(0, 0, 0, 0.35);
+  --th-control-accent: var(--th-accent);
+  /* Swiss: sharp corners */
+  --th-radius: 0;
+  --th-radius-sm: 0;
+  --th-radius-lg: 0;
+  --th-shadow: none;
 }

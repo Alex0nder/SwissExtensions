@@ -2,207 +2,355 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>Tab Hibernate</title>
+  <title>Swiss Extensions</title>
   <link rel="stylesheet" href="theme.css">
   <style>
-    /* Side panel: flex layout, content on top, About pinned to bottom. */
-    html, body { height: 100%; margin: 0; box-sizing: border-box; }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; }
     body {
-      min-width: 280px;
-      max-width: 100%;
-      padding: 16px;
-      display: flex;
-      flex-direction: column;
-      font-family: 'SF Pro Text', system-ui, -apple-system, sans-serif;
-      font-size: 13px;
+      font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Helvetica, Arial, sans-serif;
+      font-size: 12px;
       background: var(--th-bg-base);
       color: var(--th-text-primary);
+      display: flex;
+      flex-direction: column;
+      min-width: 280px;
+      max-width: 360px;
+      letter-spacing: 0.02em;
     }
-    .panel-main { flex: 1; min-height: 0; }
-    h2 {
-      margin: 0 0 16px;
-      font-size: 17px;
-      font-weight: 600;
-      color: var(--th-text-primary);
-      letter-spacing: -0.02em;
-    }
-    .row {
+    .view { display: none; flex-direction: column; flex: 1; min-height: 0; }
+    .view.active { display: flex; }
+    /* Header: Back слева, заголовок — строго по центру всей ширины */
+    .header {
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      margin-bottom: 12px;
-      gap: 12px;
+      padding: 16px 20px;
+      min-height: 48px;
+      border-bottom: 1px solid var(--th-border);
+      flex-shrink: 0;
+      position: relative;
     }
-    label {
-      cursor: pointer;
-      color: var(--th-text-secondary);
-    }
-    select {
-      padding: 6px 28px 6px 10px;
-      background: var(--th-bg-input) url('icons/chevron-down.svg') right 8px center / 18px 18px no-repeat;
-      border: none;
-      border-radius: var(--th-radius);
-      color: var(--th-text-primary);
-      font-size: 13px;
-      min-width: 80px;
-      max-width: 140px;
+    /* Кнопка назад — текстовая (иконка + текст), без фона и рамки */
+    .back-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 0;
+      margin: 0;
       width: auto;
-      outline: none;
+      border: none;
+      background: transparent !important;
+      color: var(--th-text-muted);
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      letter-spacing: 0.02em;
+      transition: color 0.12s;
+      flex-shrink: 0;
       -webkit-appearance: none;
       appearance: none;
     }
-    select:focus { outline: none; }
-    option {
-      background: var(--th-bg-elevated);
+    .back-btn:hover { color: var(--th-text-primary); background: transparent !important; }
+    .back-btn .back-icon {
+      width: 14px;
+      height: 14px;
+      flex-shrink: 0;
+      color: inherit;
+    }
+    /* Заголовок — строго по центру всей ширины header */
+    .header-title {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      white-space: nowrap;
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--th-text-muted);
+    }
+    .back-btn { position: relative; z-index: 1; }
+    .panel-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px 20px;
+    }
+    .blocks { padding: 20px; }
+    .block {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      width: 100%;
+      padding: 16px 20px;
+      margin-bottom: 8px;
+      border: 1px solid var(--th-border);
+      background: var(--th-bg-card);
       color: var(--th-text-primary);
-    }
-    input[type="checkbox"] {
-      width: 18px;
-      height: 18px;
-      accent-color: var(--th-accent-cyan);
+      text-align: left;
+      font-family: inherit;
+      font-size: 12px;
       cursor: pointer;
+      transition: background 0.12s, border-color 0.12s;
     }
+    .block:hover { background: var(--th-bg-elevated); border-color: var(--th-text-muted); }
+    .block-icon {
+      flex-shrink: 0;
+      width: 22px;
+      height: 22px;
+      opacity: 0.7;
+    }
+    .block-icon svg { width: 100%; height: 100%; }
+    .block-content { flex: 1; min-width: 0; }
+    .block-title { font-weight: 500; margin-bottom: 4px; }
+    .block-desc { font-size: 11px; color: var(--th-text-muted); }
+    h2 { margin: 0 0 8px; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; color: var(--th-text-muted); }
+    .row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; gap: 16px; }
+    .row-full { flex-direction: column; align-items: stretch; margin-bottom: 8px; }
+    label { cursor: pointer; color: var(--th-text-secondary); font-size: 12px; }
+    select {
+      padding: 8px 32px 8px 12px;
+      background: var(--th-bg-input) url('icons/chevron-down.svg') right 8px center/14px 14px no-repeat;
+      border: 1px solid var(--th-border);
+      border-radius: var(--th-radius);
+      color: var(--th-text-primary);
+      font-size: 12px;
+      min-width: 80px;
+      -webkit-appearance: none;
+      appearance: none;
+    }
+    input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--th-accent); cursor: pointer; }
     button {
-      padding: 10px 16px;
+      padding: 12px 16px;
       background: var(--th-btn-primary-bg);
       color: var(--th-btn-primary-text);
-      border: none;
+      border: 1px solid var(--th-border);
       border-radius: var(--th-radius);
-      font-size: 13px;
+      font-size: 12px;
       font-weight: 500;
       cursor: pointer;
-      transition: background 0.15s;
       width: 100%;
-      outline: none;
+      letter-spacing: 0.02em;
     }
     button:hover { background: var(--th-btn-primary-hover); }
-    button:disabled { opacity: 0.5; cursor: not-allowed; }
-    button.btn-secondary {
-      background: var(--th-bg-elevated);
-      color: var(--th-accent-cyan);
-      border: none;
-      outline: none;
-    }
-    button.btn-secondary:hover { background: var(--th-bg-card); }
-    .stats {
-      margin-top: 10px;
+    button:disabled { opacity: 0.4; cursor: not-allowed; }
+    button.btn-sec { background: transparent; color: var(--th-text-primary); border-color: var(--th-border); }
+    button.btn-sec:hover { background: var(--th-bg-elevated); }
+    .hint { font-size: 11px; color: var(--th-text-muted); margin: 0 0 16px; line-height: 1.4; }
+    .stats { font-size: 11px; color: var(--th-text-muted); margin-top: 16px; }
+    .stats span { color: var(--th-text-primary); font-weight: 500; }
+    a { color: var(--th-text-primary); text-decoration: underline; text-underline-offset: 2px; }
+    a:hover { opacity: 0.8; }
+    .add-row { display: flex; gap: 0; margin-bottom: 8px; }
+    .add-row input {
+      flex: 1;
+      padding: 10px 12px;
+      border: 1px solid var(--th-border);
+      border-right: none;
+      background: var(--th-bg-input);
+      color: var(--th-text-primary);
       font-size: 12px;
-      color: var(--th-text-muted);
     }
-    .stats:first-of-type {
-      padding-top: 14px;
-      border-top: 1px solid var(--th-border);
+    .add-row input:focus { outline: none; border-color: var(--th-text-muted); }
+    .add-row button { width: auto; padding: 10px 16px; }
+    .block-list { list-style: none; padding: 0; margin: 0; }
+    .block-list li {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--th-border-subtle);
+      font-size: 12px;
     }
-    .stats-number {
-      color: #0d9488;
-      font-weight: 600;
-    }
-    .mode-hint {
-      margin: -4px 0 10px;
-      font-size: 11px;
-      color: var(--th-text-muted);
-    }
-    .backup-hint {
-      margin: -2px 0 10px;
-      font-size: 11px;
-      color: var(--th-text-muted);
-      line-height: 1.35;
-    }
-    .backup-hint strong { font-weight: 600; color: var(--th-text-secondary); }
-    .hint {
-      margin-top: 10px;
-      font-size: 11px;
-      color: var(--th-text-muted);
-      line-height: 1.4;
-    }
-    .about {
-      margin-top: auto;
-      padding-top: 12px;
-      border-top: 1px solid rgba(45, 51, 59, 0.5);
-      flex-shrink: 0;
-    }
-    .about-title {
-      font-size: 11px;
-      font-weight: 600;
-      color: var(--th-text-muted);
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
-      margin: 0 0 6px;
-    }
-    .about-text {
-      font-size: 11px;
-      color: var(--th-text-muted);
-      line-height: 1.45;
-      margin: 0;
-    }
-    .about-link {
-      display: block;
-      margin-top: 8px;
-      font-size: 11px;
-      color: var(--th-accent-cyan);
-      text-decoration: none;
-    }
-    .about-link:hover { text-decoration: underline; }
+    .block-list .rm { padding: 6px 12px; font-size: 10px; width: auto; }
+    .clear-options label { display: flex; align-items: center; gap: 12px; padding: 8px 0; cursor: pointer; }
+    #captureStatus, #clearStatus, #memoryStatus { font-size: 11px; margin-top: 12px; min-height: 1.4em; color: var(--th-text-muted); }
+    .capture-progress { display: none; margin-top: 12px; }
+    .capture-progress.visible { display: block; }
+    .capture-progress-bar { height: 4px; background: var(--th-border); overflow: hidden; margin-bottom: 6px; }
+    .capture-progress-fill { height: 100%; background: var(--th-text-primary); width: 0%; transition: width 0.15s ease; }
+    .restore-progress { font-size: 10px; color: var(--th-text-muted); margin-top: -6px; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.05em; }
+    .err { color: var(--th-accent); }
+    .ok { color: var(--th-text-secondary); }
   </style>
 </head>
 <body>
-  <div class="panel-main">
-  <h2>Tab Hibernate</h2>
-  <div class="row">
-    <label for="enabled">Enable</label>
-    <input type="checkbox" id="enabled" checked>
+  <div class="view active" id="view-home">
+    <div class="header">
+      <span class="header-title">Swiss Extensions</span>
+    </div>
+    <div class="blocks">
+      <button type="button" class="block" data-block="capture">
+        <span class="block-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="14" rx="2"/><path d="M12 16a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/><path d="M16 6V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg></span>
+        <div class="block-content">
+          <div class="block-title">Page Capture</div>
+          <div class="block-desc">Screenshot by viewport tiles, PNG/PDF</div>
+        </div>
+      </button>
+      <button type="button" class="block" data-block="tabs">
+        <span class="block-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="16" height="16" rx="1"/><rect x="5" y="6" width="16" height="16" rx="1"/><path d="M8 6v12"/></svg></span>
+        <div class="block-content">
+          <div class="block-title">Tab Hibernate</div>
+          <div class="block-desc">Suspend tabs, backup, restore</div>
+        </div>
+      </button>
+      <button type="button" class="block" data-block="memory">
+        <span class="block-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4"/><path d="M12 18v4"/><path d="M4.93 4.93l2.83 2.83"/><path d="M16.24 16.24l2.83 2.83"/><path d="M2 12h4"/><path d="M18 12h4"/><path d="M4.93 19.07l2.83-2.83"/><path d="M16.24 7.76l2.83-2.83"/><circle cx="12" cy="12" r="3"/></svg></span>
+        <div class="block-content">
+          <div class="block-title">Memory Cleaner</div>
+          <div class="block-desc">Discard background tabs to free RAM</div>
+        </div>
+      </button>
+      <button type="button" class="block" data-block="blocker">
+        <span class="block-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></span>
+        <div class="block-content">
+          <div class="block-title">Site Blocker</div>
+          <div class="block-desc">Block distracting sites</div>
+        </div>
+      </button>
+      <button type="button" class="block" data-block="clear">
+        <span class="block-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M10 11v6"/><path d="M14 11v6"/></svg></span>
+        <div class="block-content">
+          <div class="block-title">Site Data Clear</div>
+          <div class="block-desc">Clear cookies and storage for this site</div>
+        </div>
+      </button>
+    </div>
   </div>
-  <div class="row">
-    <label for="timeout">Timeout (min)</label>
-    <select id="timeout">
-      <option value="5" selected>5</option>
-      <option value="10">10</option>
-      <option value="15">15</option>
-      <option value="20">20</option>
-      <option value="30">30</option>
-      <option value="45">45</option>
-      <option value="60">60 (1 hr)</option>
-    </select>
+
+  <div class="view" id="view-capture">
+    <div class="header">
+      <button type="button" class="back-btn" data-back><svg class="back-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>Back</button>
+      <span class="header-title">Page Capture</span>
+    </div>
+    <div class="panel-content">
+      <h2>Page Capture</h2>
+      <p class="hint">Screenshot by viewport tiles, PNG/PDF</p>
+      <button id="btnCapture">Scan page</button>
+      <div class="capture-progress" id="captureProgress">
+        <div class="capture-progress-bar"><div class="capture-progress-fill" id="captureProgressFill"></div></div>
+      </div>
+      <div id="captureStatus"></div>
+    </div>
   </div>
-  <div class="row">
-    <label for="mode">Mode</label>
-    <select id="mode">
-      <option value="discard">Discard</option>
-      <option value="placeholder" selected>Placeholder</option>
-    </select>
+
+  <div class="view" id="view-tabs">
+    <div class="header">
+      <button type="button" class="back-btn" data-back><svg class="back-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>Back</button>
+      <span class="header-title">Tab Hibernate</span>
+    </div>
+    <div class="panel-content">
+      <h2>Tab Hibernate</h2>
+      <div class="row">
+        <label for="thEnabled">Enabled</label>
+        <input type="checkbox" id="thEnabled" checked>
+      </div>
+      <div class="row">
+        <label for="thTimeout">Timeout (min)</label>
+        <select id="thTimeout">
+          <option value="5" selected>5</option>
+          <option value="10">10</option>
+          <option value="15">15</option>
+          <option value="20">20</option>
+          <option value="30">30</option>
+          <option value="45">45</option>
+          <option value="60">60</option>
+        </select>
+      </div>
+      <div class="row">
+        <label for="thMode">Mode</label>
+        <select id="thMode">
+          <option value="discard">Discard</option>
+          <option value="placeholder" selected>Placeholder</option>
+        </select>
+      </div>
+      <div class="row row-full">
+        <button id="thBackup">Backup to bookmarks</button>
+      </div>
+      <div class="row row-full">
+        <button id="thSuspendCurrent" class="btn-sec">Suspend current</button>
+      </div>
+      <div class="row row-full">
+        <button id="thSuspendAll" class="btn-sec">Suspend all</button>
+      </div>
+      <div class="row row-full">
+        <button id="thRestoreAll" class="btn-sec">Restore all</button>
+      </div>
+      <div class="restore-progress" id="thRestoreProgress" style="display:none;">
+        Restored <span id="thRestoreDone">0</span> of <span id="thRestoreTotal">0</span>, left <span id="thRestoreRemain">0</span>
+      </div>
+      <div class="row row-full">
+        <button id="thCloseSave" class="btn-sec">Close all and save</button>
+      </div>
+      <div class="row row-full">
+        <a href="#" id="thHistory">History (export / import)</a>
+      </div>
+      <div class="row row-full">
+        <button id="thRecoverLost" class="btn-sec">Recover lost tabs</button>
+      </div>
+      <p class="hint" style="margin-top: 4px;">Restores as placeholders — pages load only when you click «Restore». Saves RAM.</p>
+      <div class="stats">Suspended / saved: <span id="thStats">—</span></div>
+    </div>
   </div>
-  <p class="mode-hint">The stub page is shown only in Placeholder mode.</p>
-  <div class="row">
-    <button id="backup">Backup tabs to bookmarks</button>
+
+  <div class="view" id="view-memory">
+    <div class="header">
+      <button type="button" class="back-btn" data-back><svg class="back-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>Back</button>
+      <span class="header-title">Memory Cleaner</span>
+    </div>
+    <div class="panel-content">
+      <h2>Memory Cleaner</h2>
+      <p class="hint">Discard background tabs to free memory. Active and optionally pinned tabs are kept.</p>
+      <button id="btnDiscard">Discard background tabs</button>
+      <div class="row">
+        <label for="memorySkipPinned">Skip pinned tabs</label>
+        <input type="checkbox" id="memorySkipPinned" checked>
+      </div>
+      <div id="memoryStatus"></div>
+    </div>
   </div>
-  <p class="backup-hint">Saves links to bookmarks folder <strong>Tab Backup / date</strong> and to local storage.</p>
-  <div class="row">
-    <button id="suspendCurrent" class="btn-secondary">Suspend current tab</button>
+
+  <div class="view" id="view-blocker">
+    <div class="header">
+      <button type="button" class="back-btn" data-back><svg class="back-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>Back</button>
+      <span class="header-title">Site Blocker</span>
+    </div>
+    <div class="panel-content">
+      <h2>Site Blocker</h2>
+      <div class="row">
+        <label>Blocking</label>
+        <input type="checkbox" id="blockerToggle" checked>
+      </div>
+      <div class="add-row">
+        <input type="text" id="blockerInput" placeholder="example.com">
+        <button id="blockerAdd">Add</button>
+      </div>
+      <ul class="block-list" id="blockerList"></ul>
+      <p class="hint" id="blockerEmpty">List empty</p>
+      <div class="row row-full" style="margin-top: 16px;">
+        <button type="button" class="btn btn-sec" id="blockerOpenFromHistory">Open blocked from history</button>
+      </div>
+      <div id="blockerStatus" class="hint" style="margin-top: 8px;"></div>
+    </div>
   </div>
-  <div class="row">
-    <button id="suspendAll" class="btn-secondary">Suspend all tabs</button>
+
+  <div class="view" id="view-clear">
+    <div class="header">
+      <button type="button" class="back-btn" data-back><svg class="back-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>Back</button>
+      <span class="header-title">Site Data Clear</span>
+    </div>
+    <div class="panel-content">
+      <h2>Site Data Clear</h2>
+      <p class="hint">Clear cookies and storage for this site</p>
+      <div class="clear-options">
+        <label><input type="checkbox" id="clearCookies" checked> Cookies</label>
+        <label><input type="checkbox" id="clearLocal" checked> localStorage</label>
+        <label><input type="checkbox" id="clearSession" checked> sessionStorage</label>
+      </div>
+      <button id="btnClear">Clear for this site</button>
+      <div id="clearStatus"></div>
+    </div>
   </div>
-  <div class="row">
-    <button id="restoreAll" class="btn-secondary">Restore all tabs</button>
-  </div>
-  <div class="row">
-    <button id="closeAndSave" class="btn-secondary">Close all and save</button>
-  </div>
-  <div class="row">
-    <a id="openHistory" href="#" style="color: var(--th-accent-cyan); font-size: 13px;">History (export / import)</a>
-  </div>
-  <div class="row">
-    <button id="recoverLost" class="btn-secondary">Recover lost tabs</button>
-  </div>
-  <div class="stats" id="stats">Suspended / saved: <span class="stats-number" id="statsNumber">—</span></div>
-  <div class="stats" id="statusLine">—</div>
-  <div class="hint" id="hint">Only background tabs are suspended (not the active or pinned one).</div>
-  </div>
-  <div class="about">
-    <p class="about-title">About</p>
-    <p class="about-text">Suspends background tabs after the selected timeout (5–60 min) or on demand, saves URLs to bookmarks (Tab Backup / date) and local storage. Placeholder mode shows a stub with a Restore button.</p>
-    <a class="about-link" href="https://github.com/Alex0nder/TabHibernate" target="_blank" rel="noopener">GitHub — Alex0nder / TabHibernate</a>
-  </div>
-  <script src="popup.js"></script>
+
+  <script src="side_panel.js"></script>
 </body>
 </html>

@@ -1,61 +1,47 @@
-# Tab Hibernate
+# Swiss Extensions
 
-Chrome extension (Manifest V3) that reduces memory usage by suspending inactive tabs after a timeout or on demand, and saves URLs to bookmarks and local storage. The UI opens in the **Side Panel** when you click the extension icon.
+Swiss Extensions is an all-in-one Chrome productivity toolkit built around a clean Side Panel workflow.
 
-- **Repository:** [github.com/Alex0nder/TabHibernate](https://github.com/Alex0nder/TabHibernate)
+It combines five focused tools:
 
-**Requirements:** Chrome 88+ with Manifest V3 support; Chrome 114+ recommended for Side Panel.
+1. **Page Capture** - capture long pages by viewport tiles and export to PNG or PDF.
+2. **Tab Hibernate** - suspend inactive tabs and restore them when needed.
+3. **Memory Cleaner** - discard background tabs to reduce RAM usage.
+4. **Site Blocker** - block distracting domains with built-in and custom rules.
+5. **Site Data Clear** - clear cookies and storage for the current site on demand.
 
----
+## Installation (developer mode)
 
-## Installation
+1. Open `chrome://extensions/`.
+2. Enable **Developer mode**.
+3. Click **Load unpacked**.
+4. Select this project folder.
 
-1. Clone the repo or download the archive.
-2. Open `chrome://extensions`.
-3. Enable **Developer mode**.
-4. Click **Load unpacked** and select the project folder.
+## Main workflows
 
----
+- **Page Capture:** scan page -> open result page -> export PNG/PDF.
+- **Tab Hibernate:** backup tabs to bookmarks, suspend current/all, restore all, recover lost tabs.
+- **Memory Cleaner:** discard background tabs with optional pinned-tab protection.
+- **Site Blocker:** enable/disable blocker, manage blocked domains.
+- **Site Data Clear:** clear cookies, localStorage, and sessionStorage for the active site.
 
-## Features
+## Permissions and purpose
 
-- **Inactivity timeout** — a tab is considered inactive after 5–60 minutes without interaction (configurable in the panel).
-- **Two suspension modes:**
-  - **Discard** — unloads the tab via Chrome API; reload on click.
-  - **Placeholder** — redirects to the extension stub page with a **Restore** button to bring back the original URL.
-- **Backup:** on suspend and via button — bookmarks in **Tab Backup / date** folder and data in `chrome.storage.local`.
-- **Manual actions:** suspend current tab, suspend all, restore all, close all and save to history.
-- **History:** “Closed and saved” list, export/import JSON, open selected or all tabs; history is cleared after “Open all”.
-- **Badge on icon** — count of placeholder tabs plus history entries (suspended/saved).
-- **Exclusions:** active tab, pinned, audible, `chrome://`, `chrome-extension://`, and incognito tabs are not suspended.
+- `tabs`, `activeTab`, `<all_urls>`: capture pages, manage tabs, apply domain blocking.
+- `history`: optional blocked-from-history helper flow.
+- `browsingData`: clear site data on user action.
+- `bookmarks`: backup and restore hibernated tabs.
+- `declarativeNetRequest`: static and dynamic blocking rules.
+- `downloads`: export capture files.
+- `scripting`: inject helper scripts for capture/clear actions.
+- `sidePanel`, `alarms`, `storage`: side panel UI, periodic checks, settings persistence.
 
----
+## Technical notes
 
-## Limitations
-
-When a tab is suspended (discard or placeholder), the page is unloaded. **Unsaved form data and SPA state may be lost** — save important data beforehand.
-
-**Before updating the extension:** Use "Restore all" first. After reinstalling (new extension ID), suspended placeholder tabs may be unrecoverable.
-
----
-
-## Project structure
-
-| File | Purpose |
-|------|---------|
-| `manifest.json` | MV3, permissions, Side Panel, content script |
-| `service_worker.js` | Timer, activity tracking, suspend, backup, badge |
-| `content_script.js` | Sends activity (mouse, keyboard, scroll) to the service worker |
-| `side_panel.html` / `popup.js` | Settings panel, buttons, counter |
-| `popup.html` | Fallback popup (shared logic with side panel) |
-| `history.html` / `history.js` | History page: export/import, list, open tabs |
-| `suspended.html` / `suspended.js` | Stub page with Restore button |
-| `theme.css` | Dark theme |
-| `icons/` | Icons (check, select arrow) |
-| `DEVELOPMENT.md` | Roadmap and development notes |
-
----
+- Manifest V3 with one service worker.
+- Capture data is stored in IndexedDB `PdfCaptureDB`.
+- Blocker uses static rulesets (`blocker/ruleset_*.json`) plus dynamic user rules.
 
 ## License
 
-MIT.
+MIT

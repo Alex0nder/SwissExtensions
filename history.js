@@ -108,11 +108,33 @@ function escapeAttr(s) {
     .replace(/>/g, '&gt;');
 }
 
+/** Сохранить выбранные URL перед перерисовкой, восстановить после. */
+function getCheckedClosedUrls() {
+  const urls = new Set();
+  document.querySelectorAll('.cb-closed:checked').forEach((cb) => {
+    const u = cb.dataset?.url;
+    if (u) urls.add(u);
+  });
+  return urls;
+}
+
 async function refresh() {
+  const checkedUrls = getCheckedClosedUrls();
   const data = await loadAll();
   window.__backupsCache = data;
   renderClosed(document.getElementById('closedList'), data.closedAndSaved);
   renderBackups(document.getElementById('backupList'), data.backups);
+  document.querySelectorAll('.cb-closed').forEach((cb) => {
+    if (checkedUrls.has(cb.dataset?.url)) cb.checked = true;
+  });
+  const selectAllCb = document.getElementById('selectAllClosed');
+  if (selectAllCb) {
+    const cbs = document.querySelectorAll('.cb-closed');
+    const n = cbs.length;
+    const checked = cbs.length && Array.from(cbs).every((c) => c.checked);
+    selectAllCb.checked = checked;
+    selectAllCb.indeterminate = Array.from(cbs).some((c) => c.checked) && !checked;
+  }
 }
 
 function getSelectedUrls() {
@@ -130,25 +152,88 @@ function getSelectedUrls() {
   return [...new Set(urls)];
 }
 
-async function openSelected() {
-  const urls = getSelectedUrls();
-  if (!urls.length) return alert('Select at least one item.');
-  for (const url of urls) {
-    try { await chrome.tabs.create({ url }); } catch (e) { console.warn(e); }
-  }
+/** Выбранные элементы {url, title} — из Closed and saved и Backups. */
+function getSelectedItems() {
+  const seen = new Set();
+  const items = [];
+  document.querySelectorAll('.cb-closed:checked').forEach((cb) => {
+    const url = cb.dataset.url;
+    if (!url || seen.has(url)) return;
+    seen.add(url);
+    const cached = (window.__backupsCache?.closedAndSaved ?? []).find((x) => x.url === url);
+    items.push({ url, title: cached?.title ?? url });
+  });
+  document.querySelectorAll('.cb-backup:checked').forEach((cb) => {
+    const date = cb.dataset.date;
+    if (!date) return;
+    const backupData = window.__backupsCache?.backups?.[date];
+    if (!Array.isArray(backupData)) return;
+    backupData.forEach((item) => {
+      if (item?.url && !seen.has(item.url)) {
+        seen.add(item.url);
+        items.push({ url: item.url, title: item.title ?? item.url });
+      }
+    });
+  });
+  return items;
 }
 
-/** Open all pages from "Closed and saved" in new tabs; clear history after opening. */
+/** Открыть выбранные вкладки как placeholder (заблокированные). Удалить из closedAndSaved. */
+async function openSelected() {
+  const items = getSelectedItems();
+  if (!items.length) return alert('Select at least one item.');
+  const urlSet = new Set(items.map((x) => x.url));
+  const closed = window.__backupsCache?.closedAndSaved ?? [];
+  const remaining = closed.filter((x) => !x.url || !urlSet.has(x.url));
+  if (remaining.length !== closed.length) {
+    await chrome.storage.local.set({ closedAndSaved: remaining });
+    if (window.__backupsCache) window.__backupsCache.closedAndSaved = remaining;
+  }
+  try {
+    await chrome.runtime.sendMessage({ type: 'openUrlsAsPlaceholders', items });
+  } catch (e) {
+    console.warn(e);
+    alert('Ошибка: ' + (e?.message || e));
+  }
+  await refresh();
+}
+
+/** Открыть все из Closed and saved как placeholder (заблокированные). Сначала очищаем список. */
 async function openAll() {
   const items = window.__backupsCache?.closedAndSaved;
   if (!Array.isArray(items) || !items.length) return alert('No closed-and-saved tabs.');
-  const urls = items.map((x) => x.url).filter(Boolean);
-  if (!urls.length) return alert('No URLs to open.');
-  for (const url of urls) {
-    try { await chrome.tabs.create({ url }); } catch (e) { console.warn(e); }
-  }
+  const toOpen = items.map((x) => ({ url: x.url, title: x.title ?? x.url })).filter((x) => x.url);
+  if (!toOpen.length) return alert('No URLs to open.');
   await chrome.storage.local.set({ closedAndSaved: [] });
   if (window.__backupsCache) window.__backupsCache.closedAndSaved = [];
+  await refresh();
+  try {
+    await chrome.runtime.sendMessage({ type: 'openUrlsAsPlaceholders', items: toOpen });
+  } catch (e) {
+    console.warn(e);
+    alert('Ошибка: ' + (e?.message || e));
+  }
+}
+
+/** Удалить выбранные вручную (без открытия). Из Closed and saved — по URL; из Backups — целиком дату. */
+async function removeSelected() {
+  const urlSet = new Set();
+  const backupDatesToRemove = new Set();
+  document.querySelectorAll('.cb-closed:checked').forEach((cb) => {
+    const u = cb.dataset.url;
+    if (u) urlSet.add(u);
+  });
+  document.querySelectorAll('.cb-backup:checked').forEach((cb) => {
+    const date = cb.dataset.date;
+    if (date) backupDatesToRemove.add(date);
+  });
+  if (!urlSet.size && !backupDatesToRemove.size) return alert('Select at least one item.');
+  const closed = (window.__backupsCache?.closedAndSaved ?? []).filter((x) => !x.url || !urlSet.has(x.url));
+  const backups = { ...(window.__backupsCache?.backups ?? {}) };
+  for (const date of backupDatesToRemove) delete backups[date];
+  await chrome.storage.local.set({ closedAndSaved: closed });
+  for (const date of backupDatesToRemove) await chrome.storage.local.remove(`backup_${date}`);
+  window.__backupsCache = { closedAndSaved: closed, backups };
   await refresh();
 }
 
@@ -229,6 +314,7 @@ async function init() {
   });
   document.getElementById('openSelected').addEventListener('click', openSelected);
   document.getElementById('openAllBtn').addEventListener('click', openAll);
+  document.getElementById('removeSelectedBtn').addEventListener('click', removeSelected);
   refresh();
   setInterval(refresh, 3000);
 }
