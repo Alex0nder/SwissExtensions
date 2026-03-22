@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Скриншоты страницы</title>
+  <style>
+    /* Swiss style: minimalism, grid, strict typography, black/white */
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      margin: 0;
+      padding: 32px 40px 48px;
+      background: #fff;
+      color: #000;
+      font-size: 14px;
+      line-height: 1.5;
+      letter-spacing: -0.01em;
+    }
+    h1 {
+      margin: 0 0 4px;
+      font-size: 18px;
+      font-weight: 500;
+      letter-spacing: -0.02em;
+    }
+    .sub {
+      color: #888;
+      font-size: 12px;
+      margin-bottom: 32px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .frames {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 1px;
+      margin-bottom: 32px;
+      background: #e0e0e0;
+    }
+    .frame {
+      background: #fff;
+      overflow: hidden;
+    }
+    .frame img { width: 100%; height: auto; display: block; vertical-align: bottom; }
+    .frame span {
+      display: block;
+      padding: 8px 10px;
+      font-size: 11px;
+      color: #888;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .settings {
+      background: #fff;
+      border: 1px solid #000;
+      padding: 24px 28px;
+      max-width: 560px;
+    }
+    .settings-group { margin-bottom: 24px; }
+    .settings-group:last-child { margin-bottom: 0; }
+    .settings-actions {
+      margin-top: 24px;
+      padding-top: 24px;
+      border-top: 1px solid #e0e0e0;
+    }
+    .settings label {
+      display: block;
+      font-size: 11px;
+      margin-bottom: 8px;
+      color: #000;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+    .settings-row { display: flex; gap: 0; align-items: stretch; }
+    .settings-row-center { align-items: center; }
+    .settings-row input {
+      flex: 1;
+      padding: 10px 12px;
+      border: 1px solid #000;
+      border-right: none;
+      font-family: inherit;
+      font-size: 13px;
+      background: #fff;
+    }
+    .settings-row input:focus { outline: none; }
+    .btn {
+      padding: 10px 20px;
+      border: 1px solid #000;
+      background: #fff;
+      color: #000;
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .btn:hover { background: #000; color: #fff; }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-png { background: #000; color: #fff; }
+    .btn-png:hover { background: #333; }
+    .btn-pdf { background: #fff; }
+    .settings-row .btn-save { border-left: none; }
+    .folder-status { font-size: 11px; color: #888; margin-left: 12px; text-transform: uppercase; letter-spacing: 0.05em; }
+    .settings-hint { font-size: 11px; color: #888; margin: 8px 0 0; letter-spacing: 0.02em; }
+    .steps { margin-bottom: 20px; }
+    .steps ol {
+      margin: 0;
+      padding-left: 18px;
+      font-size: 12px;
+      color: #555;
+      line-height: 1.8;
+      letter-spacing: 0.02em;
+    }
+    .steps ol strong { color: #000; }
+    .format-row { display: flex; gap: 24px; flex-wrap: wrap; }
+    .format-option {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      font-weight: 400;
+      text-transform: none;
+      letter-spacing: 0;
+      cursor: pointer;
+    }
+    .format-option input { cursor: pointer; }
+    .actions { display: flex; gap: 1px; flex-wrap: wrap; }
+    .download-status {
+      margin-top: 12px;
+      font-size: 11px;
+      color: #888;
+      min-height: 1.4em;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .download-status.loading { color: #000; }
+    .download-status.loading::before {
+      content: '';
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      margin-right: 8px;
+      vertical-align: middle;
+      border: 1px solid #000;
+      border-top-color: transparent;
+      animation: spin 0.6s linear infinite;
+    }
+    .download-status.done { color: #000; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    #empty {
+      color: #888;
+      padding: 48px 0;
+      text-align: center;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+  </style>
+</head>
+<body>
+  <h1>Скриншоты страницы</h1>
+  <p class="sub" id="sub">Загрузка…</p>
+
+  <div class="frames" id="frames"></div>
+  <div id="empty" style="display:none;">Нет кадров.</div>
+
+  <div class="settings" id="settings">
+    <div class="settings-group export-block">
+      <label>Расширения скриншоты</label>
+      <p class="settings-hint">1. Выбор директории: папка или подпапка в Downloads. 2. Скачайте картинки.</p>
+      <div class="settings-row settings-row-center">
+        <button type="button" class="btn btn-pick" id="btnPickFolder">Выбрать папку…</button>
+        <span class="folder-status" id="folderStatus"></span>
+      </div>
+      <div class="settings-row">
+        <input type="text" id="exportFolder" placeholder="Подпапка в Downloads (если папка не выбрана)" />
+        <button type="button" class="btn btn-save" id="btnSaveFolder">Сохранить</button>
+      </div>
+      <div class="actions" id="actions" style="display:none; margin-top:16px;">
+        <button type="button" class="btn btn-png" id="btnPng">Скачать PNG</button>
+        <button type="button" class="btn btn-pdf" id="btnPdf">Скачать PDF</button>
+      </div>
+      <div class="download-progress" id="downloadProgress" style="display:none; margin-top:12px; height:4px; background:#e0e0e0; overflow:hidden;">
+        <div class="download-progress-fill" id="downloadProgressFill" style="height:100%; background:#000; width:0%; transition:width 0.15s ease;"></div>
+      </div>
+      <div class="download-status" id="downloadStatus" aria-live="polite"></div>
+    </div>
+    <div class="settings-group">
+      <label>Формат PNG:</label>
+      <div class="format-row">
+        <label class="format-option">
+          <input type="radio" name="pngFormat" value="tiles" id="formatTiles" checked />
+          <span>Несколько кадров</span>
+        </label>
+        <label class="format-option">
+          <input type="radio" name="pngFormat" value="whole" id="formatWhole" />
+          <span>Один цельный</span>
+        </label>
+      </div>
+      <p class="settings-hint">«Цельный» — все кадры склеены в один длинный PNG.</p>
+    </div>
+  </div>
+  <script src="lib/jspdf.umd.min.js"></script>
+  <script src="result.js"></script>
+</body>
+</html>

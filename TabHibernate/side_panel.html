@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Tab Hibernate</title>
+  <link rel="stylesheet" href="theme.css">
+  <style>
+    /* Side panel: flex layout, content on top, About pinned to bottom. */
+    html, body { height: 100%; margin: 0; box-sizing: border-box; }
+    body {
+      min-width: 280px;
+      max-width: 100%;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      font-family: 'SF Pro Text', system-ui, -apple-system, sans-serif;
+      font-size: 13px;
+      background: var(--th-bg-base);
+      color: var(--th-text-primary);
+    }
+    .panel-main { flex: 1; min-height: 0; }
+    h2 {
+      margin: 0 0 16px;
+      font-size: 17px;
+      font-weight: 600;
+      color: var(--th-text-primary);
+      letter-spacing: -0.02em;
+    }
+    .row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+      gap: 12px;
+    }
+    label {
+      cursor: pointer;
+      color: var(--th-text-secondary);
+    }
+    select {
+      padding: 6px 28px 6px 10px;
+      background: var(--th-bg-input) url('icons/chevron-down.svg') right 8px center / 18px 18px no-repeat;
+      border: none;
+      border-radius: var(--th-radius);
+      color: var(--th-text-primary);
+      font-size: 13px;
+      min-width: 80px;
+      max-width: 140px;
+      width: auto;
+      outline: none;
+      -webkit-appearance: none;
+      appearance: none;
+    }
+    select:focus { outline: none; }
+    option {
+      background: var(--th-bg-elevated);
+      color: var(--th-text-primary);
+    }
+    input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      accent-color: var(--th-accent-cyan);
+      cursor: pointer;
+    }
+    button {
+      padding: 10px 16px;
+      background: var(--th-btn-primary-bg);
+      color: var(--th-btn-primary-text);
+      border: none;
+      border-radius: var(--th-radius);
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.15s;
+      width: 100%;
+      outline: none;
+    }
+    button:hover { background: var(--th-btn-primary-hover); }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    button.btn-secondary {
+      background: var(--th-bg-elevated);
+      color: var(--th-accent-cyan);
+      border: none;
+      outline: none;
+    }
+    button.btn-secondary:hover { background: var(--th-bg-card); }
+    .stats {
+      margin-top: 10px;
+      font-size: 12px;
+      color: var(--th-text-muted);
+    }
+    .stats:first-of-type {
+      padding-top: 14px;
+      border-top: 1px solid var(--th-border);
+    }
+    .stats-number {
+      color: #0d9488;
+      font-weight: 600;
+    }
+    .mode-hint {
+      margin: -4px 0 10px;
+      font-size: 11px;
+      color: var(--th-text-muted);
+    }
+    .backup-hint {
+      margin: -2px 0 10px;
+      font-size: 11px;
+      color: var(--th-text-muted);
+      line-height: 1.35;
+    }
+    .backup-hint strong { font-weight: 600; color: var(--th-text-secondary); }
+    .hint {
+      margin-top: 10px;
+      font-size: 11px;
+      color: var(--th-text-muted);
+      line-height: 1.4;
+    }
+    .about {
+      margin-top: auto;
+      padding-top: 12px;
+      border-top: 1px solid rgba(45, 51, 59, 0.5);
+      flex-shrink: 0;
+    }
+    .about-title {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--th-text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin: 0 0 6px;
+    }
+    .about-text {
+      font-size: 11px;
+      color: var(--th-text-muted);
+      line-height: 1.45;
+      margin: 0;
+    }
+    .about-link {
+      display: block;
+      margin-top: 8px;
+      font-size: 11px;
+      color: var(--th-accent-cyan);
+      text-decoration: none;
+    }
+    .about-link:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <div class="panel-main">
+  <h2>Tab Hibernate</h2>
+  <div class="row">
+    <label for="enabled">Enable</label>
+    <input type="checkbox" id="enabled" checked>
+  </div>
+  <div class="row">
+    <label for="timeout">Timeout (min)</label>
+    <select id="timeout">
+      <option value="5" selected>5</option>
+      <option value="10">10</option>
+      <option value="15">15</option>
+      <option value="20">20</option>
+      <option value="30">30</option>
+      <option value="45">45</option>
+      <option value="60">60 (1 hr)</option>
+    </select>
+  </div>
+  <div class="row">
+    <label for="mode">Mode</label>
+    <select id="mode">
+      <option value="discard">Discard</option>
+      <option value="placeholder" selected>Placeholder</option>
+    </select>
+  </div>
+  <p class="mode-hint">The stub page is shown only in Placeholder mode.</p>
+  <div class="row">
+    <button id="backup">Backup tabs to bookmarks</button>
+  </div>
+  <p class="backup-hint">Saves links to bookmarks folder <strong>Tab Backup / date</strong> and to local storage.</p>
+  <div class="row">
+    <button id="suspendCurrent" class="btn-secondary">Suspend current tab</button>
+  </div>
+  <div class="row">
+    <button id="suspendAll" class="btn-secondary">Suspend all tabs</button>
+  </div>
+  <div class="row">
+    <button id="restoreAll" class="btn-secondary">Restore all tabs</button>
+  </div>
+  <div class="row">
+    <button id="closeAndSave" class="btn-secondary">Close all and save</button>
+  </div>
+  <div class="row">
+    <a id="openHistory" href="#" style="color: var(--th-accent-cyan); font-size: 13px;">History (export / import)</a>
+  </div>
+  <div class="row">
+    <button id="recoverLost" class="btn-secondary">Recover lost tabs</button>
+  </div>
+  <div class="stats" id="stats">Suspended / saved: <span class="stats-number" id="statsNumber">—</span></div>
+  <div class="stats" id="statusLine">—</div>
+  <div class="hint" id="hint">Only background tabs are suspended (not the active or pinned one).</div>
+  </div>
+  <div class="about">
+    <p class="about-title">About</p>
+    <p class="about-text">Suspends background tabs after the selected timeout (5–60 min) or on demand, saves URLs to bookmarks (Tab Backup / date) and local storage. Placeholder mode shows a stub with a Restore button.</p>
+    <a class="about-link" href="https://github.com/Alex0nder/TabHibernate" target="_blank" rel="noopener">GitHub — Alex0nder / TabHibernate</a>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>

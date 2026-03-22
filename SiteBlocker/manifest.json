@@ -1,0 +1,15 @@
+{
+  "manifest_version": 3,
+  "name": "Site Blocker",
+  "version": "1.0.0",
+  "description": "Блокировка отвлекающих сайтов. Минималистичный блокировщик.",
+  "permissions": ["storage", "declarativeNetRequest", "history"],
+  "host_permissions": ["<all_urls>"],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Site Blocker"
+  },
+  "background": {
+    "service_worker": "background.js"
+  }
+}

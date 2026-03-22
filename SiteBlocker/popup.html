@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <style>
+    /* Swiss style: minimalism, strict */
+    * { box-sizing: border-box; }
+    body {
+      width: 280px;
+      margin: 0;
+      padding: 20px 24px 24px;
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      font-size: 12px;
+      background: #fff;
+      color: #000;
+    }
+    h2 {
+      margin: 0 0 16px;
+      font-size: 11px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid #e0e0e0;
+    }
+    .toggle-row span { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; }
+    .toggle {
+      width: 36px;
+      height: 20px;
+      border: 1px solid #000;
+      background: #fff;
+      cursor: pointer;
+      position: relative;
+    }
+    .toggle.on { background: #000; }
+    .toggle::after {
+      content: '';
+      position: absolute;
+      width: 14px;
+      height: 14px;
+      top: 2px;
+      left: 2px;
+      background: #000;
+      transition: transform 0.2s;
+    }
+    .toggle.on::after {
+      background: #fff;
+      transform: translateX(16px);
+    }
+    .add-row {
+      display: flex;
+      gap: 0;
+      margin-bottom: 16px;
+    }
+    .add-row input {
+      flex: 1;
+      padding: 10px 12px;
+      border: 1px solid #000;
+      border-right: none;
+      font-family: inherit;
+      font-size: 12px;
+    }
+    .add-row input:focus { outline: none; }
+    .add-row input::placeholder { color: #999; }
+    .btn {
+      padding: 10px 16px;
+      border: 1px solid #000;
+      background: #fff;
+      color: #000;
+      font-family: inherit;
+      font-size: 11px;
+      font-weight: 500;
+      cursor: pointer;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .btn:hover { background: #000; color: #fff; }
+    .list {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+    .list li {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 0;
+      border-bottom: 1px solid #f0f0f0;
+      font-size: 12px;
+    }
+    .list li:last-child { border-bottom: none; }
+    .list .domain { color: #000; }
+    .list .remove {
+      padding: 4px 8px;
+      border: 1px solid #000;
+      background: transparent;
+      font-size: 10px;
+      cursor: pointer;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .list .remove:hover { background: #000; color: #fff; }
+    .row { margin-top: 12px; }
+    .btn-sec { background: transparent; }
+    .empty { color: #888; font-size: 11px; padding: 12px 0; text-transform: uppercase; letter-spacing: 0.05em; }
+    .hint { font-size: 10px; color: #888; margin-top: 12px; letter-spacing: 0.03em; }
+  </style>
+</head>
+<body>
+  <h2>Site Blocker</h2>
+  <div class="toggle-row">
+    <span>Блокировка</span>
+    <button type="button" class="toggle" id="toggle" aria-pressed="false"></button>
+  </div>
+  <div class="add-row">
+    <input type="text" id="input" placeholder="example.com" autocomplete="off" />
+    <button type="button" class="btn" id="btnAdd">Добавить</button>
+  </div>
+  <ul class="list" id="list"></ul>
+  <p class="empty" id="empty">Список пуст</p>
+  <div class="row">
+    <button type="button" class="btn btn-sec" id="btnOpenBlocked">Открыть из истории</button>
+  </div>
+  <p id="blockerStatus" class="hint"></p>
+  <p class="hint">Введите домен без протокола</p>
+  <script src="popup.js"></script>
+</body>
+</html>

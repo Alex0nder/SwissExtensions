@@ -1,0 +1,11 @@
+{
+  "manifest_version": 3,
+  "name": "Video Downloader",
+  "version": "1.0.0",
+  "description": "Скачивание видео с LinkedIn, Instagram, Twitter (X). Позже: YouTube.",
+  "permissions": ["clipboardWrite"],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Video Downloader"
+  }
+}

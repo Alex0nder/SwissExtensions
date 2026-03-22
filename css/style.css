@@ -1,0 +1,204 @@
+/* Swiss Extensions — main styles */
+
+:root {
+  --swiss-red: #FF0000;
+  --swiss-white: #FFFFFF;
+  --swiss-black: #000000;
+  --gray: #4A4A4A;
+  --gray-light: #E5E5E5;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: 'IBM Plex Sans', system-ui, sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--swiss-black);
+  background: var(--swiss-white);
+  min-height: 100vh;
+}
+
+.page {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 48px 24px 80px;
+}
+
+header {
+  margin-bottom: 64px;
+  border-bottom: 4px solid var(--swiss-black);
+  padding-bottom: 24px;
+}
+
+.hero-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+h1 {
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin: 0 0 8px;
+  text-transform: uppercase;
+}
+
+.tagline {
+  font-size: 14px;
+  color: var(--gray);
+  font-weight: 400;
+  margin: 0 0 14px;
+}
+
+.accent {
+  color: var(--swiss-red);
+}
+
+.hero-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.btn {
+  border: 2px solid var(--swiss-black);
+  padding: 10px 14px;
+  text-decoration: none;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  transition: background 0.15s, color 0.15s;
+}
+
+.btn-primary {
+  background: var(--swiss-black);
+  color: var(--swiss-white);
+}
+
+.btn-primary:hover {
+  background: var(--swiss-red);
+  border-color: var(--swiss-red);
+}
+
+.btn-ghost {
+  color: var(--swiss-black);
+}
+
+.btn-ghost:hover {
+  background: var(--swiss-black);
+  color: var(--swiss-white);
+}
+
+.hero-meta {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.hero-meta span {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--gray-light);
+  padding: 4px 8px;
+  font-size: 12px;
+  color: var(--gray);
+}
+
+.extensions {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 32px;
+}
+
+.card-featured {
+  grid-column: 1 / -1;
+  border-width: 4px;
+}
+
+.card {
+  border: 2px solid var(--swiss-black);
+  padding: 24px;
+  background: var(--swiss-white);
+  text-decoration: none;
+  color: inherit;
+  display: block;
+  transition: background 0.15s, color 0.15s;
+}
+
+.card:hover {
+  background: var(--swiss-black);
+  color: var(--swiss-white);
+}
+
+.card:hover .card-num { color: var(--swiss-red); }
+
+.card-num {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  margin-bottom: 12px;
+  color: var(--gray);
+}
+
+.card h2 {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0 0 8px;
+  letter-spacing: -0.01em;
+}
+
+.card p {
+  font-size: 14px;
+  margin: 0;
+  color: var(--gray);
+  line-height: 1.5;
+}
+
+.card:hover p { color: var(--gray-light); }
+
+footer {
+  margin-top: 64px;
+  font-size: 12px;
+  color: var(--gray);
+}
+
+footer a { color: var(--swiss-black); text-decoration: underline; }
+
+.features {
+  margin-top: 48px;
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+}
+
+.features article {
+  border: 1px solid var(--gray-light);
+  padding: 16px;
+}
+
+.features h3 {
+  margin: 0 0 6px;
+  font-size: 15px;
+}
+
+.features p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--gray);
+}
+
+.footer-links {
+  margin-top: 8px;
+  display: flex;
+  gap: 14px;
+}
+
+@media (max-width: 720px) {
+  .hero-top {
+    flex-direction: column;
+  }
+}

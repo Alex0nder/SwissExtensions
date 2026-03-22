@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body {
+      width: 240px;
+      padding: 16px;
+      font-family: system-ui, sans-serif;
+      font-size: 13px;
+      margin: 0;
+    }
+    h2 { margin: 0 0 12px; font-size: 14px; font-weight: 600; }
+    .options { margin-bottom: 12px; }
+    label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 0;
+      cursor: pointer;
+    }
+    input[type="checkbox"] { cursor: pointer; }
+    button {
+      width: 100%;
+      padding: 10px;
+      cursor: pointer;
+      border: none;
+      border-radius: 6px;
+      background: #000;
+      color: #fff;
+      font-size: 13px;
+      font-weight: 500;
+    }
+    button:hover { background: #333; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    #status { font-size: 12px; color: #666; margin-top: 10px; min-height: 1.4em; }
+    .err { color: #c00; }
+    .ok { color: #0a0; }
+  </style>
+</head>
+<body>
+  <h2>Очистить данные сайта</h2>
+  <div class="options">
+    <label><input type="checkbox" id="optCookies" checked> Cookies</label>
+    <label><input type="checkbox" id="optLocalStorage" checked> localStorage</label>
+    <label><input type="checkbox" id="optSessionStorage" checked> sessionStorage</label>
+  </div>
+  <button id="btnClear">Очистить для этого сайта</button>
+  <div id="status"></div>
+  <script src="popup.js"></script>
+</body>
+</html>

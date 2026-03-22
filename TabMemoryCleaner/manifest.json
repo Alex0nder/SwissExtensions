@@ -1,0 +1,14 @@
+{
+  "manifest_version": 3,
+  "name": "Tab Memory Cleaner",
+  "version": "1.0.0",
+  "description": "Discard background tabs to free memory. One click.",
+  "permissions": ["tabs", "storage"],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Tab Memory Cleaner"
+  },
+  "background": {
+    "service_worker": "background.js"
+  }
+}
