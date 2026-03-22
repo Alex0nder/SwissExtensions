@@ -1,0 +1,19 @@
+{
+  "manifest_version": 3,
+  "name": "Page Capture — тайлы 1440×1024",
+  "version": "1.0.0",
+  "description": "Скрин страницы по тайлам 1440×1024 в PNG или PDF (без длинной полоски)",
+  "permissions": ["activeTab", "scripting", "downloads", "storage"],
+  "host_permissions": ["http://*/*", "https://*/*", "file://*/*", "<all_urls>"],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/16.png",
+      "48": "icons/48.png",
+      "128": "icons/128.png"
+    }
+  },
+  "background": {
+    "service_worker": "background.js"
+  }
+}

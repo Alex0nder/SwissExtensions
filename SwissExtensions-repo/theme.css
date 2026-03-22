@@ -1,0 +1,35 @@
+/**
+ * Swiss design system — black/white, minimal, functional.
+ * High contrast, strict grid, sharp edges, no decorative accents.
+ */
+:root {
+  /* Backgrounds */
+  --th-bg-base: #0a0a0a;
+  --th-bg-surface: #111;
+  --th-bg-elevated: #1a1a1a;
+  --th-bg-card: #222;
+  --th-bg-input: #0d0d0d;
+  /* Borders */
+  --th-border: #2a2a2a;
+  --th-border-subtle: #1a1a1a;
+  /* Text */
+  --th-text-primary: #f5f5f5;
+  --th-text-secondary: #999;
+  --th-text-muted: #666;
+  /* Accent — single red, used sparingly */
+  --th-accent: #e63946;
+  --th-accent-cyan: var(--th-text-primary);
+  /* Buttons */
+  --th-btn-primary-bg: #fff;
+  --th-btn-primary-hover: #eee;
+  --th-btn-primary-text: #0a0a0a;
+  /* Controls */
+  --th-control-bg: var(--th-bg-input);
+  --th-control-border: var(--th-border);
+  --th-control-accent: var(--th-accent);
+  /* Swiss: sharp corners */
+  --th-radius: 0;
+  --th-radius-sm: 0;
+  --th-radius-lg: 0;
+  --th-shadow: none;
+}
