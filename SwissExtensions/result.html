@@ -98,7 +98,6 @@
     .btn:disabled { opacity: 0.4; cursor: not-allowed; }
     .btn-png { background: #000; color: #fff; }
     .btn-png:hover { background: #333; }
-    .btn-pdf { background: #fff; }
     .settings-row .btn-save { border-left: none; }
     .folder-status { font-size: 11px; color: #888; margin-left: 12px; text-transform: uppercase; letter-spacing: 0.05em; }
     .settings-hint { font-size: 11px; color: #888; margin: 8px 0 0; letter-spacing: 0.02em; }
@@ -162,7 +161,6 @@
       </div>
       <div class="actions" id="actions" style="display:none; margin-top:16px;">
         <button type="button" class="btn btn-png" id="btnPng">Download PNG</button>
-        <button type="button" class="btn btn-pdf" id="btnPdf">Download PDF</button>
       </div>
       <div class="download-progress" id="downloadProgress"><div class="download-progress-fill" id="downloadProgressFill"></div></div>
       <div class="download-status" id="downloadStatus" aria-live="polite"></div>
@@ -182,7 +180,6 @@
       <p class="settings-hint">«One whole» — all frames stitched into a single long PNG.</p>
     </div>
   </div>
-  <script src="lib/jspdf.umd.min.js"></script>
   <script src="result.js"></script>
 </body>
 </html>

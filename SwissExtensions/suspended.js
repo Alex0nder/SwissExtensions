@@ -16,18 +16,16 @@ const pageTitleEl = document.getElementById('pageTitle');
 /** Current URL to restore (if any); used by both button and background click. */
 let currentRestoreUrl = null;
 
-/** Domain from URL for favicon request (http(s) only). */
-function getDomainForFavicon(url) {
+/** Local browser favicon URL (no external requests from extension page). */
+function getLocalFaviconUrl(pageUrl) {
   try {
-    const u = new URL(url);
-    return u.hostname || '';
+    const u = new URL(pageUrl);
+    if (u.protocol !== 'http:' && u.protocol !== 'https:') return '';
+    return `chrome://favicon2/?size=32&pageUrl=${encodeURIComponent(pageUrl)}`;
   } catch (e) {
     return '';
   }
 }
-
-/** Favicon URL by domain (external service; icon hidden on load error). */
-const FAVICON_BASE = 'https://www.google.com/s2/favicons?sz=32&domain=';
 
 function showError(msg) {
   urlEl.textContent = msg;
@@ -49,12 +47,12 @@ function showUrlAndRestore(url, title) {
   if (pageTitleEl) pageTitleEl.textContent = displayTitle;
 
   if (pageFaviconEl) {
-    const domain = getDomainForFavicon(url);
-    if (domain && (url.startsWith('http://') || url.startsWith('https://'))) {
+    const faviconUrl = getLocalFaviconUrl(url);
+    if (faviconUrl) {
       pageFaviconEl.hidden = true;
       pageFaviconEl.onerror = () => { pageFaviconEl.hidden = true; };
       pageFaviconEl.onload = () => { pageFaviconEl.hidden = false; };
-      pageFaviconEl.src = FAVICON_BASE + encodeURIComponent(domain);
+      pageFaviconEl.src = faviconUrl;
     } else {
       pageFaviconEl.hidden = true;
     }
