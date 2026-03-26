@@ -2,7 +2,7 @@
 
 Four tools in one extension:
 
-1. **Page Capture** — screenshot by viewport tiles, export to PNG or PDF
+1. **Page Capture** — screenshot by viewport tiles, export to PNG
 2. **Tab Hibernate** — suspend inactive tabs, backup to bookmarks, Side Panel
 3. **Site Blocker** — block ads, trackers, miners + custom domain list
 4. **Site Data Clear** — clear cookies, localStorage, sessionStorage for current site
@@ -16,7 +16,7 @@ Four tools in one extension:
 ## Usage
 
 Click extension icon to open **Side Panel** with four tabs:
-- **Capture** — Scan page, opens result.html for PNG/PDF
+- **Capture** — Scan page, opens result.html for PNG
 - **Tabs** — Tab Hibernate settings (timeout, mode, backup, suspend/restore)
 - **Blocker** — Toggle and domain blocklist
 - **Clear** — Cookies/localStorage/sessionStorage checkboxes and clear button

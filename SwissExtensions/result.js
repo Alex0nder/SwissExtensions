@@ -1,5 +1,5 @@
 /**
- * Страница скриншотов: показывает кадры, кнопки «Скачать PNG» и «Скачать PDF».
+ * Страница скриншотов: показывает кадры и скачивание PNG.
  * Поддерживает: 1) выбор папки через showDirectoryPicker; 2) подпапку в «Загрузки».
  */
 (function () {
@@ -8,7 +8,6 @@
   const emptyEl = document.getElementById('empty');
   const actionsEl = document.getElementById('actions');
   const btnPng = document.getElementById('btnPng');
-  const btnPdf = document.getElementById('btnPdf');
   const exportFolderInput = document.getElementById('exportFolder');
   const btnSaveFolder = document.getElementById('btnSaveFolder');
   const btnPickFolder = document.getElementById('btnPickFolder');
@@ -90,7 +89,7 @@
       pickedDirHandle = await window.showDirectoryPicker({ mode: 'readwrite', startIn: 'downloads' });
       folderStatusEl.textContent = `Selected: ${pickedDirHandle.name}`;
       folderStatusEl.style.color = '#34a853';
-      if (tiles.length > 0) subEl.textContent = `Captured: ${tiles.length} frames. PNG and PDF — ${getExportDestText()}.`;
+      if (tiles.length > 0) subEl.textContent = `Captured: ${tiles.length} frames. PNG — ${getExportDestText()}.`;
     } catch (e) {
       if (e.name === 'AbortError') return;
       folderStatusEl.textContent = 'Error: ' + (e.message || String(e));
@@ -159,7 +158,6 @@
 
   function setButtonsEnabled(enabled) {
     if (btnPng) btnPng.disabled = !enabled;
-    if (btnPdf) btnPdf.disabled = !enabled;
   }
 
   function loadExportFolder() {
@@ -171,7 +169,7 @@
       const wholeEl = document.getElementById('formatWhole');
       if (tilesEl) tilesEl.checked = pngFormat === 'tiles';
       if (wholeEl) wholeEl.checked = pngFormat === 'whole';
-      if (tiles.length > 0) subEl.textContent = `Captured: ${tiles.length} frames. PNG and PDF — ${getExportDestText()}.`;
+      if (tiles.length > 0) subEl.textContent = `Captured: ${tiles.length} frames. PNG — ${getExportDestText()}.`;
     });
   }
 
@@ -186,7 +184,7 @@
     exportFolder = sanitizeFolderName(raw);
     exportFolderInput.value = exportFolder;
     chrome.storage.local.set({ exportFolder });
-    if (tiles.length > 0) subEl.textContent = `Captured: ${tiles.length} frames. PNG and PDF — ${getExportDestText()}.`;
+    if (tiles.length > 0) subEl.textContent = `Captured: ${tiles.length} frames. PNG — ${getExportDestText()}.`;
   }
 
   /** Имя файла: домен + путь страницы (из URL) + дата + время — понятно, с какой страницы скан */
@@ -220,7 +218,7 @@
       framesEl.innerHTML = '';
       return;
     }
-    subEl.textContent = `Captured: ${tiles.length} frames. PNG and PDF — ${getExportDestText()}.`;
+    subEl.textContent = `Captured: ${tiles.length} frames. PNG — ${getExportDestText()}.`;
     emptyEl.style.display = 'none';
     framesEl.innerHTML = '';
     tiles.forEach((dataUrl, i) => {
@@ -320,70 +318,7 @@
     await savePngToDisk(base, true, true);
   }
 
-  /** PDF — одна длинная страница: все кадры склеены вертикально */
-  function downloadPdf() {
-    if (!window.jspdf?.jsPDF) {
-      alert('PDF library loading. Wait and try again.');
-      return;
-    }
-    setButtonsEnabled(false);
-    setDownloadStatus('Building PDF…', 'loading');
-    setDownloadProgress(0, 1);
-    const { jsPDF } = window.jspdf;
-    const loadImage = (dataUrl) =>
-      new Promise((resolve, reject) => {
-        const img = new Image();
-        img.onload = () => resolve({ dataUrl, w: img.naturalWidth, h: img.naturalHeight });
-        img.onerror = () => reject(new Error('Image load error'));
-        img.src = dataUrl;
-      });
-
-    Promise.all(tiles.map(loadImage))
-      .then(async (specs) => {
-        setDownloadStatus('Assembling pages…', 'loading');
-        setDownloadProgress(1, 2);
-        const width = Math.max(...specs.map((s) => s.w));
-        const totalHeight = specs.reduce((sum, s) => sum + s.h, 0);
-        const doc = new jsPDF({
-          unit: 'px',
-          format: [width, totalHeight],
-          hotfixes: ['px_scaling'],
-        });
-        let y = 0;
-        specs.forEach(({ dataUrl, w, h }) => {
-          doc.addImage(dataUrl, 'PNG', 0, y, w, h, undefined, 'FAST');
-          y += h;
-        });
-        const blob = doc.output('blob');
-        const filename = getFileBase(pageInfo) + '.pdf';
-        if (pickedDirHandle) {
-          setDownloadStatus('Saving PDF…', 'loading');
-          setDownloadProgress(2, 3);
-          await writeBlobToDir(pickedDirHandle, filename, blob);
-        } else {
-          const url = URL.createObjectURL(blob);
-          chrome.downloads.download({
-            url,
-            filename: getFullFilename(getFileBase(pageInfo), 'pdf'),
-            saveAs: false,
-          });
-          setTimeout(() => URL.revokeObjectURL(url), 2000);
-        }
-        setDownloadProgress(3, 3);
-        setDownloadStatus('PDF saved.', 'done');
-        setTimeout(() => { setDownloadStatus(''); setDownloadProgress(0, 0); }, 3000);
-      })
-      .catch((e) => {
-        setDownloadProgress(0, 0);
-        setDownloadStatus('', '');
-        setButtonsEnabled(true);
-        alert('Error: ' + (e?.message || String(e)));
-      })
-      .finally(() => setButtonsEnabled(true));
-  }
-
   btnPng.addEventListener('click', () => downloadPng());
-  btnPdf.addEventListener('click', () => downloadPdf());
   btnSaveFolder.addEventListener('click', () => saveExportFolder());
   btnPickFolder.addEventListener('click', () => pickFolder());
   document.getElementById('formatTiles')?.addEventListener('change', savePngFormat);
