@@ -4,6 +4,15 @@
   "version": "1.0.0",
   "description": "Discard background tabs to free memory. One click.",
   "permissions": ["tabs", "storage"],
+  "commands": {
+    "discard-background-tabs": {
+      "suggested_key": {
+        "default": "Alt+Shift+K",
+        "mac": "Alt+Shift+K"
+      },
+      "description": "Discard background tabs"
+    }
+  },
   "action": {
     "default_popup": "popup.html",
     "default_title": "Tab Memory Cleaner"
