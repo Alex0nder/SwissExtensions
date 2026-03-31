@@ -587,49 +587,127 @@ document.getElementById('btnDiscard').addEventListener('click', async () => {
 
 loadMemorySettings();
 
-// Site Data Clear
-document.getElementById('btnClear').addEventListener('click', async () => {
+// Site Data Clear — паритет с standalone (sdcOptions, пресеты, cacheStorage).
+const SDC_STORAGE_KEY = 'sdcOptions';
+const SDC_DEFAULT = {
+  cookies: true,
+  localStorage: true,
+  sessionStorage: true,
+  cacheStorage: true,
+};
+const SDC_PRESETS = {
+  all: { cookies: true, localStorage: true, sessionStorage: true, cacheStorage: true },
+  cookies: { cookies: true, localStorage: false, sessionStorage: false, cacheStorage: false },
+  storage: { cookies: false, localStorage: true, sessionStorage: true, cacheStorage: true },
+  session: { cookies: false, localStorage: false, sessionStorage: true, cacheStorage: false },
+};
+
+const sdcEls = {
+  cookies: document.getElementById('optCookies'),
+  localStorage: document.getElementById('optLocalStorage'),
+  sessionStorage: document.getElementById('optSessionStorage'),
+  cacheStorage: document.getElementById('optCacheStorage'),
+};
+
+function sdcApplyOptions(o) {
+  const m = { ...SDC_DEFAULT, ...o };
+  sdcEls.cookies.checked = !!m.cookies;
+  sdcEls.localStorage.checked = !!m.localStorage;
+  sdcEls.sessionStorage.checked = !!m.sessionStorage;
+  sdcEls.cacheStorage.checked = !!m.cacheStorage;
+}
+
+function sdcReadOptionsFromUi() {
+  return {
+    cookies: sdcEls.cookies.checked,
+    localStorage: sdcEls.localStorage.checked,
+    sessionStorage: sdcEls.sessionStorage.checked,
+    cacheStorage: sdcEls.cacheStorage.checked,
+  };
+}
+
+function sdcSaveOptions() {
+  chrome.storage.local.set({ [SDC_STORAGE_KEY]: sdcReadOptionsFromUi() });
+}
+
+async function sdcLoadOptions() {
+  const data = await chrome.storage.local.get(SDC_STORAGE_KEY);
+  sdcApplyOptions(data[SDC_STORAGE_KEY] || SDC_DEFAULT);
+}
+
+['optCookies', 'optLocalStorage', 'optSessionStorage', 'optCacheStorage'].forEach((id) => {
+  document.getElementById(id).addEventListener('change', sdcSaveOptions);
+});
+
+document.querySelectorAll('[data-sdc-preset]').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    const id = btn.getAttribute('data-sdc-preset');
+    const preset = SDC_PRESETS[id];
+    if (preset) {
+      sdcApplyOptions(preset);
+      sdcSaveOptions();
+    }
+  });
+});
+
+document.getElementById('btnClearSite').addEventListener('click', async () => {
   const st = document.getElementById('clearStatus');
-  const optC = document.getElementById('clearCookies').checked;
-  const optL = document.getElementById('clearLocal').checked;
-  const optS = document.getElementById('clearSession').checked;
-  if (!optC && !optL && !optS) {
-    st.textContent = 'Select at least one option';
-    st.className = 'err';
-    return;
-  }
   st.textContent = '';
   st.className = '';
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  if (!tab?.id || !tab.url) {
-    st.textContent = 'No active tab';
+
+  const opt = sdcReadOptionsFromUi();
+  const anyBrowsing = opt.cookies || opt.localStorage || opt.cacheStorage;
+  if (!anyBrowsing && !opt.sessionStorage) {
+    st.textContent = 'Выберите хотя бы один пункт';
     st.className = 'err';
     return;
   }
+
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  if (!tab?.id || !tab.url) {
+    st.textContent = 'Нет активной вкладки';
+    st.className = 'err';
+    return;
+  }
+
   try {
     const url = new URL(tab.url);
     const origin = url.origin;
-    if (url.protocol === 'chrome:' || url.protocol === 'chrome-extension:') {
-      st.textContent = 'Not available for system pages';
+    if (url.protocol === 'chrome:' || url.protocol === 'chrome-extension:' || url.protocol === 'edge:' || url.protocol === 'about:') {
+      st.textContent = 'Недоступно для системных страниц';
       st.className = 'err';
       return;
     }
-    const opts = { origins: [origin], since: 0 };
-    const data = {};
-    if (optC) data.cookies = true;
-    if (optL) data.localStorage = true;
-    if (Object.keys(data).length) await chrome.browsingData.remove(opts, data);
-    if (optS) {
+
+    const options = { origins: [origin], since: 0 };
+    const dataToRemove = {};
+    if (opt.cookies) dataToRemove.cookies = true;
+    if (opt.localStorage) dataToRemove.localStorage = true;
+    if (opt.cacheStorage) dataToRemove.cacheStorage = true;
+    if (Object.keys(dataToRemove).length > 0) {
+      await chrome.browsingData.remove(options, dataToRemove);
+    }
+    if (opt.sessionStorage) {
       await chrome.scripting.executeScript({
         target: { tabId: tab.id },
         func: () => { sessionStorage.clear(); },
       });
     }
-    st.textContent = 'Done';
+
+    st.textContent = 'Готово';
     st.className = 'ok';
+    sdcSaveOptions();
     setTimeout(() => chrome.tabs.reload(tab.id), 800);
   } catch (e) {
-    st.textContent = 'Error: ' + (e.message || 'unknown');
+    st.textContent = 'Ошибка: ' + (e.message || 'неизвестная');
     st.className = 'err';
   }
 });
+
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === 'local' && changes[SDC_STORAGE_KEY]) {
+    sdcApplyOptions(changes[SDC_STORAGE_KEY].newValue || SDC_DEFAULT);
+  }
+});
+
+sdcLoadOptions();
