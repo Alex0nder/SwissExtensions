@@ -357,12 +357,29 @@
     </div>
     <div class="panel-content">
       <h2>Memory Cleaner</h2>
-      <p class="hint">Discard background tabs to free memory. Active and optionally pinned tabs are kept.</p>
+      <p class="hint">Discard background tabs. Options are saved as tmcSettings (same shape as Tab Memory Cleaner).</p>
       <button id="btnDiscard">Discard background tabs</button>
       <div class="row">
-        <label for="memorySkipPinned">Skip pinned tabs</label>
+        <label for="memorySkipPinned">Skip pinned</label>
         <input type="checkbox" id="memorySkipPinned" checked>
       </div>
+      <div class="row">
+        <label for="memorySkipAudible">Skip playing audio</label>
+        <input type="checkbox" id="memorySkipAudible" checked>
+      </div>
+      <div class="row">
+        <label for="memorySkipIncognito">Skip incognito</label>
+        <input type="checkbox" id="memorySkipIncognito" checked>
+      </div>
+      <div class="row">
+        <label for="memorySkipGrouped">Skip tabs in groups</label>
+        <input type="checkbox" id="memorySkipGrouped" checked>
+      </div>
+      <div class="row row-full" style="margin-top: 10px;">
+        <label style="width:100%;margin-bottom:6px;display:block;color:var(--th-text-muted);font-size:10px;text-transform:uppercase;letter-spacing:0.06em;">Never discard (domains)</label>
+        <textarea id="memoryExcludedDomains" placeholder="mail.google.com" style="width:100%;min-height:48px;resize:vertical;padding:8px 10px;border:1px solid var(--th-border);border-radius:var(--th-radius);background:var(--th-bg-input);color:var(--th-text-primary);font-size:11px;font-family:inherit;"></textarea>
+      </div>
+      <p class="hint" style="margin-top:8px;">Hotkey: Option+Shift+K (see extension keyboard shortcuts).</p>
       <div id="memoryStatus"></div>
     </div>
   </div>
