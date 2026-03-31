@@ -21,7 +21,7 @@
       letter-spacing: 0.06em;
       color: #fff;
     }
-    .input-wrap { margin-bottom: 14px; }
+    .input-wrap { margin-bottom: 10px; }
     .input-wrap input {
       width: 100%;
       padding: 10px 12px;
@@ -34,34 +34,78 @@
     }
     .input-wrap input::placeholder { color: #666; }
     .input-wrap input:focus { outline: none; border-color: #4a9eff; }
+    .btn-row { display: flex; gap: 8px; margin-bottom: 8px; }
     .btn {
-      width: 100%;
-      padding: 10px 14px;
+      flex: 1;
+      padding: 10px 10px;
       border: none;
       border-radius: 6px;
       background: #4a9eff;
       color: #fff;
       font-family: inherit;
-      font-size: 12px;
+      font-size: 11px;
       font-weight: 500;
       cursor: pointer;
       text-transform: uppercase;
-      letter-spacing: 0.05em;
+      letter-spacing: 0.04em;
     }
     .btn:hover { background: #3a8eef; }
     .btn:disabled { background: #333; color: #666; cursor: not-allowed; }
-    .hint { margin-top: 12px; font-size: 10px; color: #666; line-height: 1.4; }
-    .later { margin-top: 14px; padding-top: 12px; border-top: 1px solid #222; font-size: 10px; color: #555; }
+    .btn-sec {
+      background: #2a2a2a;
+      border: 1px solid #444;
+      color: #ccc;
+    }
+    .btn-sec:hover:not(:disabled) { background: #333; }
+    .btn-full { width: 100%; margin-bottom: 8px; }
+    .hint { margin-top: 8px; font-size: 10px; color: #888; line-height: 1.45; }
+    .hint.err { color: #f66; }
+    .section-label {
+      margin: 12px 0 6px;
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #666;
+    }
+    .recent {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      max-height: 120px;
+      overflow-y: auto;
+    }
+    .recent.empty { display: none; }
+    .recent-item {
+      text-align: left;
+      padding: 6px 8px;
+      border: 1px solid #2a2a2a;
+      border-radius: 4px;
+      background: #161616;
+      color: #aaa;
+      font-size: 10px;
+      cursor: pointer;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .recent-item:hover { border-color: #444; color: #ddd; }
+    .later { margin-top: 12px; padding-top: 10px; border-top: 1px solid #222; font-size: 10px; color: #555; }
   </style>
 </head>
 <body>
   <h2>Video Downloader</h2>
   <div class="input-wrap">
-    <input type="text" id="url" placeholder="Ссылка на видео (LinkedIn, Instagram, Twitter…)" autocomplete="off" />
+    <input type="text" id="url" placeholder="Ссылка на видео (LinkedIn, Instagram, X…)" autocomplete="off" />
   </div>
-  <button type="button" class="btn" id="btnOpen">Открыть загрузчик</button>
-  <p class="hint" id="hint">Откроется SaveFrom — сервис сам определит источник. Ссылка скопирована в буфер (на случай если страница не примет её в адресе).</p>
-  <p class="later">Позже: YouTube (видео и музыка).</p>
+  <button type="button" class="btn btn-full btn-sec" id="btnFromTab">С активной вкладки</button>
+  <div class="btn-row">
+    <button type="button" class="btn" id="btnOpen">Основной</button>
+    <button type="button" class="btn btn-sec" id="btnOpenAlt">Запасной</button>
+  </div>
+  <p class="hint" id="hint">Основной — ru.savefrom; запасной — savefrom.net. Ссылка копируется в буфер на случай сбоя в адресной строке.</p>
+  <p class="section-label">Недавние</p>
+  <div class="recent empty" id="recentList"></div>
+  <p class="later">YouTube и другие источники определяет сам сервис загрузки.</p>
   <script src="popup.js"></script>
 </body>
 </html>
