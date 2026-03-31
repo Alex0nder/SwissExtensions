@@ -263,7 +263,11 @@ chrome.storage.onChanged.addListener((changes, area) => {
 
 loadThSettings().then(refreshThStats);
 
-// Site Blocker
+// Site Blocker — паритет с standalone SiteBlocker (whitelist, расписание, JSON).
+const SB_DEFAULT_SCHEDULE = { enabled: false, from: '09:00', to: '18:00', days: [1, 2, 3, 4, 5] };
+/** После импорта показать текст, не затираясь до следующего refresh из storage. */
+let blockerStatusOverride = null;
+
 function normDomain(input) {
   let s = (input || '').trim().toLowerCase();
   if (!s) return '';
@@ -281,28 +285,84 @@ function esc(s) {
   return d.innerHTML;
 }
 
-function renderBlocker(blocked, enabled) {
+function normalizeBlockerSchedule(raw) {
+  const source = raw && typeof raw === 'object' ? raw : SB_DEFAULT_SCHEDULE;
+  const days = Array.isArray(source.days)
+    ? source.days.map((d) => Number(d)).filter((d) => d >= 0 && d <= 6)
+    : SB_DEFAULT_SCHEDULE.days.slice();
+  return {
+    enabled: source.enabled === true,
+    from: typeof source.from === 'string' ? source.from : SB_DEFAULT_SCHEDULE.from,
+    to: typeof source.to === 'string' ? source.to : SB_DEFAULT_SCHEDULE.to,
+    days: [...new Set(days)],
+  };
+}
+
+function renderBlocker(blocked, whitelist, enabled, schedule, scheduleActive) {
   const list = document.getElementById('blockerList');
   const empty = document.getElementById('blockerEmpty');
   const toggle = document.getElementById('blockerToggle');
+  const wlList = document.getElementById('blockerWhitelistList');
+  const wlEmpty = document.getElementById('blockerWhitelistEmpty');
+  const sch = normalizeBlockerSchedule(schedule);
   toggle.checked = enabled;
   list.innerHTML = '';
-  if (!blocked.length) {
-    empty.style.display = 'block';
-    return;
+  if (!blocked.length) empty.style.display = 'block';
+  else {
+    empty.style.display = 'none';
+    blocked.forEach((d) => {
+      const li = document.createElement('li');
+      li.innerHTML = `<span>${esc(d)}</span><button type="button" class="rm" data-domain="${esc(d)}">Удалить</button>`;
+      list.appendChild(li);
+    });
+    list.querySelectorAll('.rm').forEach((b) => {
+      b.addEventListener('click', () => removeBlockerDomain(b.dataset.domain));
+    });
   }
-  empty.style.display = 'none';
-  blocked.forEach((d) => {
-    const li = document.createElement('li');
-    li.innerHTML = `<span>${esc(d)}</span><button class="rm" data-domain="${esc(d)}">Remove</button>`;
-    list.appendChild(li);
+  wlList.innerHTML = '';
+  if (!whitelist || !whitelist.length) wlEmpty.style.display = 'block';
+  else {
+    wlEmpty.style.display = 'none';
+    whitelist.forEach((d) => {
+      const li = document.createElement('li');
+      li.innerHTML = `<span>${esc(d)}</span><button type="button" class="rm rm-wl" data-domain="${esc(d)}">Удалить</button>`;
+      wlList.appendChild(li);
+    });
+    wlList.querySelectorAll('.rm-wl').forEach((b) => {
+      b.addEventListener('click', () => removeWhitelistDomain(b.dataset.domain));
+    });
+  }
+  document.getElementById('blockerScheduleEnabled').checked = sch.enabled;
+  document.getElementById('blockerScheduleFrom').value = sch.from;
+  document.getElementById('blockerScheduleTo').value = sch.to;
+  document.querySelectorAll('#blockerScheduleDays input[data-day]').forEach((cb) => {
+    cb.checked = sch.days.includes(Number(cb.dataset.day));
   });
-  list.querySelectorAll('.rm').forEach((b) => {
-    b.addEventListener('click', () => removeDomain(b.dataset.domain));
+  const statusEl = document.getElementById('blockerStatus');
+  if (statusEl) {
+    if (!enabled) statusEl.textContent = 'Блокировка выключена вручную';
+    else if (sch.enabled) statusEl.textContent = scheduleActive === false ? 'Сейчас вне расписания' : 'Сейчас в окне расписания';
+    else statusEl.textContent = '';
+  }
+}
+
+function refreshBlockerFromStorage() {
+  chrome.storage.local.get(['blocked', 'whitelist', 'enabled', 'schedule', 'scheduleStateActive'], (data) => {
+    renderBlocker(
+      data.blocked || [],
+      data.whitelist || [],
+      data.enabled !== false,
+      data.schedule || SB_DEFAULT_SCHEDULE,
+      data.scheduleStateActive !== false
+    );
+    if (blockerStatusOverride) {
+      document.getElementById('blockerStatus').textContent = blockerStatusOverride;
+      blockerStatusOverride = null;
+    }
   });
 }
 
-function addDomain() {
+function addBlockerDomain() {
   const domain = normDomain(document.getElementById('blockerInput').value);
   if (!domain) return;
   document.getElementById('blockerInput').value = '';
@@ -310,22 +370,57 @@ function addDomain() {
     const blocked = data.blocked || [];
     if (blocked.includes(domain)) return;
     blocked.push(domain);
-    chrome.storage.local.set({ blocked }, () => renderBlocker(blocked, document.getElementById('blockerToggle').checked));
+    chrome.storage.local.set({ blocked }, refreshBlockerFromStorage);
   });
 }
 
-function removeDomain(domain) {
+function removeBlockerDomain(domain) {
   chrome.storage.local.get(['blocked'], (data) => {
     const blocked = (data.blocked || []).filter((d) => d !== domain);
-    chrome.storage.local.set({ blocked }, () => renderBlocker(blocked, document.getElementById('blockerToggle').checked));
+    chrome.storage.local.set({ blocked }, refreshBlockerFromStorage);
   });
+}
+
+function addWhitelistDomain() {
+  const domain = normDomain(document.getElementById('blockerWhitelistInput').value);
+  if (!domain) return;
+  document.getElementById('blockerWhitelistInput').value = '';
+  chrome.storage.local.get(['whitelist'], (data) => {
+    const whitelist = data.whitelist || [];
+    if (whitelist.includes(domain)) return;
+    whitelist.push(domain);
+    chrome.storage.local.set({ whitelist }, refreshBlockerFromStorage);
+  });
+}
+
+function removeWhitelistDomain(domain) {
+  chrome.storage.local.get(['whitelist'], (data) => {
+    const whitelist = (data.whitelist || []).filter((d) => d !== domain);
+    chrome.storage.local.set({ whitelist }, refreshBlockerFromStorage);
+  });
+}
+
+function saveBlockerScheduleFromUi() {
+  const days = [...document.querySelectorAll('#blockerScheduleDays input[data-day]:checked')].map((cb) => Number(cb.dataset.day));
+  const schedule = normalizeBlockerSchedule({
+    enabled: document.getElementById('blockerScheduleEnabled').checked,
+    from: document.getElementById('blockerScheduleFrom').value || SB_DEFAULT_SCHEDULE.from,
+    to: document.getElementById('blockerScheduleTo').value || SB_DEFAULT_SCHEDULE.to,
+    days,
+  });
+  chrome.storage.local.set({ schedule });
 }
 
 document.getElementById('blockerToggle').addEventListener('change', () => {
   const enabled = document.getElementById('blockerToggle').checked;
-  chrome.storage.local.get(['blocked'], (data) => {
-    chrome.storage.local.set({ enabled }, () => renderBlocker(data.blocked || [], enabled));
-  });
+  chrome.storage.local.set({ enabled }, refreshBlockerFromStorage);
+});
+
+document.getElementById('blockerScheduleEnabled').addEventListener('change', saveBlockerScheduleFromUi);
+document.getElementById('blockerScheduleFrom').addEventListener('change', saveBlockerScheduleFromUi);
+document.getElementById('blockerScheduleTo').addEventListener('change', saveBlockerScheduleFromUi);
+document.querySelectorAll('#blockerScheduleDays input[data-day]').forEach((cb) => {
+  cb.addEventListener('change', saveBlockerScheduleFromUi);
 });
 
 function hostMatchesBlocked(hostname, blockedDomains) {
@@ -341,11 +436,11 @@ document.getElementById('blockerOpenFromHistory').addEventListener('click', asyn
   const statusEl = document.getElementById('blockerStatus');
   const btn = document.getElementById('blockerOpenFromHistory');
   btn.disabled = true;
-  statusEl.textContent = 'Loading…';
+  statusEl.textContent = 'Загрузка…';
   try {
     const { blocked = [] } = await chrome.storage.local.get('blocked');
     if (!blocked.length) {
-      statusEl.textContent = 'No blocked domains';
+      statusEl.textContent = 'Нет заблокированных доменов';
       return;
     }
     const since = Date.now() - 90 * 24 * 60 * 60 * 1000;
@@ -364,22 +459,73 @@ document.getElementById('blockerOpenFromHistory').addEventListener('click', asyn
     }
     // Параллельное открытие вкладок — быстрая массовая блокировка вместо по одной
     await Promise.all(urls.map((url) => chrome.tabs.create({ url })));
-    statusEl.textContent = urls.length > 0 ? `Opened: ${urls.length}` : 'No visits to blocked sites';
+    statusEl.textContent = urls.length > 0 ? `Открыто: ${urls.length}` : 'Нет посещений заблокированных сайтов';
   } catch (e) {
-    statusEl.textContent = 'Error: ' + (e.message || '');
+    statusEl.textContent = 'Ошибка: ' + (e.message || '');
   }
   btn.disabled = false;
-  setTimeout(() => { statusEl.textContent = ''; }, 4000);
+  setTimeout(() => { refreshBlockerFromStorage(); }, 4000);
 });
 
-document.getElementById('blockerAdd').addEventListener('click', addDomain);
-document.getElementById('blockerInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') addDomain(); });
+document.getElementById('blockerAdd').addEventListener('click', addBlockerDomain);
+document.getElementById('blockerInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') addBlockerDomain(); });
+document.getElementById('blockerWhitelistAdd').addEventListener('click', addWhitelistDomain);
+document.getElementById('blockerWhitelistInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') addWhitelistDomain(); });
 
-chrome.storage.local.get(['blocked', 'enabled'], (data) => {
-  const blocked = data.blocked || [];
-  const enabled = data.enabled !== false;
-  renderBlocker(blocked, enabled);
+document.getElementById('blockerExport').addEventListener('click', async () => {
+  const payload = await chrome.storage.local.get(['blocked', 'whitelist', 'enabled', 'schedule']);
+  const blob = new Blob([JSON.stringify({
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    blocked: payload.blocked || [],
+    whitelist: payload.whitelist || [],
+    enabled: payload.enabled !== false,
+    schedule: normalizeBlockerSchedule(payload.schedule),
+  }, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `swiss-site-blocker-${new Date().toISOString().slice(0, 10)}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
 });
+
+document.getElementById('blockerImport').addEventListener('click', () => document.getElementById('blockerImportFile').click());
+document.getElementById('blockerImportFile').addEventListener('change', async () => {
+  const input = document.getElementById('blockerImportFile');
+  const file = input.files && input.files[0];
+  const statusEl = document.getElementById('blockerStatus');
+  if (!file) return;
+  try {
+    const text = await file.text();
+    const json = JSON.parse(text);
+    const blocked = Array.isArray(json.blocked) ? json.blocked.map(normDomain).filter(Boolean) : [];
+    const whitelist = Array.isArray(json.whitelist) ? json.whitelist.map(normDomain).filter(Boolean) : [];
+    const enabled = json.enabled !== false;
+    const schedule = normalizeBlockerSchedule(json.schedule);
+    blockerStatusOverride = 'Импорт выполнен';
+    await chrome.storage.local.set({
+      blocked: [...new Set(blocked)],
+      whitelist: [...new Set(whitelist)],
+      enabled,
+      schedule,
+    });
+  } catch {
+    blockerStatusOverride = null;
+    statusEl.textContent = 'Ошибка импорта JSON';
+  } finally {
+    input.value = '';
+  }
+});
+
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area !== 'local') return;
+  if (changes.blocked || changes.whitelist || changes.enabled || changes.schedule || changes.scheduleStateActive) {
+    refreshBlockerFromStorage();
+  }
+});
+
+refreshBlockerFromStorage();
 
 // Memory Cleaner (tmcSettings — совместимо с Tab Memory Cleaner)
 function memoryNormalizeDomainsText(value) {

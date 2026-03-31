@@ -191,6 +191,28 @@
     .restore-progress { font-size: 10px; color: var(--th-text-muted); margin-top: -6px; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.05em; }
     .err { color: var(--th-accent); }
     .ok { color: var(--th-text-secondary); }
+    .blocker-section { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--th-border-subtle); }
+    .blocker-section-title { margin: 0 0 8px; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--th-text-muted); }
+    .time-row { display: flex; align-items: center; gap: 8px; margin: 8px 0; flex-wrap: wrap; }
+    .time-row input[type="time"] {
+      padding: 6px 8px;
+      border: 1px solid var(--th-border);
+      border-radius: var(--th-radius);
+      background: var(--th-bg-input);
+      color: var(--th-text-primary);
+      font-size: 11px;
+    }
+    .days-row { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 6px; }
+    .days-row label {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 10px;
+      border: 1px solid var(--th-border);
+      padding: 4px 6px;
+      border-radius: var(--th-radius);
+      cursor: pointer;
+    }
   </style>
 </head>
 <body>
@@ -392,19 +414,58 @@
     <div class="panel-content">
       <h2>Site Blocker</h2>
       <div class="row">
-        <label>Blocking</label>
+        <label for="blockerToggle">Блокировка</label>
         <input type="checkbox" id="blockerToggle" checked>
       </div>
       <div class="add-row">
-        <input type="text" id="blockerInput" placeholder="example.com">
-        <button id="blockerAdd">Add</button>
+        <input type="text" id="blockerInput" placeholder="example.com" autocomplete="off">
+        <button type="button" id="blockerAdd">Добавить</button>
       </div>
       <ul class="block-list" id="blockerList"></ul>
-      <p class="hint" id="blockerEmpty">List empty</p>
-      <div class="row row-full" style="margin-top: 16px;">
-        <button type="button" class="btn btn-sec" id="blockerOpenFromHistory">Open blocked from history</button>
+      <p class="hint" id="blockerEmpty">Список пуст</p>
+      <div class="blocker-section">
+        <p class="blocker-section-title">Whitelist (не блокировать)</p>
+        <div class="add-row">
+          <input type="text" id="blockerWhitelistInput" placeholder="allowed.com" autocomplete="off">
+          <button type="button" id="blockerWhitelistAdd">Добавить</button>
+        </div>
+        <ul class="block-list" id="blockerWhitelistList"></ul>
+        <p class="hint" id="blockerWhitelistEmpty">Whitelist пуст</p>
+      </div>
+      <div class="blocker-section">
+        <p class="blocker-section-title">Расписание</p>
+        <div class="row">
+          <label for="blockerScheduleEnabled">По времени</label>
+          <input type="checkbox" id="blockerScheduleEnabled">
+        </div>
+        <div class="time-row">
+          <label for="blockerScheduleFrom">С</label>
+          <input type="time" id="blockerScheduleFrom" value="09:00">
+          <label for="blockerScheduleTo">До</label>
+          <input type="time" id="blockerScheduleTo" value="18:00">
+        </div>
+        <div class="days-row" id="blockerScheduleDays">
+          <label><input type="checkbox" data-day="1" checked>Пн</label>
+          <label><input type="checkbox" data-day="2" checked>Вт</label>
+          <label><input type="checkbox" data-day="3" checked>Ср</label>
+          <label><input type="checkbox" data-day="4" checked>Чт</label>
+          <label><input type="checkbox" data-day="5" checked>Пт</label>
+          <label><input type="checkbox" data-day="6">Сб</label>
+          <label><input type="checkbox" data-day="0">Вс</label>
+        </div>
+      </div>
+      <div class="row row-full" style="margin-top: 12px;">
+        <button type="button" class="btn-sec" id="blockerOpenFromHistory">Открыть из истории</button>
+      </div>
+      <div class="row row-full">
+        <button type="button" class="btn-sec" id="blockerExport">Экспорт JSON</button>
+      </div>
+      <div class="row row-full">
+        <button type="button" class="btn-sec" id="blockerImport">Импорт JSON</button>
+        <input type="file" id="blockerImportFile" accept="application/json" style="display:none;">
       </div>
       <div id="blockerStatus" class="hint" style="margin-top: 8px;"></div>
+      <p class="hint" style="margin-top: 4px;">Домен без протокола. В Swiss дополнительно действуют встроенные списки NetFilter.</p>
     </div>
   </div>
 
