@@ -660,17 +660,71 @@ async function runRestoreAllSuspended() {
   return { restored };
 }
 
-/** Discard background tabs to free memory. Skip active, pinned, system, tab groups. */
+/** Discard background tabs — настройки как в TabMemoryCleaner (`tmcSettings`). */
 const DISCARD_DELAY_MS = 300;
-async function runDiscardBackgroundTabs(skipPinned) {
+const TMC_DEFAULT_SETTINGS = {
+  skipPinned: true,
+  skipAudible: true,
+  skipIncognito: true,
+  skipGrouped: true,
+  excludedDomains: [],
+};
+
+function tmcNormalizeDomain(input) {
+  let s = String(input || '').trim().toLowerCase();
+  if (!s) return '';
+  try {
+    if (!s.startsWith('http')) s = 'https://' + s;
+    return new URL(s).hostname.replace(/^www\./, '') || '';
+  } catch {
+    return s.replace(/^www\./, '').split('/')[0].split('?')[0];
+  }
+}
+
+function tmcParseExcludedList(list) {
+  if (!Array.isArray(list)) return [];
+  const out = [];
+  const seen = new Set();
+  for (const item of list) {
+    const d = tmcNormalizeDomain(item);
+    if (!d || seen.has(d)) continue;
+    seen.add(d);
+    out.push(d);
+  }
+  return out;
+}
+
+function tmcHostMatchesDomains(host, domains) {
+  if (!host || !domains.length) return false;
+  const h = host.replace(/^www\./, '').toLowerCase();
+  return domains.some((d) => h === d || h.endsWith('.' + d));
+}
+
+async function getTmcDiscardSettings() {
+  const { tmcSettings = {} } = await chrome.storage.local.get('tmcSettings');
+  return {
+    ...TMC_DEFAULT_SETTINGS,
+    ...tmcSettings,
+    excludedDomains: tmcParseExcludedList(tmcSettings.excludedDomains),
+  };
+}
+
+async function runDiscardBackgroundTabs() {
+  const opts = await getTmcDiscardSettings();
   const tabs = await chrome.tabs.query({});
   const toDiscard = tabs.filter((tab) => {
     if (!tab.id) return false;
-    if (isTabInGroup(tab)) return false;
     const u = (tab.url || '').toLowerCase();
     if (u.startsWith('chrome://') || u.startsWith('chrome-extension://')) return false;
     if (tab.active) return false;
-    if (skipPinned && tab.pinned) return false;
+    if (opts.skipPinned && tab.pinned) return false;
+    if (opts.skipAudible && tab.audible) return false;
+    if (opts.skipIncognito && tab.incognito) return false;
+    if (opts.skipGrouped && isTabInGroup(tab)) return false;
+    try {
+      const host = new URL(tab.url || 'about:blank').hostname;
+      if (tmcHostMatchesDomains(host, opts.excludedDomains)) return false;
+    } catch (_) {}
     return true;
   });
   let discarded = 0;
@@ -1163,7 +1217,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     return true;
   }
   if (msg.type === 'discardBackgroundTabs') {
-    runDiscardBackgroundTabs(msg.skipPinned !== false).then((res) => safeSend(res)).catch((e) => {
+    runDiscardBackgroundTabs().then((res) => safeSend(res)).catch((e) => {
       console.warn('[Memory] discard failed', e);
       safeSend({ discarded: 0, error: String(e.message) });
     });
@@ -1275,6 +1329,10 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 });
 
 chrome.commands?.onCommand.addListener((command) => {
+  if (command === 'discard-background-tabs') {
+    runDiscardBackgroundTabs().catch((e) => console.warn('[Memory]', e));
+    return;
+  }
   if (command !== 'suspend-current-tab') return;
   chrome.tabs.query({ active: true, currentWindow: true }).then(async ([tab]) => {
     if (!tab || !tab.id) return;

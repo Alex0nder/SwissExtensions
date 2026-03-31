@@ -381,25 +381,65 @@ chrome.storage.local.get(['blocked', 'enabled'], (data) => {
   renderBlocker(blocked, enabled);
 });
 
-// Memory Cleaner
+// Memory Cleaner (tmcSettings — совместимо с Tab Memory Cleaner)
+function memoryNormalizeDomainsText(value) {
+  return String(value || '')
+    .split('\n')
+    .map((line) => line.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, ''))
+    .filter(Boolean)
+    .filter((d, i, arr) => arr.indexOf(d) === i);
+}
+
+function readMemorySettingsFromUi() {
+  return {
+    skipPinned: document.getElementById('memorySkipPinned').checked,
+    skipAudible: document.getElementById('memorySkipAudible').checked,
+    skipIncognito: document.getElementById('memorySkipIncognito').checked,
+    skipGrouped: document.getElementById('memorySkipGrouped').checked,
+    excludedDomains: memoryNormalizeDomainsText(document.getElementById('memoryExcludedDomains').value),
+  };
+}
+
+function saveMemorySettings() {
+  const raw = readMemorySettingsFromUi();
+  document.getElementById('memoryExcludedDomains').value = raw.excludedDomains.join('\n');
+  chrome.storage.local.set({ tmcSettings: raw });
+}
+
+async function loadMemorySettings() {
+  const { tmcSettings = {} } = await chrome.storage.local.get('tmcSettings');
+  const s = { ...readMemorySettingsFromUi(), ...tmcSettings };
+  document.getElementById('memorySkipPinned').checked = s.skipPinned !== false;
+  document.getElementById('memorySkipAudible').checked = s.skipAudible !== false;
+  document.getElementById('memorySkipIncognito').checked = s.skipIncognito !== false;
+  document.getElementById('memorySkipGrouped').checked = s.skipGrouped !== false;
+  const list = Array.isArray(s.excludedDomains) ? s.excludedDomains : [];
+  document.getElementById('memoryExcludedDomains').value = list.join('\n');
+}
+
+['memorySkipPinned', 'memorySkipAudible', 'memorySkipIncognito', 'memorySkipGrouped'].forEach((id) => {
+  document.getElementById(id).addEventListener('change', saveMemorySettings);
+});
+document.getElementById('memoryExcludedDomains').addEventListener('blur', saveMemorySettings);
+
 document.getElementById('btnDiscard').addEventListener('click', async () => {
   const btn = document.getElementById('btnDiscard');
   const st = document.getElementById('memoryStatus');
+  saveMemorySettings();
   btn.disabled = true;
   st.textContent = 'Discarding…';
   try {
-    const r = await send({
-      type: 'discardBackgroundTabs',
-      skipPinned: document.getElementById('memorySkipPinned').checked,
-    });
+    const r = await send({ type: 'discardBackgroundTabs' });
     const n = r?.discarded ?? 0;
-    st.textContent = n > 0 ? `${n} tabs discarded` : 'Done (no tabs to discard)';
+    st.textContent = n > 0 ? `${n} tabs discarded` : 'Done (no tabs applicable)';
   } catch {
     st.textContent = 'Error';
   }
   btn.disabled = false;
   setTimeout(() => { st.textContent = ''; }, 3000);
 });
+
+loadMemorySettings();
 
 // Site Data Clear
 document.getElementById('btnClear').addEventListener('click', async () => {

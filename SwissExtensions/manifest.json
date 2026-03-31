@@ -31,6 +31,13 @@
         "mac": "Alt+Shift+H"
       },
       "description": "Suspend current tab"
+    },
+    "discard-background-tabs": {
+      "suggested_key": {
+        "default": "Alt+Shift+K",
+        "mac": "Alt+Shift+K"
+      },
+      "description": "Discard background tabs (Memory Cleaner)"
     }
   },
   "action": {
