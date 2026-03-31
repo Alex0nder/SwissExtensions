@@ -63,6 +63,13 @@ const el = {
   enabled: document.getElementById('thEnabled'),
   timeout: document.getElementById('thTimeout'),
   mode: document.getElementById('thMode'),
+  checkPeriod: document.getElementById('thCheckPeriod'),
+  excludedDomains: document.getElementById('thExcludedDomains'),
+  smartRulesEnabled: document.getElementById('thSmartRulesEnabled'),
+  smartDefaultMode: document.getElementById('thSmartDefaultMode'),
+  smartHeuristicsFallback: document.getElementById('thSmartHeuristicsFallback'),
+  smartPlaceholderDomains: document.getElementById('thSmartPlaceholderDomains'),
+  smartDiscardDomains: document.getElementById('thSmartDiscardDomains'),
   backup: document.getElementById('thBackup'),
   suspendCurrent: document.getElementById('thSuspendCurrent'),
   suspendAll: document.getElementById('thSuspendAll'),
@@ -91,17 +98,48 @@ async function loadThSettings() {
   if (settings) {
     el.enabled.checked = settings.enabled !== false;
     el.timeout.value = String(settings.timeoutMinutes ?? 5);
-    el.mode.value = settings.mode === 'placeholder' ? 'placeholder' : 'discard';
+    el.mode.value = ['placeholder', 'smart', 'discard'].includes(settings.mode) ? settings.mode : 'discard';
+    if (el.checkPeriod) el.checkPeriod.value = ['1', '2', '5'].includes(String(settings.checkPeriodMinutes)) ? String(settings.checkPeriodMinutes) : '1';
+    if (el.excludedDomains) el.excludedDomains.value = Array.isArray(settings.excludedDomains) ? settings.excludedDomains.join('\n') : '';
+    if (el.smartRulesEnabled) el.smartRulesEnabled.checked = settings.smartRulesEnabled === true;
+    if (el.smartDefaultMode) el.smartDefaultMode.value = settings.smartDefaultMode === 'placeholder' ? 'placeholder' : 'discard';
+    if (el.smartHeuristicsFallback) el.smartHeuristicsFallback.checked = settings.smartUseHeuristicsFallback !== false;
+    if (el.smartPlaceholderDomains) el.smartPlaceholderDomains.value = Array.isArray(settings.smartPlaceholderDomains) ? settings.smartPlaceholderDomains.join('\n') : '';
+    if (el.smartDiscardDomains) el.smartDiscardDomains.value = Array.isArray(settings.smartDiscardDomains) ? settings.smartDiscardDomains.join('\n') : '';
   }
 }
 
+function normalizeDomainsInput(value) {
+  return String(value || '')
+    .split('\n')
+    .map((line) => line.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, ''))
+    .filter(Boolean)
+    .filter((line, idx, arr) => arr.indexOf(line) === idx);
+}
+
 function saveThSettings() {
+  const excludedDomains = normalizeDomainsInput(el.excludedDomains?.value);
+  const smartPlaceholderDomains = normalizeDomainsInput(el.smartPlaceholderDomains?.value);
+  let smartDiscardDomains = normalizeDomainsInput(el.smartDiscardDomains?.value);
+  smartDiscardDomains = smartDiscardDomains.filter((d) => !smartPlaceholderDomains.includes(d));
+  if (el.excludedDomains) el.excludedDomains.value = excludedDomains.join('\n');
+  if (el.smartPlaceholderDomains) el.smartPlaceholderDomains.value = smartPlaceholderDomains.join('\n');
+  if (el.smartDiscardDomains) el.smartDiscardDomains.value = smartDiscardDomains.join('\n');
   chrome.storage.local.set({
     settings: {
       enabled: el.enabled.checked,
       timeoutMinutes: parseInt(el.timeout.value, 10) || 5,
-      mode: el.mode.value === 'placeholder' ? 'placeholder' : 'discard',
+      checkPeriodMinutes: parseInt(el.checkPeriod?.value, 10) || 1,
+      excludedDomains,
+      smartRulesEnabled: el.smartRulesEnabled ? el.smartRulesEnabled.checked : false,
+      smartDefaultMode: el.smartDefaultMode?.value === 'placeholder' ? 'placeholder' : 'discard',
+      smartUseHeuristicsFallback: el.smartHeuristicsFallback ? el.smartHeuristicsFallback.checked : true,
+      smartPlaceholderDomains,
+      smartDiscardDomains,
+      mode: ['placeholder', 'smart', 'discard'].includes(el.mode.value) ? el.mode.value : 'discard',
     },
+  }, () => {
+    chrome.runtime.sendMessage({ type: 'settingsUpdated' }, () => {});
   });
 }
 
@@ -115,6 +153,13 @@ async function refreshThStats() {
 el.enabled.addEventListener('change', saveThSettings);
 el.timeout.addEventListener('change', saveThSettings);
 el.mode.addEventListener('change', saveThSettings);
+if (el.checkPeriod) el.checkPeriod.addEventListener('change', saveThSettings);
+if (el.excludedDomains) el.excludedDomains.addEventListener('blur', saveThSettings);
+if (el.smartRulesEnabled) el.smartRulesEnabled.addEventListener('change', saveThSettings);
+if (el.smartDefaultMode) el.smartDefaultMode.addEventListener('change', saveThSettings);
+if (el.smartHeuristicsFallback) el.smartHeuristicsFallback.addEventListener('change', saveThSettings);
+if (el.smartPlaceholderDomains) el.smartPlaceholderDomains.addEventListener('blur', saveThSettings);
+if (el.smartDiscardDomains) el.smartDiscardDomains.addEventListener('blur', saveThSettings);
 
 el.backup.addEventListener('click', async () => {
   el.backup.disabled = true;
@@ -218,7 +263,11 @@ chrome.storage.onChanged.addListener((changes, area) => {
 
 loadThSettings().then(refreshThStats);
 
-// Site Blocker
+// Site Blocker — паритет с standalone SiteBlocker (whitelist, расписание, JSON).
+const SB_DEFAULT_SCHEDULE = { enabled: false, from: '09:00', to: '18:00', days: [1, 2, 3, 4, 5] };
+/** После импорта показать текст, не затираясь до следующего refresh из storage. */
+let blockerStatusOverride = null;
+
 function normDomain(input) {
   let s = (input || '').trim().toLowerCase();
   if (!s) return '';
@@ -236,28 +285,84 @@ function esc(s) {
   return d.innerHTML;
 }
 
-function renderBlocker(blocked, enabled) {
+function normalizeBlockerSchedule(raw) {
+  const source = raw && typeof raw === 'object' ? raw : SB_DEFAULT_SCHEDULE;
+  const days = Array.isArray(source.days)
+    ? source.days.map((d) => Number(d)).filter((d) => d >= 0 && d <= 6)
+    : SB_DEFAULT_SCHEDULE.days.slice();
+  return {
+    enabled: source.enabled === true,
+    from: typeof source.from === 'string' ? source.from : SB_DEFAULT_SCHEDULE.from,
+    to: typeof source.to === 'string' ? source.to : SB_DEFAULT_SCHEDULE.to,
+    days: [...new Set(days)],
+  };
+}
+
+function renderBlocker(blocked, whitelist, enabled, schedule, scheduleActive) {
   const list = document.getElementById('blockerList');
   const empty = document.getElementById('blockerEmpty');
   const toggle = document.getElementById('blockerToggle');
+  const wlList = document.getElementById('blockerWhitelistList');
+  const wlEmpty = document.getElementById('blockerWhitelistEmpty');
+  const sch = normalizeBlockerSchedule(schedule);
   toggle.checked = enabled;
   list.innerHTML = '';
-  if (!blocked.length) {
-    empty.style.display = 'block';
-    return;
+  if (!blocked.length) empty.style.display = 'block';
+  else {
+    empty.style.display = 'none';
+    blocked.forEach((d) => {
+      const li = document.createElement('li');
+      li.innerHTML = `<span>${esc(d)}</span><button type="button" class="rm" data-domain="${esc(d)}">Удалить</button>`;
+      list.appendChild(li);
+    });
+    list.querySelectorAll('.rm').forEach((b) => {
+      b.addEventListener('click', () => removeBlockerDomain(b.dataset.domain));
+    });
   }
-  empty.style.display = 'none';
-  blocked.forEach((d) => {
-    const li = document.createElement('li');
-    li.innerHTML = `<span>${esc(d)}</span><button class="rm" data-domain="${esc(d)}">Remove</button>`;
-    list.appendChild(li);
+  wlList.innerHTML = '';
+  if (!whitelist || !whitelist.length) wlEmpty.style.display = 'block';
+  else {
+    wlEmpty.style.display = 'none';
+    whitelist.forEach((d) => {
+      const li = document.createElement('li');
+      li.innerHTML = `<span>${esc(d)}</span><button type="button" class="rm rm-wl" data-domain="${esc(d)}">Удалить</button>`;
+      wlList.appendChild(li);
+    });
+    wlList.querySelectorAll('.rm-wl').forEach((b) => {
+      b.addEventListener('click', () => removeWhitelistDomain(b.dataset.domain));
+    });
+  }
+  document.getElementById('blockerScheduleEnabled').checked = sch.enabled;
+  document.getElementById('blockerScheduleFrom').value = sch.from;
+  document.getElementById('blockerScheduleTo').value = sch.to;
+  document.querySelectorAll('#blockerScheduleDays input[data-day]').forEach((cb) => {
+    cb.checked = sch.days.includes(Number(cb.dataset.day));
   });
-  list.querySelectorAll('.rm').forEach((b) => {
-    b.addEventListener('click', () => removeDomain(b.dataset.domain));
+  const statusEl = document.getElementById('blockerStatus');
+  if (statusEl) {
+    if (!enabled) statusEl.textContent = 'Блокировка выключена вручную';
+    else if (sch.enabled) statusEl.textContent = scheduleActive === false ? 'Сейчас вне расписания' : 'Сейчас в окне расписания';
+    else statusEl.textContent = '';
+  }
+}
+
+function refreshBlockerFromStorage() {
+  chrome.storage.local.get(['blocked', 'whitelist', 'enabled', 'schedule', 'scheduleStateActive'], (data) => {
+    renderBlocker(
+      data.blocked || [],
+      data.whitelist || [],
+      data.enabled !== false,
+      data.schedule || SB_DEFAULT_SCHEDULE,
+      data.scheduleStateActive !== false
+    );
+    if (blockerStatusOverride) {
+      document.getElementById('blockerStatus').textContent = blockerStatusOverride;
+      blockerStatusOverride = null;
+    }
   });
 }
 
-function addDomain() {
+function addBlockerDomain() {
   const domain = normDomain(document.getElementById('blockerInput').value);
   if (!domain) return;
   document.getElementById('blockerInput').value = '';
@@ -265,22 +370,57 @@ function addDomain() {
     const blocked = data.blocked || [];
     if (blocked.includes(domain)) return;
     blocked.push(domain);
-    chrome.storage.local.set({ blocked }, () => renderBlocker(blocked, document.getElementById('blockerToggle').checked));
+    chrome.storage.local.set({ blocked }, refreshBlockerFromStorage);
   });
 }
 
-function removeDomain(domain) {
+function removeBlockerDomain(domain) {
   chrome.storage.local.get(['blocked'], (data) => {
     const blocked = (data.blocked || []).filter((d) => d !== domain);
-    chrome.storage.local.set({ blocked }, () => renderBlocker(blocked, document.getElementById('blockerToggle').checked));
+    chrome.storage.local.set({ blocked }, refreshBlockerFromStorage);
   });
+}
+
+function addWhitelistDomain() {
+  const domain = normDomain(document.getElementById('blockerWhitelistInput').value);
+  if (!domain) return;
+  document.getElementById('blockerWhitelistInput').value = '';
+  chrome.storage.local.get(['whitelist'], (data) => {
+    const whitelist = data.whitelist || [];
+    if (whitelist.includes(domain)) return;
+    whitelist.push(domain);
+    chrome.storage.local.set({ whitelist }, refreshBlockerFromStorage);
+  });
+}
+
+function removeWhitelistDomain(domain) {
+  chrome.storage.local.get(['whitelist'], (data) => {
+    const whitelist = (data.whitelist || []).filter((d) => d !== domain);
+    chrome.storage.local.set({ whitelist }, refreshBlockerFromStorage);
+  });
+}
+
+function saveBlockerScheduleFromUi() {
+  const days = [...document.querySelectorAll('#blockerScheduleDays input[data-day]:checked')].map((cb) => Number(cb.dataset.day));
+  const schedule = normalizeBlockerSchedule({
+    enabled: document.getElementById('blockerScheduleEnabled').checked,
+    from: document.getElementById('blockerScheduleFrom').value || SB_DEFAULT_SCHEDULE.from,
+    to: document.getElementById('blockerScheduleTo').value || SB_DEFAULT_SCHEDULE.to,
+    days,
+  });
+  chrome.storage.local.set({ schedule });
 }
 
 document.getElementById('blockerToggle').addEventListener('change', () => {
   const enabled = document.getElementById('blockerToggle').checked;
-  chrome.storage.local.get(['blocked'], (data) => {
-    chrome.storage.local.set({ enabled }, () => renderBlocker(data.blocked || [], enabled));
-  });
+  chrome.storage.local.set({ enabled }, refreshBlockerFromStorage);
+});
+
+document.getElementById('blockerScheduleEnabled').addEventListener('change', saveBlockerScheduleFromUi);
+document.getElementById('blockerScheduleFrom').addEventListener('change', saveBlockerScheduleFromUi);
+document.getElementById('blockerScheduleTo').addEventListener('change', saveBlockerScheduleFromUi);
+document.querySelectorAll('#blockerScheduleDays input[data-day]').forEach((cb) => {
+  cb.addEventListener('change', saveBlockerScheduleFromUi);
 });
 
 function hostMatchesBlocked(hostname, blockedDomains) {
@@ -296,11 +436,11 @@ document.getElementById('blockerOpenFromHistory').addEventListener('click', asyn
   const statusEl = document.getElementById('blockerStatus');
   const btn = document.getElementById('blockerOpenFromHistory');
   btn.disabled = true;
-  statusEl.textContent = 'Loading…';
+  statusEl.textContent = 'Загрузка…';
   try {
     const { blocked = [] } = await chrome.storage.local.get('blocked');
     if (!blocked.length) {
-      statusEl.textContent = 'No blocked domains';
+      statusEl.textContent = 'Нет заблокированных доменов';
       return;
     }
     const since = Date.now() - 90 * 24 * 60 * 60 * 1000;
@@ -319,36 +459,125 @@ document.getElementById('blockerOpenFromHistory').addEventListener('click', asyn
     }
     // Параллельное открытие вкладок — быстрая массовая блокировка вместо по одной
     await Promise.all(urls.map((url) => chrome.tabs.create({ url })));
-    statusEl.textContent = urls.length > 0 ? `Opened: ${urls.length}` : 'No visits to blocked sites';
+    statusEl.textContent = urls.length > 0 ? `Открыто: ${urls.length}` : 'Нет посещений заблокированных сайтов';
   } catch (e) {
-    statusEl.textContent = 'Error: ' + (e.message || '');
+    statusEl.textContent = 'Ошибка: ' + (e.message || '');
   }
   btn.disabled = false;
-  setTimeout(() => { statusEl.textContent = ''; }, 4000);
+  setTimeout(() => { refreshBlockerFromStorage(); }, 4000);
 });
 
-document.getElementById('blockerAdd').addEventListener('click', addDomain);
-document.getElementById('blockerInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') addDomain(); });
+document.getElementById('blockerAdd').addEventListener('click', addBlockerDomain);
+document.getElementById('blockerInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') addBlockerDomain(); });
+document.getElementById('blockerWhitelistAdd').addEventListener('click', addWhitelistDomain);
+document.getElementById('blockerWhitelistInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') addWhitelistDomain(); });
 
-chrome.storage.local.get(['blocked', 'enabled'], (data) => {
-  const blocked = data.blocked || [];
-  const enabled = data.enabled !== false;
-  renderBlocker(blocked, enabled);
+document.getElementById('blockerExport').addEventListener('click', async () => {
+  const payload = await chrome.storage.local.get(['blocked', 'whitelist', 'enabled', 'schedule']);
+  const blob = new Blob([JSON.stringify({
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    blocked: payload.blocked || [],
+    whitelist: payload.whitelist || [],
+    enabled: payload.enabled !== false,
+    schedule: normalizeBlockerSchedule(payload.schedule),
+  }, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `swiss-site-blocker-${new Date().toISOString().slice(0, 10)}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
 });
 
-// Memory Cleaner
+document.getElementById('blockerImport').addEventListener('click', () => document.getElementById('blockerImportFile').click());
+document.getElementById('blockerImportFile').addEventListener('change', async () => {
+  const input = document.getElementById('blockerImportFile');
+  const file = input.files && input.files[0];
+  const statusEl = document.getElementById('blockerStatus');
+  if (!file) return;
+  try {
+    const text = await file.text();
+    const json = JSON.parse(text);
+    const blocked = Array.isArray(json.blocked) ? json.blocked.map(normDomain).filter(Boolean) : [];
+    const whitelist = Array.isArray(json.whitelist) ? json.whitelist.map(normDomain).filter(Boolean) : [];
+    const enabled = json.enabled !== false;
+    const schedule = normalizeBlockerSchedule(json.schedule);
+    blockerStatusOverride = 'Импорт выполнен';
+    await chrome.storage.local.set({
+      blocked: [...new Set(blocked)],
+      whitelist: [...new Set(whitelist)],
+      enabled,
+      schedule,
+    });
+  } catch {
+    blockerStatusOverride = null;
+    statusEl.textContent = 'Ошибка импорта JSON';
+  } finally {
+    input.value = '';
+  }
+});
+
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area !== 'local') return;
+  if (changes.blocked || changes.whitelist || changes.enabled || changes.schedule || changes.scheduleStateActive) {
+    refreshBlockerFromStorage();
+  }
+});
+
+refreshBlockerFromStorage();
+
+// Memory Cleaner (tmcSettings — совместимо с Tab Memory Cleaner)
+function memoryNormalizeDomainsText(value) {
+  return String(value || '')
+    .split('\n')
+    .map((line) => line.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, ''))
+    .filter(Boolean)
+    .filter((d, i, arr) => arr.indexOf(d) === i);
+}
+
+function readMemorySettingsFromUi() {
+  return {
+    skipPinned: document.getElementById('memorySkipPinned').checked,
+    skipAudible: document.getElementById('memorySkipAudible').checked,
+    skipIncognito: document.getElementById('memorySkipIncognito').checked,
+    skipGrouped: document.getElementById('memorySkipGrouped').checked,
+    excludedDomains: memoryNormalizeDomainsText(document.getElementById('memoryExcludedDomains').value),
+  };
+}
+
+function saveMemorySettings() {
+  const raw = readMemorySettingsFromUi();
+  document.getElementById('memoryExcludedDomains').value = raw.excludedDomains.join('\n');
+  chrome.storage.local.set({ tmcSettings: raw });
+}
+
+async function loadMemorySettings() {
+  const { tmcSettings = {} } = await chrome.storage.local.get('tmcSettings');
+  const s = { ...readMemorySettingsFromUi(), ...tmcSettings };
+  document.getElementById('memorySkipPinned').checked = s.skipPinned !== false;
+  document.getElementById('memorySkipAudible').checked = s.skipAudible !== false;
+  document.getElementById('memorySkipIncognito').checked = s.skipIncognito !== false;
+  document.getElementById('memorySkipGrouped').checked = s.skipGrouped !== false;
+  const list = Array.isArray(s.excludedDomains) ? s.excludedDomains : [];
+  document.getElementById('memoryExcludedDomains').value = list.join('\n');
+}
+
+['memorySkipPinned', 'memorySkipAudible', 'memorySkipIncognito', 'memorySkipGrouped'].forEach((id) => {
+  document.getElementById(id).addEventListener('change', saveMemorySettings);
+});
+document.getElementById('memoryExcludedDomains').addEventListener('blur', saveMemorySettings);
+
 document.getElementById('btnDiscard').addEventListener('click', async () => {
   const btn = document.getElementById('btnDiscard');
   const st = document.getElementById('memoryStatus');
+  saveMemorySettings();
   btn.disabled = true;
   st.textContent = 'Discarding…';
   try {
-    const r = await send({
-      type: 'discardBackgroundTabs',
-      skipPinned: document.getElementById('memorySkipPinned').checked,
-    });
+    const r = await send({ type: 'discardBackgroundTabs' });
     const n = r?.discarded ?? 0;
-    st.textContent = n > 0 ? `${n} tabs discarded` : 'Done (no tabs to discard)';
+    st.textContent = n > 0 ? `${n} tabs discarded` : 'Done (no tabs applicable)';
   } catch {
     st.textContent = 'Error';
   }
@@ -356,49 +585,129 @@ document.getElementById('btnDiscard').addEventListener('click', async () => {
   setTimeout(() => { st.textContent = ''; }, 3000);
 });
 
-// Site Data Clear
-document.getElementById('btnClear').addEventListener('click', async () => {
+loadMemorySettings();
+
+// Site Data Clear — паритет с standalone (sdcOptions, пресеты, cacheStorage).
+const SDC_STORAGE_KEY = 'sdcOptions';
+const SDC_DEFAULT = {
+  cookies: true,
+  localStorage: true,
+  sessionStorage: true,
+  cacheStorage: true,
+};
+const SDC_PRESETS = {
+  all: { cookies: true, localStorage: true, sessionStorage: true, cacheStorage: true },
+  cookies: { cookies: true, localStorage: false, sessionStorage: false, cacheStorage: false },
+  storage: { cookies: false, localStorage: true, sessionStorage: true, cacheStorage: true },
+  session: { cookies: false, localStorage: false, sessionStorage: true, cacheStorage: false },
+};
+
+const sdcEls = {
+  cookies: document.getElementById('optCookies'),
+  localStorage: document.getElementById('optLocalStorage'),
+  sessionStorage: document.getElementById('optSessionStorage'),
+  cacheStorage: document.getElementById('optCacheStorage'),
+};
+
+function sdcApplyOptions(o) {
+  const m = { ...SDC_DEFAULT, ...o };
+  sdcEls.cookies.checked = !!m.cookies;
+  sdcEls.localStorage.checked = !!m.localStorage;
+  sdcEls.sessionStorage.checked = !!m.sessionStorage;
+  sdcEls.cacheStorage.checked = !!m.cacheStorage;
+}
+
+function sdcReadOptionsFromUi() {
+  return {
+    cookies: sdcEls.cookies.checked,
+    localStorage: sdcEls.localStorage.checked,
+    sessionStorage: sdcEls.sessionStorage.checked,
+    cacheStorage: sdcEls.cacheStorage.checked,
+  };
+}
+
+function sdcSaveOptions() {
+  chrome.storage.local.set({ [SDC_STORAGE_KEY]: sdcReadOptionsFromUi() });
+}
+
+async function sdcLoadOptions() {
+  const data = await chrome.storage.local.get(SDC_STORAGE_KEY);
+  sdcApplyOptions(data[SDC_STORAGE_KEY] || SDC_DEFAULT);
+}
+
+['optCookies', 'optLocalStorage', 'optSessionStorage', 'optCacheStorage'].forEach((id) => {
+  document.getElementById(id).addEventListener('change', sdcSaveOptions);
+});
+
+document.querySelectorAll('[data-sdc-preset]').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    const id = btn.getAttribute('data-sdc-preset');
+    const preset = SDC_PRESETS[id];
+    if (preset) {
+      sdcApplyOptions(preset);
+      sdcSaveOptions();
+    }
+  });
+});
+
+document.getElementById('btnClearSite').addEventListener('click', async () => {
   const st = document.getElementById('clearStatus');
-  const optC = document.getElementById('clearCookies').checked;
-  const optL = document.getElementById('clearLocal').checked;
-  const optS = document.getElementById('clearSession').checked;
-  if (!optC && !optL && !optS) {
-    st.textContent = 'Select at least one option';
-    st.className = 'err';
-    return;
-  }
   st.textContent = '';
   st.className = '';
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  if (!tab?.id || !tab.url) {
-    st.textContent = 'No active tab';
+
+  const opt = sdcReadOptionsFromUi();
+  const anyBrowsing = opt.cookies || opt.localStorage || opt.cacheStorage;
+  if (!anyBrowsing && !opt.sessionStorage) {
+    st.textContent = 'Выберите хотя бы один пункт';
     st.className = 'err';
     return;
   }
+
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  if (!tab?.id || !tab.url) {
+    st.textContent = 'Нет активной вкладки';
+    st.className = 'err';
+    return;
+  }
+
   try {
     const url = new URL(tab.url);
     const origin = url.origin;
-    if (url.protocol === 'chrome:' || url.protocol === 'chrome-extension:') {
-      st.textContent = 'Not available for system pages';
+    if (url.protocol === 'chrome:' || url.protocol === 'chrome-extension:' || url.protocol === 'edge:' || url.protocol === 'about:') {
+      st.textContent = 'Недоступно для системных страниц';
       st.className = 'err';
       return;
     }
-    const opts = { origins: [origin], since: 0 };
-    const data = {};
-    if (optC) data.cookies = true;
-    if (optL) data.localStorage = true;
-    if (Object.keys(data).length) await chrome.browsingData.remove(opts, data);
-    if (optS) {
+
+    const options = { origins: [origin], since: 0 };
+    const dataToRemove = {};
+    if (opt.cookies) dataToRemove.cookies = true;
+    if (opt.localStorage) dataToRemove.localStorage = true;
+    if (opt.cacheStorage) dataToRemove.cacheStorage = true;
+    if (Object.keys(dataToRemove).length > 0) {
+      await chrome.browsingData.remove(options, dataToRemove);
+    }
+    if (opt.sessionStorage) {
       await chrome.scripting.executeScript({
         target: { tabId: tab.id },
         func: () => { sessionStorage.clear(); },
       });
     }
-    st.textContent = 'Done';
+
+    st.textContent = 'Готово';
     st.className = 'ok';
+    sdcSaveOptions();
     setTimeout(() => chrome.tabs.reload(tab.id), 800);
   } catch (e) {
-    st.textContent = 'Error: ' + (e.message || 'unknown');
+    st.textContent = 'Ошибка: ' + (e.message || 'неизвестная');
     st.className = 'err';
   }
 });
+
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === 'local' && changes[SDC_STORAGE_KEY]) {
+    sdcApplyOptions(changes[SDC_STORAGE_KEY].newValue || SDC_DEFAULT);
+  }
+});
+
+sdcLoadOptions();
