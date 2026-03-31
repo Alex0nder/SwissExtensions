@@ -136,6 +136,26 @@
     button.btn-sec { background: transparent; color: var(--th-text-primary); border-color: var(--th-border); }
     button.btn-sec:hover { background: var(--th-bg-elevated); }
     .hint { font-size: 11px; color: var(--th-text-muted); margin: 0 0 16px; line-height: 1.4; }
+    .domains-block { margin: 8px 0 10px; }
+    .domains-label { margin-bottom: 6px; font-size: 11px; color: var(--th-text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+    textarea {
+      width: 100%;
+      min-height: 52px;
+      resize: vertical;
+      border: 1px solid var(--th-border);
+      background: var(--th-bg-input);
+      color: var(--th-text-primary);
+      font-size: 12px;
+      padding: 8px 10px;
+      border-radius: var(--th-radius);
+    }
+    .smart-card {
+      margin: 8px 0 12px;
+      padding: 10px;
+      background: var(--th-bg-elevated);
+      border: 1px solid var(--th-border);
+      border-radius: var(--th-radius);
+    }
     .stats { font-size: 11px; color: var(--th-text-muted); margin-top: 16px; }
     .stats span { color: var(--th-text-primary); font-weight: 500; }
     a { color: var(--th-text-primary); text-decoration: underline; text-underline-offset: 2px; }
@@ -171,6 +191,44 @@
     .restore-progress { font-size: 10px; color: var(--th-text-muted); margin-top: -6px; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.05em; }
     .err { color: var(--th-accent); }
     .ok { color: var(--th-text-secondary); }
+    .blocker-section { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--th-border-subtle); }
+    .blocker-section-title { margin: 0 0 8px; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--th-text-muted); }
+    .time-row { display: flex; align-items: center; gap: 8px; margin: 8px 0; flex-wrap: wrap; }
+    .time-row input[type="time"] {
+      padding: 6px 8px;
+      border: 1px solid var(--th-border);
+      border-radius: var(--th-radius);
+      background: var(--th-bg-input);
+      color: var(--th-text-primary);
+      font-size: 11px;
+    }
+    .days-row { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 6px; }
+    .days-row label {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 10px;
+      border: 1px solid var(--th-border);
+      padding: 4px 6px;
+      border-radius: var(--th-radius);
+      cursor: pointer;
+    }
+    .sdc-presets { margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--th-border-subtle); }
+    .sdc-presets-title { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--th-text-muted); margin-bottom: 8px; }
+    .sdc-preset-row { display: flex; flex-wrap: wrap; gap: 6px; }
+    .sdc-preset-row button {
+      flex: 1;
+      min-width: 68px;
+      padding: 8px 10px;
+      font-size: 10px;
+      cursor: pointer;
+      border: 1px solid var(--th-border);
+      border-radius: var(--th-radius);
+      background: var(--th-bg-card);
+      color: var(--th-text-primary);
+      font-family: inherit;
+    }
+    .sdc-preset-row button:hover { background: var(--th-bg-elevated); }
   </style>
 </head>
 <body>
@@ -261,7 +319,45 @@
         <select id="thMode">
           <option value="discard">Discard</option>
           <option value="placeholder" selected>Placeholder</option>
+          <option value="smart">Smart (auto)</option>
         </select>
+      </div>
+      <div class="row">
+        <label for="thCheckPeriod">Check period</label>
+        <select id="thCheckPeriod">
+          <option value="1" selected>1 min</option>
+          <option value="2">2 min</option>
+          <option value="5">5 min</option>
+        </select>
+      </div>
+      <div class="domains-block">
+        <div class="domains-label">Excluded domains (one per line)</div>
+        <textarea id="thExcludedDomains" placeholder="mail.google.com&#10;web.telegram.org"></textarea>
+      </div>
+      <div class="smart-card">
+        <div class="row">
+          <label for="thSmartRulesEnabled">Exact smart rules</label>
+          <input type="checkbox" id="thSmartRulesEnabled">
+        </div>
+        <div class="row">
+          <label for="thSmartDefaultMode">Fallback mode</label>
+          <select id="thSmartDefaultMode">
+            <option value="discard" selected>Discard</option>
+            <option value="placeholder">Placeholder</option>
+          </select>
+        </div>
+        <div class="row">
+          <label for="thSmartHeuristicsFallback">Use heuristics fallback</label>
+          <input type="checkbox" id="thSmartHeuristicsFallback" checked>
+        </div>
+        <div class="domains-block">
+          <div class="domains-label">Smart -> Placeholder domains</div>
+          <textarea id="thSmartPlaceholderDomains" placeholder="mail.google.com&#10;notion.so"></textarea>
+        </div>
+        <div class="domains-block" style="margin-bottom:0;">
+          <div class="domains-label">Smart -> Discard domains</div>
+          <textarea id="thSmartDiscardDomains" placeholder="wikipedia.org&#10;developer.chrome.com"></textarea>
+        </div>
       </div>
       <div class="row row-full">
         <button id="thBackup">Backup to bookmarks</button>
@@ -299,12 +395,29 @@
     </div>
     <div class="panel-content">
       <h2>Memory Cleaner</h2>
-      <p class="hint">Discard background tabs to free memory. Active and optionally pinned tabs are kept.</p>
+      <p class="hint">Discard background tabs. Options are saved as tmcSettings (same shape as Tab Memory Cleaner).</p>
       <button id="btnDiscard">Discard background tabs</button>
       <div class="row">
-        <label for="memorySkipPinned">Skip pinned tabs</label>
+        <label for="memorySkipPinned">Skip pinned</label>
         <input type="checkbox" id="memorySkipPinned" checked>
       </div>
+      <div class="row">
+        <label for="memorySkipAudible">Skip playing audio</label>
+        <input type="checkbox" id="memorySkipAudible" checked>
+      </div>
+      <div class="row">
+        <label for="memorySkipIncognito">Skip incognito</label>
+        <input type="checkbox" id="memorySkipIncognito" checked>
+      </div>
+      <div class="row">
+        <label for="memorySkipGrouped">Skip tabs in groups</label>
+        <input type="checkbox" id="memorySkipGrouped" checked>
+      </div>
+      <div class="row row-full" style="margin-top: 10px;">
+        <label style="width:100%;margin-bottom:6px;display:block;color:var(--th-text-muted);font-size:10px;text-transform:uppercase;letter-spacing:0.06em;">Never discard (domains)</label>
+        <textarea id="memoryExcludedDomains" placeholder="mail.google.com" style="width:100%;min-height:48px;resize:vertical;padding:8px 10px;border:1px solid var(--th-border);border-radius:var(--th-radius);background:var(--th-bg-input);color:var(--th-text-primary);font-size:11px;font-family:inherit;"></textarea>
+      </div>
+      <p class="hint" style="margin-top:8px;">Hotkey: Option+Shift+K (see extension keyboard shortcuts).</p>
       <div id="memoryStatus"></div>
     </div>
   </div>
@@ -317,19 +430,58 @@
     <div class="panel-content">
       <h2>Site Blocker</h2>
       <div class="row">
-        <label>Blocking</label>
+        <label for="blockerToggle">Блокировка</label>
         <input type="checkbox" id="blockerToggle" checked>
       </div>
       <div class="add-row">
-        <input type="text" id="blockerInput" placeholder="example.com">
-        <button id="blockerAdd">Add</button>
+        <input type="text" id="blockerInput" placeholder="example.com" autocomplete="off">
+        <button type="button" id="blockerAdd">Добавить</button>
       </div>
       <ul class="block-list" id="blockerList"></ul>
-      <p class="hint" id="blockerEmpty">List empty</p>
-      <div class="row row-full" style="margin-top: 16px;">
-        <button type="button" class="btn btn-sec" id="blockerOpenFromHistory">Open blocked from history</button>
+      <p class="hint" id="blockerEmpty">Список пуст</p>
+      <div class="blocker-section">
+        <p class="blocker-section-title">Whitelist (не блокировать)</p>
+        <div class="add-row">
+          <input type="text" id="blockerWhitelistInput" placeholder="allowed.com" autocomplete="off">
+          <button type="button" id="blockerWhitelistAdd">Добавить</button>
+        </div>
+        <ul class="block-list" id="blockerWhitelistList"></ul>
+        <p class="hint" id="blockerWhitelistEmpty">Whitelist пуст</p>
+      </div>
+      <div class="blocker-section">
+        <p class="blocker-section-title">Расписание</p>
+        <div class="row">
+          <label for="blockerScheduleEnabled">По времени</label>
+          <input type="checkbox" id="blockerScheduleEnabled">
+        </div>
+        <div class="time-row">
+          <label for="blockerScheduleFrom">С</label>
+          <input type="time" id="blockerScheduleFrom" value="09:00">
+          <label for="blockerScheduleTo">До</label>
+          <input type="time" id="blockerScheduleTo" value="18:00">
+        </div>
+        <div class="days-row" id="blockerScheduleDays">
+          <label><input type="checkbox" data-day="1" checked>Пн</label>
+          <label><input type="checkbox" data-day="2" checked>Вт</label>
+          <label><input type="checkbox" data-day="3" checked>Ср</label>
+          <label><input type="checkbox" data-day="4" checked>Чт</label>
+          <label><input type="checkbox" data-day="5" checked>Пт</label>
+          <label><input type="checkbox" data-day="6">Сб</label>
+          <label><input type="checkbox" data-day="0">Вс</label>
+        </div>
+      </div>
+      <div class="row row-full" style="margin-top: 12px;">
+        <button type="button" class="btn-sec" id="blockerOpenFromHistory">Открыть из истории</button>
+      </div>
+      <div class="row row-full">
+        <button type="button" class="btn-sec" id="blockerExport">Экспорт JSON</button>
+      </div>
+      <div class="row row-full">
+        <button type="button" class="btn-sec" id="blockerImport">Импорт JSON</button>
+        <input type="file" id="blockerImportFile" accept="application/json" style="display:none;">
       </div>
       <div id="blockerStatus" class="hint" style="margin-top: 8px;"></div>
+      <p class="hint" style="margin-top: 4px;">Домен без протокола. Встроенные списки NetFilter включаются вместе с блокировкой (вне расписания — всё выкл.).</p>
     </div>
   </div>
 
@@ -339,15 +491,26 @@
       <span class="header-title">Site Data Clear</span>
     </div>
     <div class="panel-content">
-      <h2>Site Data Clear</h2>
-      <p class="hint">Clear cookies and storage for this site</p>
-      <div class="clear-options">
-        <label><input type="checkbox" id="clearCookies" checked> Cookies</label>
-        <label><input type="checkbox" id="clearLocal" checked> localStorage</label>
-        <label><input type="checkbox" id="clearSession" checked> sessionStorage</label>
+      <h2>Очистка данных сайта</h2>
+      <p class="hint">Формат настроек как в расширении Site Data Clear (ключ sdcOptions).</p>
+      <div class="sdc-presets">
+        <div class="sdc-presets-title">Пресеты</div>
+        <div class="sdc-preset-row">
+          <button type="button" data-sdc-preset="all">Всё</button>
+          <button type="button" data-sdc-preset="cookies">Cookies</button>
+          <button type="button" data-sdc-preset="storage">Хранилища</button>
+          <button type="button" data-sdc-preset="session">Сессия</button>
+        </div>
       </div>
-      <button id="btnClear">Clear for this site</button>
+      <div class="clear-options">
+        <label><input type="checkbox" id="optCookies" checked> Cookies</label>
+        <label><input type="checkbox" id="optLocalStorage" checked> localStorage</label>
+        <label><input type="checkbox" id="optSessionStorage" checked> sessionStorage</label>
+        <label><input type="checkbox" id="optCacheStorage" checked> Cache storage (SW)</label>
+      </div>
+      <button type="button" id="btnClearSite">Очистить для этого сайта</button>
       <div id="clearStatus"></div>
+      <p class="hint" style="margin-top: 10px;">Выбор сохраняется. Системные и служебные страницы недоступны.</p>
     </div>
   </div>
 
