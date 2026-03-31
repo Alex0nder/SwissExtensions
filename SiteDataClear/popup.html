@@ -1,26 +1,45 @@
 <!DOCTYPE html>
-<html>
+<html lang="ru">
 <head>
   <meta charset="utf-8">
   <style>
     body {
-      width: 240px;
-      padding: 16px;
+      width: 268px;
+      padding: 14px 16px 16px;
       font-family: system-ui, sans-serif;
-      font-size: 13px;
+      font-size: 12px;
       margin: 0;
     }
-    h2 { margin: 0 0 12px; font-size: 14px; font-weight: 600; }
-    .options { margin-bottom: 12px; }
+    h2 { margin: 0 0 10px; font-size: 14px; font-weight: 600; }
+    .presets {
+      margin-bottom: 10px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid #eee;
+    }
+    .presets-title { font-size: 11px; color: #666; margin-bottom: 6px; }
+    .preset-row { display: flex; flex-wrap: wrap; gap: 6px; }
+    .preset-row button {
+      flex: 1;
+      min-width: 72px;
+      padding: 6px 8px;
+      font-size: 10px;
+      cursor: pointer;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      background: #f8f8f8;
+      color: #222;
+    }
+    .preset-row button:hover { background: #eee; }
+    .options { margin-bottom: 10px; }
     label {
       display: flex;
       align-items: center;
       gap: 8px;
-      padding: 6px 0;
+      padding: 5px 0;
       cursor: pointer;
     }
     input[type="checkbox"] { cursor: pointer; }
-    button {
+    .btn-clear {
       width: 100%;
       padding: 10px;
       cursor: pointer;
@@ -31,22 +50,34 @@
       font-size: 13px;
       font-weight: 500;
     }
-    button:hover { background: #333; }
-    button:disabled { opacity: 0.5; cursor: not-allowed; }
-    #status { font-size: 12px; color: #666; margin-top: 10px; min-height: 1.4em; }
+    .btn-clear:hover { background: #333; }
+    .btn-clear:disabled { opacity: 0.5; cursor: not-allowed; }
+    #status { font-size: 11px; color: #666; margin-top: 10px; min-height: 1.4em; line-height: 1.35; }
     .err { color: #c00; }
     .ok { color: #0a0; }
+    .hint { font-size: 10px; color: #999; margin-top: 8px; line-height: 1.35; }
   </style>
 </head>
 <body>
   <h2>Очистить данные сайта</h2>
+  <div class="presets">
+    <div class="presets-title">Пресеты</div>
+    <div class="preset-row">
+      <button type="button" data-preset="all">Всё</button>
+      <button type="button" data-preset="cookies">Cookies</button>
+      <button type="button" data-preset="storage">Хранилища</button>
+      <button type="button" data-preset="session">Сессия</button>
+    </div>
+  </div>
   <div class="options">
     <label><input type="checkbox" id="optCookies" checked> Cookies</label>
     <label><input type="checkbox" id="optLocalStorage" checked> localStorage</label>
     <label><input type="checkbox" id="optSessionStorage" checked> sessionStorage</label>
+    <label><input type="checkbox" id="optCacheStorage" checked> Cache storage (SW)</label>
   </div>
-  <button id="btnClear">Очистить для этого сайта</button>
+  <button type="button" class="btn-clear" id="btnClear">Очистить для этого сайта</button>
   <div id="status"></div>
+  <p class="hint">Выбор сохраняется. Системные страницы и chrome-extension недоступны.</p>
   <script src="popup.js"></script>
 </body>
 </html>
