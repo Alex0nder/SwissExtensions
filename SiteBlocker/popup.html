@@ -110,6 +110,44 @@
     .btn-sec { background: transparent; }
     .empty { color: #888; font-size: 11px; padding: 12px 0; text-transform: uppercase; letter-spacing: 0.05em; }
     .hint { font-size: 10px; color: #888; margin-top: 12px; letter-spacing: 0.03em; }
+    .section {
+      margin-top: 14px;
+      padding-top: 12px;
+      border-top: 1px solid #efefef;
+    }
+    .section-title {
+      margin: 0 0 8px;
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #666;
+    }
+    .time-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 8px 0;
+    }
+    .time-row input[type="time"] {
+      border: 1px solid #000;
+      padding: 6px 8px;
+      font-size: 11px;
+      background: #fff;
+    }
+    .days {
+      display: flex;
+      gap: 4px;
+      flex-wrap: wrap;
+      margin-top: 6px;
+    }
+    .days label {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 10px;
+      border: 1px solid #ddd;
+      padding: 4px 6px;
+    }
   </style>
 </head>
 <body>
@@ -124,8 +162,46 @@
   </div>
   <ul class="list" id="list"></ul>
   <p class="empty" id="empty">Список пуст</p>
+  <div class="section">
+    <p class="section-title">Whitelist (не блокировать)</p>
+    <div class="add-row">
+      <input type="text" id="whitelistInput" placeholder="allowed.com" autocomplete="off" />
+      <button type="button" class="btn" id="btnWhitelistAdd">Добавить</button>
+    </div>
+    <ul class="list" id="whitelistList"></ul>
+    <p class="empty" id="whitelistEmpty">Whitelist пуст</p>
+  </div>
+  <div class="section">
+    <p class="section-title">Расписание</p>
+    <div class="toggle-row" style="margin-bottom: 10px; padding-bottom: 10px;">
+      <span>Включено по времени</span>
+      <button type="button" class="toggle" id="scheduleToggle" aria-pressed="false"></button>
+    </div>
+    <div class="time-row">
+      <label for="scheduleFrom">С</label>
+      <input type="time" id="scheduleFrom" value="09:00">
+      <label for="scheduleTo">До</label>
+      <input type="time" id="scheduleTo" value="18:00">
+    </div>
+    <div class="days" id="scheduleDays">
+      <label><input type="checkbox" data-day="1" checked>Пн</label>
+      <label><input type="checkbox" data-day="2" checked>Вт</label>
+      <label><input type="checkbox" data-day="3" checked>Ср</label>
+      <label><input type="checkbox" data-day="4" checked>Чт</label>
+      <label><input type="checkbox" data-day="5" checked>Пт</label>
+      <label><input type="checkbox" data-day="6">Сб</label>
+      <label><input type="checkbox" data-day="0">Вс</label>
+    </div>
+  </div>
   <div class="row">
     <button type="button" class="btn btn-sec" id="btnOpenBlocked">Открыть из истории</button>
+  </div>
+  <div class="row">
+    <button type="button" class="btn btn-sec" id="btnExport">Экспорт JSON</button>
+  </div>
+  <div class="row">
+    <button type="button" class="btn btn-sec" id="btnImport">Импорт JSON</button>
+    <input type="file" id="importFile" accept="application/json" style="display:none;">
   </div>
   <p id="blockerStatus" class="hint"></p>
   <p class="hint">Введите домен без протокола</p>
