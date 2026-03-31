@@ -24,6 +24,15 @@
   ],
   "host_permissions": ["<all_urls>"],
   "background": { "service_worker": "service_worker.js" },
+  "commands": {
+    "suspend-current-tab": {
+      "suggested_key": {
+        "default": "Alt+Shift+H",
+        "mac": "Alt+Shift+H"
+      },
+      "description": "Suspend current tab"
+    }
+  },
   "action": {
     "default_title": "Swiss Extensions",
     "default_icon": {

@@ -27,6 +27,18 @@ function getLocalFaviconUrl(pageUrl) {
   }
 }
 
+function setDocumentFavicon(href) {
+  if (!href) return;
+  try {
+    const iconLink = document.querySelector('link[rel="icon"]') || document.createElement('link');
+    iconLink.setAttribute('rel', 'icon');
+    iconLink.setAttribute('href', href);
+    if (!iconLink.parentNode) document.head.appendChild(iconLink);
+  } catch (e) {
+    console.warn('[TabHibernate] failed to set document favicon', e);
+  }
+}
+
 function showError(msg) {
   urlEl.textContent = msg;
   if (btn) btn.disabled = true;
@@ -37,7 +49,7 @@ function isRestorableUrl(url) {
 }
 
 /** Show page title and favicon, then URL and Restore button. */
-function showUrlAndRestore(url, title) {
+function showUrlAndRestore(url, title, favIconUrl) {
   if (!url || !isRestorableUrl(url)) {
     showError('Restore data unavailable');
     return;
@@ -47,12 +59,14 @@ function showUrlAndRestore(url, title) {
   if (pageTitleEl) pageTitleEl.textContent = displayTitle;
 
   if (pageFaviconEl) {
-    const faviconUrl = getLocalFaviconUrl(url);
+    const savedIcon = typeof favIconUrl === 'string' ? favIconUrl.trim() : '';
+    const faviconUrl = savedIcon || getLocalFaviconUrl(url);
     if (faviconUrl) {
       pageFaviconEl.hidden = true;
       pageFaviconEl.onerror = () => { pageFaviconEl.hidden = true; };
       pageFaviconEl.onload = () => { pageFaviconEl.hidden = false; };
       pageFaviconEl.src = faviconUrl;
+      setDocumentFavicon(faviconUrl);
     } else {
       pageFaviconEl.hidden = true;
     }
@@ -108,9 +122,9 @@ if (!tabId) {
     }
     const item = data[key];
     if (item && item.url && isRestorableUrl(item.url)) {
-      showUrlAndRestore(item.url, item.title);
+      showUrlAndRestore(item.url, item.title, item.favIconUrl || '');
     } else if (isRestorableUrl(fallbackUrl)) {
-      showUrlAndRestore(fallbackUrl, '');
+      showUrlAndRestore(fallbackUrl, '', '');
     } else {
       showError('Restore data unavailable');
     }
