@@ -114,6 +114,50 @@
       color: var(--th-text-muted);
       line-height: 1.4;
     }
+    .domains-block {
+      margin: 8px 0 10px;
+    }
+    .smart-card {
+      margin: 8px 0 12px;
+      padding: 10px;
+      background: var(--th-bg-elevated);
+      border: 1px solid var(--th-border);
+      border-radius: var(--th-radius);
+    }
+    .smart-title {
+      margin: 0 0 8px;
+      font-size: 12px;
+      color: var(--th-text-secondary);
+      font-weight: 600;
+    }
+    .smart-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+    .domains-label {
+      margin-bottom: 6px;
+      font-size: 12px;
+      color: var(--th-text-secondary);
+    }
+    textarea {
+      width: 100%;
+      min-height: 58px;
+      resize: vertical;
+      border: 1px solid var(--th-border);
+      border-radius: var(--th-radius);
+      background: var(--th-bg-input);
+      color: var(--th-text-primary);
+      padding: 8px 10px;
+      font-size: 12px;
+      line-height: 1.35;
+      outline: none;
+    }
+    textarea:focus {
+      border-color: var(--th-accent-cyan);
+    }
     .about {
       margin-top: auto;
       padding-top: 12px;
@@ -168,9 +212,48 @@
     <select id="mode">
       <option value="discard">Discard</option>
       <option value="placeholder" selected>Placeholder</option>
+      <option value="smart">Smart (auto)</option>
     </select>
   </div>
-  <p class="mode-hint">The stub page is shown only in Placeholder mode.</p>
+  <div class="row">
+    <label for="checkPeriod">Check period</label>
+    <select id="checkPeriod">
+      <option value="1" selected>1 min</option>
+      <option value="2">2 min</option>
+      <option value="5">5 min</option>
+    </select>
+  </div>
+  <p class="mode-hint">Smart mode uses Placeholder for web apps and Discard for static pages.</p>
+  <div class="domains-block">
+    <div class="domains-label">Excluded domains (one per line)</div>
+    <textarea id="excludedDomains" placeholder="mail.google.com&#10;web.telegram.org"></textarea>
+  </div>
+  <div class="smart-card">
+    <p class="smart-title">Smart profile</p>
+    <div class="smart-row">
+      <label for="smartRulesEnabled">Exact smart rules</label>
+      <input type="checkbox" id="smartRulesEnabled">
+    </div>
+    <div class="smart-row">
+      <label for="smartDefaultMode">Fallback mode</label>
+      <select id="smartDefaultMode">
+        <option value="discard" selected>Discard</option>
+        <option value="placeholder">Placeholder</option>
+      </select>
+    </div>
+    <div class="smart-row">
+      <label for="smartHeuristicsFallback">Use heuristics fallback</label>
+      <input type="checkbox" id="smartHeuristicsFallback" checked>
+    </div>
+    <div class="domains-block">
+      <div class="domains-label">Smart → Placeholder domains</div>
+      <textarea id="smartPlaceholderDomains" placeholder="mail.google.com&#10;notion.so&#10;figma.com"></textarea>
+    </div>
+    <div class="domains-block" style="margin-bottom:0;">
+      <div class="domains-label">Smart → Discard domains</div>
+      <textarea id="smartDiscardDomains" placeholder="wikipedia.org&#10;developer.chrome.com"></textarea>
+    </div>
+  </div>
   <div class="row">
     <button id="backup">Backup tabs to bookmarks</button>
   </div>
@@ -198,11 +281,11 @@
   </div>
   <div class="stats" id="stats">Suspended / saved: <span class="stats-number" id="statsNumber">—</span></div>
   <div class="stats" id="statusLine">—</div>
-  <div class="hint" id="hint">Only background tabs are suspended (not the active or pinned one).</div>
+  <div class="hint" id="hint">Only background tabs are suspended (not the active or pinned one). Hotkey: Option+Shift+H.</div>
   </div>
   <div class="about">
     <p class="about-title">About</p>
-    <p class="about-text">Suspends background tabs after the selected timeout (5–60 min) or on demand, saves URLs to bookmarks (Tab Backup / date) and local storage. Placeholder mode shows a stub with a Restore button.</p>
+    <p class="about-text">Suspends background tabs after timeout (5–60 min) or on demand, saves URLs to bookmarks (Tab Backup / date) and local storage. Supports Smart mode, domain exclusions, and configurable check period.</p>
     <a class="about-link" href="https://github.com/Alex0nder/TabHibernate" target="_blank" rel="noopener">GitHub — Alex0nder / TabHibernate</a>
   </div>
   <script src="popup.js"></script>
