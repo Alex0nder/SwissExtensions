@@ -95,6 +95,24 @@ function openResultPage(tab) {
   });
 }
 
+/** Понятные сообщения для типичных ошибок захвата. */
+function formatCaptureError(e) {
+  const msg = (e && e.message) || String(e);
+  const lower = msg.toLowerCase();
+  if (lower.includes('no active tab') || msg.includes('Нет активной')) return 'Нет активной вкладки.';
+  if (lower.includes('cannot access') || lower.includes('chrome://')) {
+    return 'Эту страницу нельзя сканировать (системная или с ограничениями Chrome).';
+  }
+  if (lower.includes('chrome-extension://')) return 'Страницы расширений сканировать нельзя.';
+  if (lower.includes('could not establish connection') || lower.includes('receiving end does not exist')) {
+    return 'Не удалось подключиться к странице. Обновите вкладку и попробуйте снова.';
+  }
+  if (lower.includes('capturevisible') || lower.includes('cannot capture')) {
+    return 'Снимок экрана вкладки недоступен (страница или окно в неподходящем состоянии).';
+  }
+  return msg.length > 160 ? `${msg.slice(0, 157)}…` : msg;
+}
+
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg.type === 'getTiles') {
     const req = indexedDB.open(DB_NAME, 1);
@@ -174,13 +192,14 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     } catch (e) {
       await chrome.storage.local.remove('captureProgress');
       if (tabId) try { await showFloating(tabId); } catch (_) {}
-      await saveToIndexedDB({ error: e.message || String(e) });
+      const userMsg = formatCaptureError(e);
+      await saveToIndexedDB({ error: userMsg });
       let tabForOpen = null;
       if (tabId) {
         try { tabForOpen = await chrome.tabs.get(tabId); } catch (_) {}
       }
       openResultPage(tabForOpen);
-      sendResponse({ error: e.message || String(e) });
+      sendResponse({ error: userMsg });
     }
   })();
 
