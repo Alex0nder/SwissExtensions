@@ -39,7 +39,15 @@ btnScan.addEventListener('click', async () => {
   };
 
   try {
-    const res = await chrome.runtime.sendMessage({ type: 'capture' });
+    const res = await new Promise((resolve, reject) => {
+      chrome.runtime.sendMessage({ type: 'capture' }, (r) => {
+        if (chrome.runtime.lastError) {
+          reject(new Error(chrome.runtime.lastError.message));
+          return;
+        }
+        resolve(r);
+      });
+    });
     cleanup();
     if (res?.error) {
       setStatus(res.error, true);

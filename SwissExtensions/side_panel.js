@@ -22,7 +22,7 @@ document.getElementById('btnCapture').addEventListener('click', () => {
   const progEl = document.getElementById('captureProgress');
   const fillEl = document.getElementById('captureProgressFill');
   btn.disabled = true;
-  st.textContent = 'Scanning…';
+  st.textContent = 'Сканирую…';
   st.className = '';
   progEl.classList.add('visible');
   fillEl.style.width = '0%';
@@ -32,7 +32,7 @@ document.getElementById('btnCapture').addEventListener('click', () => {
     const { total, current } = changes.captureProgress.newValue;
     const pct = total > 0 ? Math.round((current / total) * 100) : 0;
     fillEl.style.width = pct + '%';
-    st.textContent = `Frame ${current} of ${total}…`;
+    st.textContent = `Кадр ${current} из ${total}…`;
   };
 
   const cleanup = () => {
@@ -48,13 +48,13 @@ document.getElementById('btnCapture').addEventListener('click', () => {
   chrome.runtime.sendMessage({ type: 'capture' }, (res) => {
     cleanup();
     if (chrome.runtime.lastError) {
-      st.textContent = chrome.runtime.lastError.message || 'Error';
+      st.textContent = chrome.runtime.lastError.message || 'Ошибка';
       st.className = 'err';
       return;
     }
     if (res?.error) { st.textContent = res.error; st.className = 'err'; }
-    else if (res?.ok) st.textContent = 'Screenshot page opened.';
-    else st.textContent = 'No frames.';
+    else if (res?.ok) st.textContent = 'Открыта страница со скриншотами.';
+    else st.textContent = 'Нет кадров.';
   });
 });
 
@@ -573,13 +573,13 @@ document.getElementById('btnDiscard').addEventListener('click', async () => {
   const st = document.getElementById('memoryStatus');
   saveMemorySettings();
   btn.disabled = true;
-  st.textContent = 'Discarding…';
+  st.textContent = 'Выгружаю…';
   try {
     const r = await send({ type: 'discardBackgroundTabs' });
     const n = r?.discarded ?? 0;
-    st.textContent = n > 0 ? `${n} tabs discarded` : 'Done (no tabs applicable)';
+    st.textContent = n > 0 ? `Выгружено вкладок: ${n}` : 'Готово (нет подходящих вкладок)';
   } catch {
-    st.textContent = 'Error';
+    st.textContent = 'Ошибка';
   }
   btn.disabled = false;
   setTimeout(() => { st.textContent = ''; }, 3000);
