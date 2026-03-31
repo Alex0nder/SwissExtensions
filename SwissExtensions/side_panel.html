@@ -136,6 +136,26 @@
     button.btn-sec { background: transparent; color: var(--th-text-primary); border-color: var(--th-border); }
     button.btn-sec:hover { background: var(--th-bg-elevated); }
     .hint { font-size: 11px; color: var(--th-text-muted); margin: 0 0 16px; line-height: 1.4; }
+    .domains-block { margin: 8px 0 10px; }
+    .domains-label { margin-bottom: 6px; font-size: 11px; color: var(--th-text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+    textarea {
+      width: 100%;
+      min-height: 52px;
+      resize: vertical;
+      border: 1px solid var(--th-border);
+      background: var(--th-bg-input);
+      color: var(--th-text-primary);
+      font-size: 12px;
+      padding: 8px 10px;
+      border-radius: var(--th-radius);
+    }
+    .smart-card {
+      margin: 8px 0 12px;
+      padding: 10px;
+      background: var(--th-bg-elevated);
+      border: 1px solid var(--th-border);
+      border-radius: var(--th-radius);
+    }
     .stats { font-size: 11px; color: var(--th-text-muted); margin-top: 16px; }
     .stats span { color: var(--th-text-primary); font-weight: 500; }
     a { color: var(--th-text-primary); text-decoration: underline; text-underline-offset: 2px; }
@@ -261,7 +281,45 @@
         <select id="thMode">
           <option value="discard">Discard</option>
           <option value="placeholder" selected>Placeholder</option>
+          <option value="smart">Smart (auto)</option>
         </select>
+      </div>
+      <div class="row">
+        <label for="thCheckPeriod">Check period</label>
+        <select id="thCheckPeriod">
+          <option value="1" selected>1 min</option>
+          <option value="2">2 min</option>
+          <option value="5">5 min</option>
+        </select>
+      </div>
+      <div class="domains-block">
+        <div class="domains-label">Excluded domains (one per line)</div>
+        <textarea id="thExcludedDomains" placeholder="mail.google.com&#10;web.telegram.org"></textarea>
+      </div>
+      <div class="smart-card">
+        <div class="row">
+          <label for="thSmartRulesEnabled">Exact smart rules</label>
+          <input type="checkbox" id="thSmartRulesEnabled">
+        </div>
+        <div class="row">
+          <label for="thSmartDefaultMode">Fallback mode</label>
+          <select id="thSmartDefaultMode">
+            <option value="discard" selected>Discard</option>
+            <option value="placeholder">Placeholder</option>
+          </select>
+        </div>
+        <div class="row">
+          <label for="thSmartHeuristicsFallback">Use heuristics fallback</label>
+          <input type="checkbox" id="thSmartHeuristicsFallback" checked>
+        </div>
+        <div class="domains-block">
+          <div class="domains-label">Smart -> Placeholder domains</div>
+          <textarea id="thSmartPlaceholderDomains" placeholder="mail.google.com&#10;notion.so"></textarea>
+        </div>
+        <div class="domains-block" style="margin-bottom:0;">
+          <div class="domains-label">Smart -> Discard domains</div>
+          <textarea id="thSmartDiscardDomains" placeholder="wikipedia.org&#10;developer.chrome.com"></textarea>
+        </div>
       </div>
       <div class="row row-full">
         <button id="thBackup">Backup to bookmarks</button>

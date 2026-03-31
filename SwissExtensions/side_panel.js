@@ -63,6 +63,13 @@ const el = {
   enabled: document.getElementById('thEnabled'),
   timeout: document.getElementById('thTimeout'),
   mode: document.getElementById('thMode'),
+  checkPeriod: document.getElementById('thCheckPeriod'),
+  excludedDomains: document.getElementById('thExcludedDomains'),
+  smartRulesEnabled: document.getElementById('thSmartRulesEnabled'),
+  smartDefaultMode: document.getElementById('thSmartDefaultMode'),
+  smartHeuristicsFallback: document.getElementById('thSmartHeuristicsFallback'),
+  smartPlaceholderDomains: document.getElementById('thSmartPlaceholderDomains'),
+  smartDiscardDomains: document.getElementById('thSmartDiscardDomains'),
   backup: document.getElementById('thBackup'),
   suspendCurrent: document.getElementById('thSuspendCurrent'),
   suspendAll: document.getElementById('thSuspendAll'),
@@ -91,17 +98,48 @@ async function loadThSettings() {
   if (settings) {
     el.enabled.checked = settings.enabled !== false;
     el.timeout.value = String(settings.timeoutMinutes ?? 5);
-    el.mode.value = settings.mode === 'placeholder' ? 'placeholder' : 'discard';
+    el.mode.value = ['placeholder', 'smart', 'discard'].includes(settings.mode) ? settings.mode : 'discard';
+    if (el.checkPeriod) el.checkPeriod.value = ['1', '2', '5'].includes(String(settings.checkPeriodMinutes)) ? String(settings.checkPeriodMinutes) : '1';
+    if (el.excludedDomains) el.excludedDomains.value = Array.isArray(settings.excludedDomains) ? settings.excludedDomains.join('\n') : '';
+    if (el.smartRulesEnabled) el.smartRulesEnabled.checked = settings.smartRulesEnabled === true;
+    if (el.smartDefaultMode) el.smartDefaultMode.value = settings.smartDefaultMode === 'placeholder' ? 'placeholder' : 'discard';
+    if (el.smartHeuristicsFallback) el.smartHeuristicsFallback.checked = settings.smartUseHeuristicsFallback !== false;
+    if (el.smartPlaceholderDomains) el.smartPlaceholderDomains.value = Array.isArray(settings.smartPlaceholderDomains) ? settings.smartPlaceholderDomains.join('\n') : '';
+    if (el.smartDiscardDomains) el.smartDiscardDomains.value = Array.isArray(settings.smartDiscardDomains) ? settings.smartDiscardDomains.join('\n') : '';
   }
 }
 
+function normalizeDomainsInput(value) {
+  return String(value || '')
+    .split('\n')
+    .map((line) => line.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, ''))
+    .filter(Boolean)
+    .filter((line, idx, arr) => arr.indexOf(line) === idx);
+}
+
 function saveThSettings() {
+  const excludedDomains = normalizeDomainsInput(el.excludedDomains?.value);
+  const smartPlaceholderDomains = normalizeDomainsInput(el.smartPlaceholderDomains?.value);
+  let smartDiscardDomains = normalizeDomainsInput(el.smartDiscardDomains?.value);
+  smartDiscardDomains = smartDiscardDomains.filter((d) => !smartPlaceholderDomains.includes(d));
+  if (el.excludedDomains) el.excludedDomains.value = excludedDomains.join('\n');
+  if (el.smartPlaceholderDomains) el.smartPlaceholderDomains.value = smartPlaceholderDomains.join('\n');
+  if (el.smartDiscardDomains) el.smartDiscardDomains.value = smartDiscardDomains.join('\n');
   chrome.storage.local.set({
     settings: {
       enabled: el.enabled.checked,
       timeoutMinutes: parseInt(el.timeout.value, 10) || 5,
-      mode: el.mode.value === 'placeholder' ? 'placeholder' : 'discard',
+      checkPeriodMinutes: parseInt(el.checkPeriod?.value, 10) || 1,
+      excludedDomains,
+      smartRulesEnabled: el.smartRulesEnabled ? el.smartRulesEnabled.checked : false,
+      smartDefaultMode: el.smartDefaultMode?.value === 'placeholder' ? 'placeholder' : 'discard',
+      smartUseHeuristicsFallback: el.smartHeuristicsFallback ? el.smartHeuristicsFallback.checked : true,
+      smartPlaceholderDomains,
+      smartDiscardDomains,
+      mode: ['placeholder', 'smart', 'discard'].includes(el.mode.value) ? el.mode.value : 'discard',
     },
+  }, () => {
+    chrome.runtime.sendMessage({ type: 'settingsUpdated' }, () => {});
   });
 }
 
@@ -115,6 +153,13 @@ async function refreshThStats() {
 el.enabled.addEventListener('change', saveThSettings);
 el.timeout.addEventListener('change', saveThSettings);
 el.mode.addEventListener('change', saveThSettings);
+if (el.checkPeriod) el.checkPeriod.addEventListener('change', saveThSettings);
+if (el.excludedDomains) el.excludedDomains.addEventListener('blur', saveThSettings);
+if (el.smartRulesEnabled) el.smartRulesEnabled.addEventListener('change', saveThSettings);
+if (el.smartDefaultMode) el.smartDefaultMode.addEventListener('change', saveThSettings);
+if (el.smartHeuristicsFallback) el.smartHeuristicsFallback.addEventListener('change', saveThSettings);
+if (el.smartPlaceholderDomains) el.smartPlaceholderDomains.addEventListener('blur', saveThSettings);
+if (el.smartDiscardDomains) el.smartDiscardDomains.addEventListener('blur', saveThSettings);
 
 el.backup.addEventListener('click', async () => {
   el.backup.disabled = true;

@@ -6,6 +6,7 @@
 const ALARM_CHECK_NAME = 'tabHibernateCheck';
 const ALARM_CHECK_PERIOD_MINUTES = 1;
 const INACTIVITY_MINUTES = 5;
+const CHECK_PERIOD_OPTIONS = [1, 2, 5];
 /** Keep backup-by-date keys only for the last N days; remove older ones. */
 const BACKUP_RETENTION_DAYS = 30;
 
@@ -89,11 +90,80 @@ async function isTabEligibleForSuspend(tab, { allowActive = false } = {}) {
 async function getSettings() {
   const { settings } = await chrome.storage.local.get('settings');
   const s = settings || {};
+  const parsedTimeout = s.timeoutMinutes != null ? Number(s.timeoutMinutes) || INACTIVITY_MINUTES : INACTIVITY_MINUTES;
+  const parsedPeriod = CHECK_PERIOD_OPTIONS.includes(Number(s.checkPeriodMinutes))
+    ? Number(s.checkPeriodMinutes)
+    : ALARM_CHECK_PERIOD_MINUTES;
+  const excludedDomains = parseDomainList(s.excludedDomains);
+  const smartPlaceholderDomains = parseDomainList(s.smartPlaceholderDomains);
+  const smartDiscardDomains = parseDomainList(s.smartDiscardDomains);
   return {
     enabled: s.enabled !== false,
-    timeoutMinutes: s.timeoutMinutes != null ? Number(s.timeoutMinutes) || INACTIVITY_MINUTES : INACTIVITY_MINUTES,
-    mode: s.mode === 'placeholder' ? 'placeholder' : 'discard',
+    timeoutMinutes: parsedTimeout,
+    checkPeriodMinutes: parsedPeriod,
+    excludedDomains,
+    smartRulesEnabled: s.smartRulesEnabled === true,
+    smartDefaultMode: s.smartDefaultMode === 'placeholder' ? 'placeholder' : 'discard',
+    smartUseHeuristicsFallback: s.smartUseHeuristicsFallback !== false,
+    smartPlaceholderDomains,
+    smartDiscardDomains,
+    mode: ['placeholder', 'smart', 'discard'].includes(s.mode) ? s.mode : 'discard',
   };
+}
+
+function normalizeDomain(value) {
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/^https?:\/\//, '')
+    .replace(/\/.*$/, '');
+}
+
+function parseDomainList(list) {
+  if (!Array.isArray(list)) return [];
+  const out = [];
+  const seen = new Set();
+  for (const value of list) {
+    const domain = normalizeDomain(value);
+    if (!domain || seen.has(domain)) continue;
+    seen.add(domain);
+    out.push(domain);
+  }
+  return out;
+}
+
+function getTabHost(tab) {
+  try {
+    return new URL(String(tab?.url || '')).hostname.toLowerCase();
+  } catch (e) {
+    return '';
+  }
+}
+
+function matchesDomain(host, domains) {
+  if (!host || !Array.isArray(domains) || domains.length === 0) return false;
+  return domains.some((d) => host === d || host.endsWith(`.${d}`));
+}
+
+function isTabExcludedByDomain(tab, excludedDomains) {
+  const host = getTabHost(tab);
+  return matchesDomain(host, excludedDomains);
+}
+
+function getSuspendModeForTab(settings, tab) {
+  if (settings.mode !== 'smart') return settings.mode;
+  const host = getTabHost(tab);
+  if (settings.smartRulesEnabled) {
+    if (matchesDomain(host, settings.smartPlaceholderDomains)) return 'placeholder';
+    if (matchesDomain(host, settings.smartDiscardDomains)) return 'discard';
+    if (!settings.smartUseHeuristicsFallback) return settings.smartDefaultMode;
+  }
+  const url = String(tab?.url || '');
+  const title = String(tab?.title || '').toLowerCase();
+  const hasQuery = url.includes('?');
+  const webAppHint = /(mail|calendar|docs|drive|notion|figma|slack|telegram|discord|jira|github)/.test(url.toLowerCase())
+    || /(dashboard|inbox|workspace|crm|project)/.test(title);
+  return hasQuery || webAppHint ? 'placeholder' : settings.smartDefaultMode;
 }
 
 /** Increment "suspended today" counter; badge is updated from current placeholder count. */
@@ -202,16 +272,37 @@ function hasRestorableUrl(url) {
 /** Макс длина закодированного URL в query (u param). Слишком длинные — без fallback при потере storage. */
 const PLACEHOLDER_URL_PARAM_MAX = 1900;
 
-async function suspendPlaceholder(tabId, url, title) {
+async function toDataUrlFromImageUrl(url) {
+  if (!url || (!url.startsWith('http://') && !url.startsWith('https://') && !url.startsWith('data:'))) return '';
+  if (url.startsWith('data:')) return url;
+  try {
+    const res = await fetch(url, { credentials: 'omit', mode: 'cors' });
+    if (!res.ok) return '';
+    const blob = await res.blob();
+    if (!blob || !blob.type || !blob.type.startsWith('image/')) return '';
+    const dataUrl = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(typeof reader.result === 'string' ? reader.result : '');
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+    return typeof dataUrl === 'string' ? dataUrl : '';
+  } catch (e) {
+    return '';
+  }
+}
+
+async function suspendPlaceholder(tabId, url, title, favIconUrl) {
   try {
     await chrome.tabs.get(tabId);
   } catch (e) {
     return false;
   }
   const safeUrl = url || '';
+  const favIconDataUrl = await toDataUrlFromImageUrl(favIconUrl || '');
   const restoreKey = `suspended_${tabId}`;
   await chrome.storage.local.set({
-    [restoreKey]: { url: safeUrl, title: title || '', tabId },
+    [restoreKey]: { url: safeUrl, title: title || '', favIconUrl: favIconDataUrl || favIconUrl || '', tabId },
   });
   try {
     const folderId = await getOrCreateSuspendedRecoveryFolder();
@@ -374,6 +465,25 @@ async function pruneStaleTabIds() {
   }
 }
 
+async function pruneStaleSuspendedEntries() {
+  try {
+    const [all, tabs] = await Promise.all([
+      chrome.storage.local.get(null),
+      chrome.tabs.query({}),
+    ]);
+    const aliveIds = new Set(tabs.map((t) => t.id));
+    const keysToRemove = [];
+    for (const key of Object.keys(all)) {
+      if (!key.startsWith('suspended_')) continue;
+      const id = Number(key.slice('suspended_'.length));
+      if (!Number.isInteger(id) || !aliveIds.has(id)) keysToRemove.push(key);
+    }
+    if (keysToRemove.length > 0) await chrome.storage.local.remove(keysToRemove);
+  } catch (e) {
+    console.warn('[TabHibernate] pruneStaleSuspendedEntries failed', e);
+  }
+}
+
 /** Задержка между операциями при массовом suspend — снижает риск зависания браузера. */
 const SUSPEND_BATCH_DELAY_MS = 80;
 
@@ -386,15 +496,17 @@ async function runSuspendAllNow() {
   let suspended = 0;
   for (const tab of tabs) {
     if (!(await isTabEligibleForSuspend(tab))) continue;
-    if (settings.mode === 'placeholder' && !hasRestorableUrl(tab.url)) continue;
-    if (settings.mode === 'discard') {
+    if (isTabExcludedByDomain(tab, settings.excludedDomains)) continue;
+    const mode = getSuspendModeForTab(settings, tab);
+    if (mode === 'placeholder' && !hasRestorableUrl(tab.url)) continue;
+    if (mode === 'discard') {
       const ok = await suspendDiscard(tab.id);
       if (ok) {
         toBackup.push({ url: tab.url, title: tab.title });
         suspended++;
       }
     } else {
-      const ok = await suspendPlaceholder(tab.id, tab.url, tab.title);
+      const ok = await suspendPlaceholder(tab.id, tab.url, tab.title, tab.favIconUrl);
       if (ok) {
         toBackup.push({ url: tab.url, title: tab.title });
         suspended++;
@@ -614,7 +726,7 @@ async function runRecoverLostSuspended() {
     const params = new URLSearchParams({ tabId: String(tab.id) });
     if (url && encodeURIComponent(url).length <= PLACEHOLDER_URL_PARAM_MAX) params.set('u', url);
     const suspendedUrl = chrome.runtime.getURL('suspended.html') + '?' + params.toString();
-    await chrome.storage.local.set({ [`suspended_${tab.id}`]: { url, title, tabId: tab.id } });
+    await chrome.storage.local.set({ [`suspended_${tab.id}`]: { url, title, favIconUrl: '', tabId: tab.id } });
     await chrome.tabs.update(tab.id, { url: suspendedUrl });
     if (items.length > 10) await new Promise((r) => setTimeout(r, RECOVER_DELAY_MS));
   }
@@ -633,7 +745,7 @@ async function runOpenUrlsAsPlaceholders(items) {
     const params = new URLSearchParams({ tabId: String(tab.id) });
     if (url && encodeURIComponent(url).length <= PLACEHOLDER_URL_PARAM_MAX) params.set('u', url);
     const suspendedUrl = chrome.runtime.getURL('suspended.html') + '?' + params.toString();
-    await chrome.storage.local.set({ [`suspended_${tab.id}`]: { url, title: title || '', tabId: tab.id } });
+    await chrome.storage.local.set({ [`suspended_${tab.id}`]: { url, title: title || '', favIconUrl: '', tabId: tab.id } });
     await chrome.tabs.update(tab.id, { url: suspendedUrl });
     if (valid.length > 10) await new Promise((r) => setTimeout(r, RECOVER_DELAY_MS));
   }
@@ -645,13 +757,13 @@ async function runOpenUrlsAsPlaceholders(items) {
 async function onAlarmCheck() {
   try {
     await chrome.storage.local.set({ lastAlarmRun: Date.now() });
-    await ensureAlarm();
-
     await getStoredState();
     await pruneStaleTabIds();
+    await pruneStaleSuspendedEntries();
     await pruneOldBackups();
 
     const settings = await getSettings();
+    await ensureAlarm(settings.checkPeriodMinutes);
     if (!settings.enabled) return;
 
     const tabs = await chrome.tabs.query({});
@@ -669,14 +781,16 @@ async function onAlarmCheck() {
     let suspendedThisRun = 0;
     for (const tab of tabs) {
       if (!(await isTabEligibleForSuspend(tab))) continue;
+      if (isTabExcludedByDomain(tab, settings.excludedDomains)) continue;
       if (!isTabInactive(tab.id, settings.timeoutMinutes)) continue;
-      if (settings.mode === 'placeholder' && !hasRestorableUrl(tab.url)) continue;
+      const mode = getSuspendModeForTab(settings, tab);
+      if (mode === 'placeholder' && !hasRestorableUrl(tab.url)) continue;
 
-      if (settings.mode === 'discard') {
+      if (mode === 'discard') {
         const ok = await suspendDiscard(tab.id);
         if (ok) { toBackup.push({ url: tab.url, title: tab.title }); suspendedThisRun++; }
       } else {
-        const ok = await suspendPlaceholder(tab.id, tab.url, tab.title);
+        const ok = await suspendPlaceholder(tab.id, tab.url, tab.title, tab.favIconUrl);
         if (ok) { toBackup.push({ url: tab.url, title: tab.title }); suspendedThisRun++; }
       }
       if (suspendedThisRun > 0 && suspendedThisRun % 15 === 0) {
@@ -721,9 +835,10 @@ async function onAlarmCheck() {
 }
 
 /** Create/update periodic alarm; call on startup and after each check. */
-async function ensureAlarm() {
+async function ensureAlarm(periodMinutes = ALARM_CHECK_PERIOD_MINUTES) {
   try {
-    await chrome.alarms.create(ALARM_CHECK_NAME, { periodInMinutes: ALARM_CHECK_PERIOD_MINUTES });
+    const period = CHECK_PERIOD_OPTIONS.includes(Number(periodMinutes)) ? Number(periodMinutes) : ALARM_CHECK_PERIOD_MINUTES;
+    await chrome.alarms.create(ALARM_CHECK_NAME, { periodInMinutes: period });
   } catch (e) {
     console.warn('[TabHibernate] alarm create', e);
   }
@@ -746,7 +861,7 @@ async function migrateOrphanedSuspendedTabs() {
         if (!tabId || !fallback) continue;
         if (u.origin === ourOrigin) continue;
         const newUrl = chrome.runtime.getURL('suspended.html') + '?tabId=' + tab.id + '&u=' + encodeURIComponent(fallback);
-        await chrome.storage.local.set({ [`suspended_${tab.id}`]: { url: fallback, title: '', tabId: tab.id } });
+        await chrome.storage.local.set({ [`suspended_${tab.id}`]: { url: fallback, title: '', favIconUrl: '', tabId: tab.id } });
         await chrome.tabs.update(tab.id, { url: newUrl });
       } catch (e) {
         console.warn('[TabHibernate] migrate tab failed', tab.id, e);
@@ -764,8 +879,10 @@ async function initOnStartup() {
     console.warn('[TabHibernate] migrateOrphanedSuspendedTabs failed', e);
   }
   try {
-    await ensureAlarm();
+    const settings = await getSettings();
+    await ensureAlarm(settings.checkPeriodMinutes);
     await getStoredState();
+    await pruneStaleSuspendedEntries();
     const tabs = await chrome.tabs.query({});
     const now = Date.now();
     for (const tab of tabs) {
@@ -806,6 +923,13 @@ chrome.runtime.onInstalled.addListener(async (details) => {
         settings: {
           enabled: true,
           timeoutMinutes: INACTIVITY_MINUTES,
+          checkPeriodMinutes: ALARM_CHECK_PERIOD_MINUTES,
+          excludedDomains: [],
+          smartRulesEnabled: false,
+          smartDefaultMode: 'discard',
+          smartUseHeuristicsFallback: true,
+          smartPlaceholderDomains: [],
+          smartDiscardDomains: [],
           mode: 'placeholder',
         },
       });
@@ -973,6 +1097,10 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     safeSend({ ok: true });
     return true;
   }
+  if (msg.type === 'settingsUpdated') {
+    getSettings().then((s) => ensureAlarm(s.checkPeriodMinutes)).then(() => safeSend({ ok: true })).catch(() => safeSend({ ok: false }));
+    return true;
+  }
   if (msg.type === 'removeSuspendedBookmark') {
     removeSuspendedBookmark(msg.url).then(() => safeSend({ ok: true })).catch(() => safeSend({ ok: false }));
     return true;
@@ -988,12 +1116,16 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           return safeSend({ ok: false, reason });
         }
         const settings = await getSettings();
-        if (settings.mode === 'placeholder' && !hasRestorableUrl(tab.url)) {
+        if (isTabExcludedByDomain(tab, settings.excludedDomains)) {
+          return safeSend({ ok: false, reason: 'This domain is excluded in settings' });
+        }
+        const mode = getSuspendModeForTab(settings, tab);
+        if (mode === 'placeholder' && !hasRestorableUrl(tab.url)) {
           return safeSend({ ok: false, reason: 'Cannot suspend: page has no restorable URL' });
         }
-        const ok = settings.mode === 'discard'
+        const ok = mode === 'discard'
           ? await suspendDiscard(tab.id)
-          : await suspendPlaceholder(tab.id, tab.url, tab.title);
+          : await suspendPlaceholder(tab.id, tab.url, tab.title, tab.favIconUrl);
         safeSend({ ok });
       } catch (e) {
         console.warn('[TabHibernate] suspendCurrentTab failed', e);
@@ -1140,6 +1272,22 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     return true;
   }
   return false;
+});
+
+chrome.commands?.onCommand.addListener((command) => {
+  if (command !== 'suspend-current-tab') return;
+  chrome.tabs.query({ active: true, currentWindow: true }).then(async ([tab]) => {
+    if (!tab || !tab.id) return;
+    if (!(await isTabEligibleForSuspend(tab, { allowActive: true }))) return;
+    const settings = await getSettings();
+    if (isTabExcludedByDomain(tab, settings.excludedDomains)) return;
+    const mode = getSuspendModeForTab(settings, tab);
+    if (mode === 'placeholder' && !hasRestorableUrl(tab.url)) return;
+    if (mode === 'discard') await suspendDiscard(tab.id);
+    else await suspendPlaceholder(tab.id, tab.url, tab.title, tab.favIconUrl);
+  }).catch((e) => {
+    console.warn('[TabHibernate] command suspend-current-tab failed', e);
+  });
 });
 
 // Init on first SW run (after sleep)
