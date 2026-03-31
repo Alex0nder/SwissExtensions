@@ -3,7 +3,7 @@
   "name": "Site Blocker",
   "version": "1.0.0",
   "description": "Блокировка отвлекающих сайтов. Минималистичный блокировщик.",
-  "permissions": ["storage", "declarativeNetRequest", "history"],
+  "permissions": ["storage", "declarativeNetRequest", "history", "alarms"],
   "host_permissions": ["<all_urls>"],
   "action": {
     "default_popup": "popup.html",

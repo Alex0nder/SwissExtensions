@@ -7,6 +7,18 @@ const inputEl = document.getElementById('input');
 const btnAdd = document.getElementById('btnAdd');
 const listEl = document.getElementById('list');
 const emptyEl = document.getElementById('empty');
+const whitelistInputEl = document.getElementById('whitelistInput');
+const btnWhitelistAdd = document.getElementById('btnWhitelistAdd');
+const whitelistListEl = document.getElementById('whitelistList');
+const whitelistEmptyEl = document.getElementById('whitelistEmpty');
+const scheduleToggleEl = document.getElementById('scheduleToggle');
+const scheduleFromEl = document.getElementById('scheduleFrom');
+const scheduleToEl = document.getElementById('scheduleTo');
+const scheduleDaysEl = document.getElementById('scheduleDays');
+const btnExport = document.getElementById('btnExport');
+const btnImport = document.getElementById('btnImport');
+const importFileEl = document.getElementById('importFile');
+const DEFAULT_SCHEDULE = { enabled: false, from: '09:00', to: '18:00', days: [1, 2, 3, 4, 5] };
 
 function normalizeDomain(input) {
   let s = (input || '').trim().toLowerCase();
@@ -19,7 +31,7 @@ function normalizeDomain(input) {
   }
 }
 
-function render(blocked, enabled) {
+function render(blocked, whitelist, enabled, schedule, scheduleActive) {
   toggleEl.classList.toggle('on', enabled);
   toggleEl.setAttribute('aria-pressed', enabled);
   listEl.innerHTML = '';
@@ -36,6 +48,33 @@ function render(blocked, enabled) {
   listEl.querySelectorAll('.remove').forEach((btn) => {
     btn.addEventListener('click', () => removeDomain(btn.dataset.domain));
   });
+  whitelistListEl.innerHTML = '';
+  if (!whitelist || whitelist.length === 0) {
+    whitelistEmptyEl.style.display = 'block';
+  } else {
+    whitelistEmptyEl.style.display = 'none';
+    whitelist.forEach((domain) => {
+      const li = document.createElement('li');
+      li.innerHTML = `<span class="domain">${escapeHtml(domain)}</span><button type="button" class="remove-wl" data-domain="${escapeHtml(domain)}">Удалить</button>`;
+      whitelistListEl.appendChild(li);
+    });
+    whitelistListEl.querySelectorAll('.remove-wl').forEach((btn) => {
+      btn.addEventListener('click', () => removeWhitelistDomain(btn.dataset.domain));
+    });
+  }
+  const safeSchedule = normalizeSchedule(schedule);
+  scheduleToggleEl.classList.toggle('on', safeSchedule.enabled);
+  scheduleToggleEl.setAttribute('aria-pressed', safeSchedule.enabled);
+  scheduleFromEl.value = safeSchedule.from;
+  scheduleToEl.value = safeSchedule.to;
+  scheduleDaysEl.querySelectorAll('input[data-day]').forEach((cb) => {
+    cb.checked = safeSchedule.days.includes(Number(cb.dataset.day));
+  });
+  const statusEl = document.getElementById('blockerStatus');
+  if (statusEl) {
+    if (!enabled) statusEl.textContent = 'Блокировка выключена вручную';
+    else if (safeSchedule.enabled) statusEl.textContent = scheduleActive === false ? 'Сейчас вне расписания' : 'Сейчас в окне расписания';
+  }
 }
 
 function escapeHtml(s) {
@@ -53,24 +92,85 @@ function addDomain() {
     const blocked = data.blocked || [];
     if (blocked.includes(domain)) return;
     blocked.push(domain);
-    chrome.storage.local.set({ blocked }, () => render(blocked, toggleEl.classList.contains('on')));
+    chrome.storage.local.get(['whitelist', 'enabled', 'schedule', 'scheduleStateActive'], (meta) => {
+      chrome.storage.local.set({ blocked }, () => render(blocked, meta.whitelist || [], meta.enabled !== false, meta.schedule || DEFAULT_SCHEDULE, meta.scheduleStateActive !== false));
+    });
   });
 }
 
 function removeDomain(domain) {
   chrome.storage.local.get(['blocked'], (data) => {
     const blocked = (data.blocked || []).filter((d) => d !== domain);
-    chrome.storage.local.set({ blocked }, () => render(blocked, toggleEl.classList.contains('on')));
+    chrome.storage.local.get(['whitelist', 'enabled', 'schedule', 'scheduleStateActive'], (meta) => {
+      chrome.storage.local.set({ blocked }, () => render(blocked, meta.whitelist || [], meta.enabled !== false, meta.schedule || DEFAULT_SCHEDULE, meta.scheduleStateActive !== false));
+    });
   });
+}
+
+function addWhitelistDomain() {
+  const domain = normalizeDomain(whitelistInputEl.value);
+  if (!domain) return;
+  whitelistInputEl.value = '';
+  chrome.storage.local.get(['whitelist'], (data) => {
+    const whitelist = data.whitelist || [];
+    if (whitelist.includes(domain)) return;
+    whitelist.push(domain);
+    chrome.storage.local.get(['blocked', 'enabled', 'schedule', 'scheduleStateActive'], (meta) => {
+      chrome.storage.local.set({ whitelist }, () => render(meta.blocked || [], whitelist, meta.enabled !== false, meta.schedule || DEFAULT_SCHEDULE, meta.scheduleStateActive !== false));
+    });
+  });
+}
+
+function removeWhitelistDomain(domain) {
+  chrome.storage.local.get(['whitelist'], (data) => {
+    const whitelist = (data.whitelist || []).filter((d) => d !== domain);
+    chrome.storage.local.get(['blocked', 'enabled', 'schedule', 'scheduleStateActive'], (meta) => {
+      chrome.storage.local.set({ whitelist }, () => render(meta.blocked || [], whitelist, meta.enabled !== false, meta.schedule || DEFAULT_SCHEDULE, meta.scheduleStateActive !== false));
+    });
+  });
+}
+
+function normalizeSchedule(raw) {
+  const source = raw && typeof raw === 'object' ? raw : DEFAULT_SCHEDULE;
+  const days = Array.isArray(source.days) ? source.days.map((d) => Number(d)).filter((d) => d >= 0 && d <= 6) : DEFAULT_SCHEDULE.days.slice();
+  return {
+    enabled: source.enabled === true,
+    from: typeof source.from === 'string' ? source.from : DEFAULT_SCHEDULE.from,
+    to: typeof source.to === 'string' ? source.to : DEFAULT_SCHEDULE.to,
+    days: [...new Set(days)],
+  };
+}
+
+function saveScheduleFromUi() {
+  const days = [...scheduleDaysEl.querySelectorAll('input[data-day]:checked')].map((cb) => Number(cb.dataset.day));
+  const schedule = normalizeSchedule({
+    enabled: scheduleToggleEl.classList.contains('on'),
+    from: scheduleFromEl.value || DEFAULT_SCHEDULE.from,
+    to: scheduleToEl.value || DEFAULT_SCHEDULE.to,
+    days,
+  });
+  chrome.storage.local.set({ schedule });
 }
 
 toggleEl.addEventListener('click', () => {
   const enabled = !toggleEl.classList.contains('on');
   chrome.storage.local.get(['blocked'], (data) => {
     const blocked = data.blocked || [];
-    chrome.storage.local.set({ enabled }, () => render(blocked, enabled));
+    chrome.storage.local.get(['whitelist', 'schedule', 'scheduleStateActive'], (meta) => {
+      chrome.storage.local.set({ enabled }, () => render(blocked, meta.whitelist || [], enabled, meta.schedule || DEFAULT_SCHEDULE, meta.scheduleStateActive !== false));
+    });
   });
 });
+
+scheduleToggleEl.addEventListener('click', () => {
+  const enabled = !scheduleToggleEl.classList.contains('on');
+  scheduleToggleEl.classList.toggle('on', enabled);
+  scheduleToggleEl.setAttribute('aria-pressed', String(enabled));
+  saveScheduleFromUi();
+});
+scheduleFromEl.addEventListener('change', saveScheduleFromUi);
+scheduleToEl.addEventListener('change', saveScheduleFromUi);
+scheduleDaysEl.querySelectorAll('input[data-day]').forEach((cb) => cb.addEventListener('change', saveScheduleFromUi));
 
 function hostMatchesBlocked(hostname, blockedDomains) {
   if (!hostname) return false;
@@ -120,9 +220,60 @@ btnAdd.addEventListener('click', addDomain);
 inputEl.addEventListener('keydown', (e) => {
   if (e.key === 'Enter') addDomain();
 });
+btnWhitelistAdd.addEventListener('click', addWhitelistDomain);
+whitelistInputEl.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') addWhitelistDomain();
+});
 
-chrome.storage.local.get(['blocked', 'enabled'], (data) => {
+btnExport.addEventListener('click', async () => {
+  const payload = await chrome.storage.local.get(['blocked', 'whitelist', 'enabled', 'schedule']);
+  const blob = new Blob([JSON.stringify({
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    blocked: payload.blocked || [],
+    whitelist: payload.whitelist || [],
+    enabled: payload.enabled !== false,
+    schedule: normalizeSchedule(payload.schedule),
+  }, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `site-blocker-config-${new Date().toISOString().slice(0, 10)}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+});
+
+btnImport.addEventListener('click', () => importFileEl.click());
+importFileEl.addEventListener('change', async () => {
+  const file = importFileEl.files && importFileEl.files[0];
+  if (!file) return;
+  const statusEl = document.getElementById('blockerStatus');
+  try {
+    const text = await file.text();
+    const json = JSON.parse(text);
+    const blocked = Array.isArray(json.blocked) ? json.blocked.map(normalizeDomain).filter(Boolean) : [];
+    const whitelist = Array.isArray(json.whitelist) ? json.whitelist.map(normalizeDomain).filter(Boolean) : [];
+    const enabled = json.enabled !== false;
+    const schedule = normalizeSchedule(json.schedule);
+    await chrome.storage.local.set({
+      blocked: [...new Set(blocked)],
+      whitelist: [...new Set(whitelist)],
+      enabled,
+      schedule,
+    });
+    const snap = await chrome.storage.local.get(['blocked', 'whitelist', 'enabled', 'schedule', 'scheduleStateActive']);
+    render(snap.blocked || [], snap.whitelist || [], snap.enabled !== false, snap.schedule || DEFAULT_SCHEDULE, snap.scheduleStateActive !== false);
+    statusEl.textContent = 'Импорт выполнен';
+  } catch (e) {
+    statusEl.textContent = 'Ошибка импорта JSON';
+  } finally {
+    importFileEl.value = '';
+  }
+});
+
+chrome.storage.local.get(['blocked', 'whitelist', 'enabled', 'schedule', 'scheduleStateActive'], (data) => {
   const blocked = data.blocked || [];
+  const whitelist = data.whitelist || [];
   const enabled = data.enabled !== false;
-  render(blocked, enabled);
+  render(blocked, whitelist, enabled, data.schedule || DEFAULT_SCHEDULE, data.scheduleStateActive !== false);
 });
