@@ -1118,7 +1118,10 @@ async function siteBlockerApplyRules() {
   const scheduleActive = sbIsInSchedule(normalizedSchedule);
   await chrome.storage.local.set({ scheduleStateActive: scheduleActive, schedule: normalizedSchedule });
 
-  if (!enabled) {
+  /** Блокировка «активна» только при master-switch и (если расписание вкл.) внутри окна — и свой список, и NetFilter. */
+  const blockingWindowActive = enabled && scheduleActive;
+
+  if (!blockingWindowActive) {
     try {
       await chrome.declarativeNetRequest.updateEnabledRulesets({ disableRulesetIds: NETFILTER_RULESET_IDS });
     } catch (e) {
@@ -1134,7 +1137,7 @@ async function siteBlockerApplyRules() {
     console.warn('[SiteBlocker] enable NetFilter rulesets failed', e);
   }
 
-  if (!blocked.length || !scheduleActive) {
+  if (!blocked.length) {
     if (toRemove.length) await chrome.declarativeNetRequest.updateDynamicRules({ removeRuleIds: toRemove });
     return;
   }
@@ -1446,3 +1449,4 @@ chrome.commands?.onCommand.addListener((command) => {
 
 // Init on first SW run (after sleep)
 initOnStartup();
+siteBlockerApplyRules().catch((e) => console.warn('[SiteBlocker] apply on SW wake failed', e));

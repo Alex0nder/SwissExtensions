@@ -213,6 +213,22 @@
       border-radius: var(--th-radius);
       cursor: pointer;
     }
+    .sdc-presets { margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--th-border-subtle); }
+    .sdc-presets-title { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--th-text-muted); margin-bottom: 8px; }
+    .sdc-preset-row { display: flex; flex-wrap: wrap; gap: 6px; }
+    .sdc-preset-row button {
+      flex: 1;
+      min-width: 68px;
+      padding: 8px 10px;
+      font-size: 10px;
+      cursor: pointer;
+      border: 1px solid var(--th-border);
+      border-radius: var(--th-radius);
+      background: var(--th-bg-card);
+      color: var(--th-text-primary);
+      font-family: inherit;
+    }
+    .sdc-preset-row button:hover { background: var(--th-bg-elevated); }
   </style>
 </head>
 <body>
@@ -465,7 +481,7 @@
         <input type="file" id="blockerImportFile" accept="application/json" style="display:none;">
       </div>
       <div id="blockerStatus" class="hint" style="margin-top: 8px;"></div>
-      <p class="hint" style="margin-top: 4px;">Домен без протокола. В Swiss дополнительно действуют встроенные списки NetFilter.</p>
+      <p class="hint" style="margin-top: 4px;">Домен без протокола. Встроенные списки NetFilter включаются вместе с блокировкой (вне расписания — всё выкл.).</p>
     </div>
   </div>
 
@@ -475,15 +491,26 @@
       <span class="header-title">Site Data Clear</span>
     </div>
     <div class="panel-content">
-      <h2>Site Data Clear</h2>
-      <p class="hint">Clear cookies and storage for this site</p>
-      <div class="clear-options">
-        <label><input type="checkbox" id="clearCookies" checked> Cookies</label>
-        <label><input type="checkbox" id="clearLocal" checked> localStorage</label>
-        <label><input type="checkbox" id="clearSession" checked> sessionStorage</label>
+      <h2>Очистка данных сайта</h2>
+      <p class="hint">Формат настроек как в расширении Site Data Clear (ключ sdcOptions).</p>
+      <div class="sdc-presets">
+        <div class="sdc-presets-title">Пресеты</div>
+        <div class="sdc-preset-row">
+          <button type="button" data-sdc-preset="all">Всё</button>
+          <button type="button" data-sdc-preset="cookies">Cookies</button>
+          <button type="button" data-sdc-preset="storage">Хранилища</button>
+          <button type="button" data-sdc-preset="session">Сессия</button>
+        </div>
       </div>
-      <button id="btnClear">Clear for this site</button>
+      <div class="clear-options">
+        <label><input type="checkbox" id="optCookies" checked> Cookies</label>
+        <label><input type="checkbox" id="optLocalStorage" checked> localStorage</label>
+        <label><input type="checkbox" id="optSessionStorage" checked> sessionStorage</label>
+        <label><input type="checkbox" id="optCacheStorage" checked> Cache storage (SW)</label>
+      </div>
+      <button type="button" id="btnClearSite">Очистить для этого сайта</button>
       <div id="clearStatus"></div>
+      <p class="hint" style="margin-top: 10px;">Выбор сохраняется. Системные и служебные страницы недоступны.</p>
     </div>
   </div>
 
