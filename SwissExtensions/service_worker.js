@@ -9,6 +9,8 @@ const INACTIVITY_MINUTES = 5;
 const CHECK_PERIOD_OPTIONS = [1, 2, 5];
 /** Keep backup-by-date keys only for the last N days; remove older ones. */
 const BACKUP_RETENTION_DAYS = 30;
+/** Alarm: пересчёт правил пользовательского списка Site Blocker по расписанию. */
+const SITE_BLOCKER_SCHEDULE_ALARM = 'swissSiteBlockerSchedule';
 
 // Last activity per tabId (in memory + synced on messages). After SW sleep, memory is empty — restore from storage at start of onAlarmCheck.
 let lastActivityByTab = new Map();
@@ -61,6 +63,24 @@ function isPlaceholderTabUrl(url) {
   } catch (e) {
     return false;
   }
+}
+
+/** Понятные сообщения об ошибках захвата страницы (как в PdfExtensions). */
+function formatSwissCaptureError(e) {
+  const m = (e && e.message) || String(e);
+  const lower = m.toLowerCase();
+  if (lower.includes('no active tab')) return 'Нет активной вкладки.';
+  if (lower.includes('cannot access') || lower.includes('chrome://')) {
+    return 'Эту страницу нельзя сканировать (системная или с ограничениями Chrome).';
+  }
+  if (lower.includes('chrome-extension://')) return 'Страницы расширений сканировать нельзя.';
+  if (lower.includes('could not establish connection') || lower.includes('receiving end does not exist')) {
+    return 'Не удалось подключиться к странице. Обновите вкладку и попробуйте снова.';
+  }
+  if (lower.includes('capturevisible') || lower.includes('cannot capture')) {
+    return 'Снимок вкладки недоступен (страница или окно в неподходящем состоянии).';
+  }
+  return m.length > 160 ? `${m.slice(0, 157)}…` : m;
 }
 
 /** Tab в группе (Chrome Tab Groups): groupId !== -1. */
@@ -946,6 +966,7 @@ async function initOnStartup() {
     }
     await persistLastActivity();
     await updateBadge();
+    await chrome.alarms.create(SITE_BLOCKER_SCHEDULE_ALARM, { periodInMinutes: 1 }).catch(() => {});
   } catch (e) {
     console.warn('[TabHibernate] initOnStartup failed', e);
   }
@@ -1001,6 +1022,7 @@ chrome.runtime.onInstalled.addListener(async (details) => {
 
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === ALARM_CHECK_NAME) onAlarmCheck();
+  if (alarm.name === SITE_BLOCKER_SCHEDULE_ALARM) siteBlockerApplyRules();
 });
 
 chrome.tabs.onActivated.addListener((activeInfo) => {
@@ -1030,22 +1052,73 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
   if (areaName === 'local' && changes.closedAndSaved) updateBadge();
 });
 
-/** Site Blocker: rulesets (ads, trackers) + user domain list. */
+/** Site Blocker: static rulesets + пользовательский список (расписание и whitelist — как в standalone SiteBlocker). */
 const SITE_BLOCKER_RULE_ID_START = 10000;
 const NETFILTER_RULESET_IDS = ['ruleset_1', 'ruleset_2', 'ruleset_3', 'ruleset_4', 'ruleset_5', 'ruleset_6'];
+const SB_DEFAULT_SCHEDULE = {
+  enabled: false,
+  from: '09:00',
+  to: '18:00',
+  days: [1, 2, 3, 4, 5],
+};
+
+function sbParseHHMM(value) {
+  const m = /^(\d{2}):(\d{2})$/.exec(String(value || '').trim());
+  if (!m) return null;
+  const hh = Number(m[1]);
+  const mm = Number(m[2]);
+  if (!Number.isInteger(hh) || !Number.isInteger(mm) || hh < 0 || hh > 23 || mm < 0 || mm > 59) return null;
+  return hh * 60 + mm;
+}
+
+function sbNormalizeSchedule(input) {
+  const raw = input && typeof input === 'object' ? input : {};
+  const from = typeof raw.from === 'string' ? raw.from : SB_DEFAULT_SCHEDULE.from;
+  const to = typeof raw.to === 'string' ? raw.to : SB_DEFAULT_SCHEDULE.to;
+  const days = Array.isArray(raw.days)
+    ? raw.days.map((d) => Number(d)).filter((d) => Number.isInteger(d) && d >= 0 && d <= 6)
+    : SB_DEFAULT_SCHEDULE.days.slice();
+  return {
+    enabled: raw.enabled === true,
+    from: sbParseHHMM(from) != null ? from : SB_DEFAULT_SCHEDULE.from,
+    to: sbParseHHMM(to) != null ? to : SB_DEFAULT_SCHEDULE.to,
+    days: [...new Set(days)],
+  };
+}
+
+function sbIsInSchedule(schedule, now = new Date()) {
+  if (!schedule.enabled) return true;
+  if (!schedule.days.includes(now.getDay())) return false;
+  const from = sbParseHHMM(schedule.from);
+  const to = sbParseHHMM(schedule.to);
+  if (from == null || to == null) return false;
+  const nowMin = now.getHours() * 60 + now.getMinutes();
+  if (from === to) return true;
+  if (from < to) return nowMin >= from && nowMin < to;
+  return nowMin >= from || nowMin < to;
+}
+
+function sbNormDomain(d) {
+  let s = (d || '').trim().toLowerCase();
+  if (!s) return '';
+  try { if (!s.startsWith('http')) s = 'https://' + s; return new URL(s).hostname.replace(/^www\./, '') || ''; } catch { return s.replace(/^www\./, '').split('/')[0].split('?')[0]; }
+}
 
 async function siteBlockerApplyRules() {
-  const { blocked = [], enabled = true } = await chrome.storage.local.get(['blocked', 'enabled']);
+  const {
+    blocked = [],
+    whitelist = [],
+    enabled = true,
+    schedule = SB_DEFAULT_SCHEDULE,
+  } = await chrome.storage.local.get(['blocked', 'whitelist', 'enabled', 'schedule']);
   const existing = await chrome.declarativeNetRequest.getDynamicRules();
   const toRemove = existing.map((r) => r.id).filter((id) => id >= SITE_BLOCKER_RULE_ID_START);
 
-  if (enabled) {
-    try {
-      await chrome.declarativeNetRequest.updateEnabledRulesets({ enableRulesetIds: NETFILTER_RULESET_IDS });
-    } catch (e) {
-      console.warn('[SiteBlocker] enable NetFilter rulesets failed', e);
-    }
-  } else {
+  const normalizedSchedule = sbNormalizeSchedule(schedule);
+  const scheduleActive = sbIsInSchedule(normalizedSchedule);
+  await chrome.storage.local.set({ scheduleStateActive: scheduleActive, schedule: normalizedSchedule });
+
+  if (!enabled) {
     try {
       await chrome.declarativeNetRequest.updateEnabledRulesets({ disableRulesetIds: NETFILTER_RULESET_IDS });
     } catch (e) {
@@ -1055,21 +1128,43 @@ async function siteBlockerApplyRules() {
     return;
   }
 
-  if (!blocked.length) {
+  try {
+    await chrome.declarativeNetRequest.updateEnabledRulesets({ enableRulesetIds: NETFILTER_RULESET_IDS });
+  } catch (e) {
+    console.warn('[SiteBlocker] enable NetFilter rulesets failed', e);
+  }
+
+  if (!blocked.length || !scheduleActive) {
     if (toRemove.length) await chrome.declarativeNetRequest.updateDynamicRules({ removeRuleIds: toRemove });
     return;
   }
-  function norm(d) {
-    let s = (d || '').trim().toLowerCase();
-    if (!s) return '';
-    try { if (!s.startsWith('http')) s = 'https://' + s; return new URL(s).hostname.replace(/^www\./, '') || ''; } catch { return s.replace(/^www\./, '').split('/')[0].split('?')[0]; }
+
+  const whitelistSet = new Set((whitelist || []).map(sbNormDomain).filter(Boolean));
+  const seen = new Set();
+  const domains = blocked.map(sbNormDomain).filter(Boolean).filter((d) => {
+    if (seen.has(d) || whitelistSet.has(d)) return false;
+    seen.add(d);
+    return true;
+  });
+
+  if (!domains.length) {
+    if (toRemove.length) await chrome.declarativeNetRequest.updateDynamicRules({ removeRuleIds: toRemove });
+    return;
   }
-  const domains = [...new Set(blocked.map(norm).filter(Boolean))];
-  const rules = domains.map((d, i) => ({ id: SITE_BLOCKER_RULE_ID_START + i, priority: 1, action: { type: 'block' }, condition: { urlFilter: `*://*.${d}/*`, resourceTypes: ['main_frame', 'sub_frame'] } }));
+
+  const rules = domains.map((d, i) => ({
+    id: SITE_BLOCKER_RULE_ID_START + i,
+    priority: 1,
+    action: { type: 'block' },
+    condition: { urlFilter: `*://*.${d}/*`, resourceTypes: ['main_frame', 'sub_frame'] },
+  }));
   await chrome.declarativeNetRequest.updateDynamicRules({ removeRuleIds: toRemove, addRules: rules });
 }
+
 chrome.storage.onChanged.addListener((changes, areaName) => {
-  if (areaName === 'local' && (changes.blocked || changes.enabled)) siteBlockerApplyRules();
+  if (areaName === 'local' && (changes.blocked || changes.whitelist || changes.enabled || changes.schedule)) {
+    siteBlockerApplyRules();
+  }
 });
 
 /** On tab URL change (e.g. single-tab restore) refresh badge. */
@@ -1283,9 +1378,9 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         const tab = await cap.getActiveTab();
         tabId = tab.id;
         if (!tab.url) {
-          await saveToIDB({ error: 'No page open.' });
+          await saveToIDB({ error: 'Нет открытой страницы.' });
           chrome.tabs.create({ url: chrome.runtime.getURL('result.html'), index: tab.index + 1, windowId: tab.windowId });
-          safeSend({ error: 'No page open.' }); return;
+          safeSend({ error: 'Нет открытой страницы.' }); return;
         }
         await cap.inject(tabId);
         await new Promise(r => setTimeout(r, 200));
@@ -1317,10 +1412,11 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       } catch (e) {
         await chrome.storage.local.remove('captureProgress');
         if (tabId) try { await cap.showFloating(tabId); } catch (_) {}
-        await saveToIDB({ error: e.message || String(e) });
+        const errText = formatSwissCaptureError(e);
+        await saveToIDB({ error: errText });
         let t = null; if (tabId) try { t = await chrome.tabs.get(tabId); } catch (_) {}
         chrome.tabs.create({ url: chrome.runtime.getURL('result.html'), windowId: t?.windowId });
-        safeSend({ error: e.message || String(e) });
+        safeSend({ error: errText });
       }
     })();
     return true;
