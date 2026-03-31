@@ -55,19 +55,41 @@ async function loadSettings() {
 });
 els.excludedDomains.addEventListener('blur', saveSettings);
 
+function setStatus(text, isErr) {
+  statusEl.textContent = text;
+  statusEl.classList.toggle('err', !!isErr);
+}
+
 btn.addEventListener('click', async () => {
   saveSettings();
   btn.disabled = true;
-  statusEl.textContent = 'Discarding…';
+  setStatus('Выгружаю…', false);
   try {
-    const res = await chrome.runtime.sendMessage({ type: 'discardBackgroundTabs' });
+    const res = await new Promise((resolve, reject) => {
+      chrome.runtime.sendMessage({ type: 'discardBackgroundTabs' }, (r) => {
+        if (chrome.runtime.lastError) {
+          reject(new Error(chrome.runtime.lastError.message));
+          return;
+        }
+        resolve(r);
+      });
+    });
     const n = res?.discarded ?? 0;
-    statusEl.textContent = n > 0 ? `${n} tabs discarded` : 'Done (nothing to discard)';
+    setStatus(
+      n > 0 ? `Выгружено вкладок: ${n}` : 'Готово (нет подходящих вкладок)',
+      false
+    );
   } catch (e) {
-    statusEl.textContent = 'Error: ' + (e.message || 'unknown');
+    setStatus('Ошибка: ' + (e.message || 'неизвестная'), true);
   }
   btn.disabled = false;
-  setTimeout(() => { statusEl.textContent = ''; }, 3500);
+  setTimeout(() => { setStatus('', false); }, 3500);
+});
+
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === 'local' && changes.tmcSettings?.newValue) {
+    applySettingsToUi(changes.tmcSettings.newValue);
+  }
 });
 
 loadSettings();

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru">
 <head>
   <meta charset="utf-8">
   <style>
@@ -72,39 +72,39 @@
     textarea:focus { outline: none; border-color: #444; }
     #status {
       font-size: 10px;
-      color: #666;
+      color: #888;
       margin-top: 10px;
       min-height: 1.4em;
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
+      line-height: 1.35;
     }
+    #status.err { color: #f66; }
     .kbd-hint { font-size: 10px; color: #555; margin-top: 10px; line-height: 1.4; }
   </style>
 </head>
 <body>
   <h2>Tab Memory Cleaner</h2>
-  <button type="button" class="primary" id="btnDiscard">Discard background tabs</button>
+  <button type="button" class="primary" id="btnDiscard">Выгрузить фоновые вкладки</button>
   <div class="row">
     <input type="checkbox" id="skipPinned" checked>
-    <label for="skipPinned">Skip pinned</label>
+    <label for="skipPinned">Не трогать закреплённые</label>
   </div>
   <div class="row">
     <input type="checkbox" id="skipAudible" checked>
-    <label for="skipAudible">Skip playing audio</label>
+    <label for="skipAudible">Не трогать вкладки со звуком</label>
   </div>
   <div class="row">
     <input type="checkbox" id="skipIncognito" checked>
-    <label for="skipIncognito">Skip incognito</label>
+    <label for="skipIncognito">Не трогать инкогнито</label>
   </div>
   <div class="row">
     <input type="checkbox" id="skipGrouped" checked>
-    <label for="skipGrouped">Skip tabs in groups</label>
+    <label for="skipGrouped">Не трогать вкладки в группах</label>
   </div>
   <div class="section">
-    <div class="section-title">Never discard (domains, one per line)</div>
+    <div class="section-title">Никогда не выгружать (домены, по одному в строке)</div>
     <textarea id="excludedDomains" placeholder="mail.google.com"></textarea>
   </div>
-  <p class="kbd-hint">Shortcut: Option+Shift+K (Chrome → Manage Extension → Keyboard shortcuts).</p>
+  <p class="kbd-hint">Горячая клавиша: Option+Shift+K (Chrome → Управление расширением → Сочетания клавиш).</p>
   <div id="status"></div>
   <script src="popup.js"></script>
 </body>
