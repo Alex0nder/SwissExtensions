@@ -18,6 +18,7 @@ const scheduleDaysEl = document.getElementById('scheduleDays');
 const btnExport = document.getElementById('btnExport');
 const btnImport = document.getElementById('btnImport');
 const importFileEl = document.getElementById('importFile');
+const adsFilterToggleEl = document.getElementById('adsFilterToggle');
 const DEFAULT_SCHEDULE = { enabled: false, from: '09:00', to: '18:00', days: [1, 2, 3, 4, 5] };
 
 function normalizeDomain(input) {
@@ -31,23 +32,26 @@ function normalizeDomain(input) {
   }
 }
 
-function render(blocked, whitelist, enabled, schedule, scheduleActive) {
+function render(blocked, whitelist, enabled, schedule, scheduleActive, adsFiltersEnabled) {
   toggleEl.classList.toggle('on', enabled);
   toggleEl.setAttribute('aria-pressed', enabled);
+  const adsOn = adsFiltersEnabled !== false;
+  adsFilterToggleEl.classList.toggle('on', adsOn);
+  adsFilterToggleEl.setAttribute('aria-pressed', adsOn);
   listEl.innerHTML = '';
   if (blocked.length === 0) {
     emptyEl.style.display = 'block';
-    return;
-  }
-  emptyEl.style.display = 'none';
-  blocked.forEach((domain) => {
+  } else {
+    emptyEl.style.display = 'none';
+    blocked.forEach((domain) => {
     const li = document.createElement('li');
     li.innerHTML = `<span class="domain">${escapeHtml(domain)}</span><button type="button" class="remove" data-domain="${escapeHtml(domain)}">Удалить</button>`;
-    listEl.appendChild(li);
-  });
-  listEl.querySelectorAll('.remove').forEach((btn) => {
-    btn.addEventListener('click', () => removeDomain(btn.dataset.domain));
-  });
+      listEl.appendChild(li);
+    });
+    listEl.querySelectorAll('.remove').forEach((btn) => {
+      btn.addEventListener('click', () => removeDomain(btn.dataset.domain));
+    });
+  }
   whitelistListEl.innerHTML = '';
   if (!whitelist || whitelist.length === 0) {
     whitelistEmptyEl.style.display = 'block';
@@ -92,8 +96,8 @@ function addDomain() {
     const blocked = data.blocked || [];
     if (blocked.includes(domain)) return;
     blocked.push(domain);
-    chrome.storage.local.get(['whitelist', 'enabled', 'schedule', 'scheduleStateActive'], (meta) => {
-      chrome.storage.local.set({ blocked }, () => render(blocked, meta.whitelist || [], meta.enabled !== false, meta.schedule || DEFAULT_SCHEDULE, meta.scheduleStateActive !== false));
+    chrome.storage.local.get(['whitelist', 'enabled', 'schedule', 'scheduleStateActive', 'adsFiltersEnabled'], (meta) => {
+      chrome.storage.local.set({ blocked }, () => render(blocked, meta.whitelist || [], meta.enabled !== false, meta.schedule || DEFAULT_SCHEDULE, meta.scheduleStateActive !== false, meta.adsFiltersEnabled));
     });
   });
 }
@@ -101,8 +105,8 @@ function addDomain() {
 function removeDomain(domain) {
   chrome.storage.local.get(['blocked'], (data) => {
     const blocked = (data.blocked || []).filter((d) => d !== domain);
-    chrome.storage.local.get(['whitelist', 'enabled', 'schedule', 'scheduleStateActive'], (meta) => {
-      chrome.storage.local.set({ blocked }, () => render(blocked, meta.whitelist || [], meta.enabled !== false, meta.schedule || DEFAULT_SCHEDULE, meta.scheduleStateActive !== false));
+    chrome.storage.local.get(['whitelist', 'enabled', 'schedule', 'scheduleStateActive', 'adsFiltersEnabled'], (meta) => {
+      chrome.storage.local.set({ blocked }, () => render(blocked, meta.whitelist || [], meta.enabled !== false, meta.schedule || DEFAULT_SCHEDULE, meta.scheduleStateActive !== false, meta.adsFiltersEnabled));
     });
   });
 }
@@ -115,8 +119,8 @@ function addWhitelistDomain() {
     const whitelist = data.whitelist || [];
     if (whitelist.includes(domain)) return;
     whitelist.push(domain);
-    chrome.storage.local.get(['blocked', 'enabled', 'schedule', 'scheduleStateActive'], (meta) => {
-      chrome.storage.local.set({ whitelist }, () => render(meta.blocked || [], whitelist, meta.enabled !== false, meta.schedule || DEFAULT_SCHEDULE, meta.scheduleStateActive !== false));
+    chrome.storage.local.get(['blocked', 'enabled', 'schedule', 'scheduleStateActive', 'adsFiltersEnabled'], (meta) => {
+      chrome.storage.local.set({ whitelist }, () => render(meta.blocked || [], whitelist, meta.enabled !== false, meta.schedule || DEFAULT_SCHEDULE, meta.scheduleStateActive !== false, meta.adsFiltersEnabled));
     });
   });
 }
@@ -124,8 +128,8 @@ function addWhitelistDomain() {
 function removeWhitelistDomain(domain) {
   chrome.storage.local.get(['whitelist'], (data) => {
     const whitelist = (data.whitelist || []).filter((d) => d !== domain);
-    chrome.storage.local.get(['blocked', 'enabled', 'schedule', 'scheduleStateActive'], (meta) => {
-      chrome.storage.local.set({ whitelist }, () => render(meta.blocked || [], whitelist, meta.enabled !== false, meta.schedule || DEFAULT_SCHEDULE, meta.scheduleStateActive !== false));
+    chrome.storage.local.get(['blocked', 'enabled', 'schedule', 'scheduleStateActive', 'adsFiltersEnabled'], (meta) => {
+      chrome.storage.local.set({ whitelist }, () => render(meta.blocked || [], whitelist, meta.enabled !== false, meta.schedule || DEFAULT_SCHEDULE, meta.scheduleStateActive !== false, meta.adsFiltersEnabled));
     });
   });
 }
@@ -156,9 +160,23 @@ toggleEl.addEventListener('click', () => {
   const enabled = !toggleEl.classList.contains('on');
   chrome.storage.local.get(['blocked'], (data) => {
     const blocked = data.blocked || [];
-    chrome.storage.local.get(['whitelist', 'schedule', 'scheduleStateActive'], (meta) => {
-      chrome.storage.local.set({ enabled }, () => render(blocked, meta.whitelist || [], enabled, meta.schedule || DEFAULT_SCHEDULE, meta.scheduleStateActive !== false));
+    chrome.storage.local.get(['whitelist', 'schedule', 'scheduleStateActive', 'adsFiltersEnabled'], (meta) => {
+      chrome.storage.local.set({ enabled }, () => render(blocked, meta.whitelist || [], enabled, meta.schedule || DEFAULT_SCHEDULE, meta.scheduleStateActive !== false, meta.adsFiltersEnabled));
     });
+  });
+});
+
+adsFilterToggleEl.addEventListener('click', () => {
+  const adsFiltersEnabled = !adsFilterToggleEl.classList.contains('on');
+  chrome.storage.local.get(['blocked', 'whitelist', 'enabled', 'schedule', 'scheduleStateActive'], (data) => {
+    chrome.storage.local.set({ adsFiltersEnabled }, () => render(
+      data.blocked || [],
+      data.whitelist || [],
+      data.enabled !== false,
+      data.schedule || DEFAULT_SCHEDULE,
+      data.scheduleStateActive !== false,
+      adsFiltersEnabled
+    ));
   });
 });
 
@@ -226,7 +244,7 @@ whitelistInputEl.addEventListener('keydown', (e) => {
 });
 
 btnExport.addEventListener('click', async () => {
-  const payload = await chrome.storage.local.get(['blocked', 'whitelist', 'enabled', 'schedule']);
+  const payload = await chrome.storage.local.get(['blocked', 'whitelist', 'enabled', 'schedule', 'adsFiltersEnabled']);
   const blob = new Blob([JSON.stringify({
     version: 1,
     exportedAt: new Date().toISOString(),
@@ -234,6 +252,7 @@ btnExport.addEventListener('click', async () => {
     whitelist: payload.whitelist || [],
     enabled: payload.enabled !== false,
     schedule: normalizeSchedule(payload.schedule),
+    adsFiltersEnabled: payload.adsFiltersEnabled !== false,
   }, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -255,14 +274,16 @@ importFileEl.addEventListener('change', async () => {
     const whitelist = Array.isArray(json.whitelist) ? json.whitelist.map(normalizeDomain).filter(Boolean) : [];
     const enabled = json.enabled !== false;
     const schedule = normalizeSchedule(json.schedule);
+    const adsFiltersEnabled = json.adsFiltersEnabled !== false;
     await chrome.storage.local.set({
       blocked: [...new Set(blocked)],
       whitelist: [...new Set(whitelist)],
       enabled,
       schedule,
+      adsFiltersEnabled,
     });
-    const snap = await chrome.storage.local.get(['blocked', 'whitelist', 'enabled', 'schedule', 'scheduleStateActive']);
-    render(snap.blocked || [], snap.whitelist || [], snap.enabled !== false, snap.schedule || DEFAULT_SCHEDULE, snap.scheduleStateActive !== false);
+    const snap = await chrome.storage.local.get(['blocked', 'whitelist', 'enabled', 'schedule', 'scheduleStateActive', 'adsFiltersEnabled']);
+    render(snap.blocked || [], snap.whitelist || [], snap.enabled !== false, snap.schedule || DEFAULT_SCHEDULE, snap.scheduleStateActive !== false, snap.adsFiltersEnabled);
     statusEl.textContent = 'Импорт выполнен';
   } catch (e) {
     statusEl.textContent = 'Ошибка импорта JSON';
@@ -271,9 +292,9 @@ importFileEl.addEventListener('change', async () => {
   }
 });
 
-chrome.storage.local.get(['blocked', 'whitelist', 'enabled', 'schedule', 'scheduleStateActive'], (data) => {
+chrome.storage.local.get(['blocked', 'whitelist', 'enabled', 'schedule', 'scheduleStateActive', 'adsFiltersEnabled'], (data) => {
   const blocked = data.blocked || [];
   const whitelist = data.whitelist || [];
   const enabled = data.enabled !== false;
-  render(blocked, whitelist, enabled, data.schedule || DEFAULT_SCHEDULE, data.scheduleStateActive !== false);
+  render(blocked, whitelist, enabled, data.schedule || DEFAULT_SCHEDULE, data.scheduleStateActive !== false, data.adsFiltersEnabled);
 });

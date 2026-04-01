@@ -298,10 +298,12 @@ function normalizeBlockerSchedule(raw) {
   };
 }
 
-function renderBlocker(blocked, whitelist, enabled, schedule, scheduleActive) {
+function renderBlocker(blocked, whitelist, enabled, schedule, scheduleActive, adsFiltersEnabled) {
   const list = document.getElementById('blockerList');
   const empty = document.getElementById('blockerEmpty');
   const toggle = document.getElementById('blockerToggle');
+  const adsCb = document.getElementById('blockerAdsFilters');
+  if (adsCb) adsCb.checked = adsFiltersEnabled !== false;
   const wlList = document.getElementById('blockerWhitelistList');
   const wlEmpty = document.getElementById('blockerWhitelistEmpty');
   const sch = normalizeBlockerSchedule(schedule);
@@ -347,13 +349,14 @@ function renderBlocker(blocked, whitelist, enabled, schedule, scheduleActive) {
 }
 
 function refreshBlockerFromStorage() {
-  chrome.storage.local.get(['blocked', 'whitelist', 'enabled', 'schedule', 'scheduleStateActive'], (data) => {
+  chrome.storage.local.get(['blocked', 'whitelist', 'enabled', 'schedule', 'scheduleStateActive', 'adsFiltersEnabled'], (data) => {
     renderBlocker(
       data.blocked || [],
       data.whitelist || [],
       data.enabled !== false,
       data.schedule || SB_DEFAULT_SCHEDULE,
-      data.scheduleStateActive !== false
+      data.scheduleStateActive !== false,
+      data.adsFiltersEnabled
     );
     if (blockerStatusOverride) {
       document.getElementById('blockerStatus').textContent = blockerStatusOverride;
@@ -416,6 +419,11 @@ document.getElementById('blockerToggle').addEventListener('change', () => {
   chrome.storage.local.set({ enabled }, refreshBlockerFromStorage);
 });
 
+document.getElementById('blockerAdsFilters').addEventListener('change', () => {
+  const adsFiltersEnabled = document.getElementById('blockerAdsFilters').checked;
+  chrome.storage.local.set({ adsFiltersEnabled }, refreshBlockerFromStorage);
+});
+
 document.getElementById('blockerScheduleEnabled').addEventListener('change', saveBlockerScheduleFromUi);
 document.getElementById('blockerScheduleFrom').addEventListener('change', saveBlockerScheduleFromUi);
 document.getElementById('blockerScheduleTo').addEventListener('change', saveBlockerScheduleFromUi);
@@ -473,7 +481,7 @@ document.getElementById('blockerWhitelistAdd').addEventListener('click', addWhit
 document.getElementById('blockerWhitelistInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') addWhitelistDomain(); });
 
 document.getElementById('blockerExport').addEventListener('click', async () => {
-  const payload = await chrome.storage.local.get(['blocked', 'whitelist', 'enabled', 'schedule']);
+  const payload = await chrome.storage.local.get(['blocked', 'whitelist', 'enabled', 'schedule', 'adsFiltersEnabled']);
   const blob = new Blob([JSON.stringify({
     version: 1,
     exportedAt: new Date().toISOString(),
@@ -481,6 +489,7 @@ document.getElementById('blockerExport').addEventListener('click', async () => {
     whitelist: payload.whitelist || [],
     enabled: payload.enabled !== false,
     schedule: normalizeBlockerSchedule(payload.schedule),
+    adsFiltersEnabled: payload.adsFiltersEnabled !== false,
   }, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -503,12 +512,14 @@ document.getElementById('blockerImportFile').addEventListener('change', async ()
     const whitelist = Array.isArray(json.whitelist) ? json.whitelist.map(normDomain).filter(Boolean) : [];
     const enabled = json.enabled !== false;
     const schedule = normalizeBlockerSchedule(json.schedule);
+    const adsFiltersEnabled = json.adsFiltersEnabled !== false;
     blockerStatusOverride = 'Импорт выполнен';
     await chrome.storage.local.set({
       blocked: [...new Set(blocked)],
       whitelist: [...new Set(whitelist)],
       enabled,
       schedule,
+      adsFiltersEnabled,
     });
   } catch {
     blockerStatusOverride = null;
@@ -520,7 +531,7 @@ document.getElementById('blockerImportFile').addEventListener('change', async ()
 
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== 'local') return;
-  if (changes.blocked || changes.whitelist || changes.enabled || changes.schedule || changes.scheduleStateActive) {
+  if (changes.blocked || changes.whitelist || changes.enabled || changes.schedule || changes.scheduleStateActive || changes.adsFiltersEnabled) {
     refreshBlockerFromStorage();
   }
 });

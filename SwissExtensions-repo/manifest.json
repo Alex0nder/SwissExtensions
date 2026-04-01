@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Swiss Extensions",
-  "version": "1.0.2",
+  "version": "1.3.0",
   "description": "Page Capture, Tab Hibernate, Memory Cleaner, Site Blocker, Site Data Clear — all in one",
   "icons": {
     "16": "icons/icon16.png",
@@ -69,7 +69,8 @@
       { "id": "ruleset_3", "enabled": true, "path": "blocker/ruleset_3.json" },
       { "id": "ruleset_4", "enabled": true, "path": "blocker/ruleset_4.json" },
       { "id": "ruleset_5", "enabled": true, "path": "blocker/ruleset_5.json" },
-      { "id": "ruleset_6", "enabled": true, "path": "blocker/ruleset_6.json" }
+      { "id": "ruleset_6", "enabled": true, "path": "blocker/ruleset_6.json" },
+      { "id": "sb_siteblocker_ads", "enabled": false, "path": "blocker/sb_siteblocker_ads.json" }
     ]
   }
 }

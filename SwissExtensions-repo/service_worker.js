@@ -987,6 +987,7 @@ chrome.runtime.onStartup.addListener(async () => {
     await new Promise((r) => setTimeout(r, 1500));
     await initOnStartup();
     await siteBlockerApplyRules();
+    await siteBlockerApplyAdsRulesets();
   } catch (e) {
     console.error('[SwissExtensions] onStartup failed', e);
   }
@@ -1012,6 +1013,7 @@ chrome.runtime.onInstalled.addListener(async (details) => {
     await setSidePanelBehavior();
     await initOnStartup();
     await siteBlockerApplyRules();
+    await siteBlockerApplyAdsRulesets();
     if (details.reason === 'update') {
       setTimeout(() => migrateOrphanedSuspendedTabs().catch((e) => console.warn('[TabHibernate] delayed migrate failed', e)), 800);
     }
@@ -1055,6 +1057,8 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
 /** Site Blocker: static rulesets + пользовательский список (расписание и whitelist — как в standalone SiteBlocker). */
 const SITE_BLOCKER_RULE_ID_START = 10000;
 const NETFILTER_RULESET_IDS = ['ruleset_1', 'ruleset_2', 'ruleset_3', 'ruleset_4', 'ruleset_5', 'ruleset_6'];
+/** Статические фильтры рекламы/трекеров (как в standalone Site Blocker); не отключаются с расписанием «фокуса». */
+const SB_ADS_RULESET_IDS = ['sb_siteblocker_ads'];
 const SB_DEFAULT_SCHEDULE = {
   enabled: false,
   from: '09:00',
@@ -1102,6 +1106,26 @@ function sbNormDomain(d) {
   let s = (d || '').trim().toLowerCase();
   if (!s) return '';
   try { if (!s.startsWith('http')) s = 'https://' + s; return new URL(s).hostname.replace(/^www\./, '') || ''; } catch { return s.replace(/^www\./, '').split('/')[0].split('?')[0]; }
+}
+
+async function siteBlockerApplyAdsRulesets() {
+  const { adsFiltersEnabled = true } = await chrome.storage.local.get('adsFiltersEnabled');
+  const on = adsFiltersEnabled !== false;
+  try {
+    if (on) {
+      await chrome.declarativeNetRequest.updateEnabledRulesets({
+        enableRulesetIds: SB_ADS_RULESET_IDS,
+        disableRulesetIds: [],
+      });
+    } else {
+      await chrome.declarativeNetRequest.updateEnabledRulesets({
+        enableRulesetIds: [],
+        disableRulesetIds: SB_ADS_RULESET_IDS,
+      });
+    }
+  } catch (e) {
+    console.warn('[SiteBlocker] ads rulesets failed', e);
+  }
 }
 
 async function siteBlockerApplyRules() {
@@ -1165,7 +1189,9 @@ async function siteBlockerApplyRules() {
 }
 
 chrome.storage.onChanged.addListener((changes, areaName) => {
-  if (areaName === 'local' && (changes.blocked || changes.whitelist || changes.enabled || changes.schedule)) {
+  if (areaName !== 'local') return;
+  if (changes.adsFiltersEnabled) siteBlockerApplyAdsRulesets();
+  if (changes.blocked || changes.whitelist || changes.enabled || changes.schedule) {
     siteBlockerApplyRules();
   }
 });
@@ -1450,3 +1476,4 @@ chrome.commands?.onCommand.addListener((command) => {
 // Init on first SW run (after sleep)
 initOnStartup();
 siteBlockerApplyRules().catch((e) => console.warn('[SiteBlocker] apply on SW wake failed', e));
+siteBlockerApplyAdsRulesets().catch((e) => console.warn('[SiteBlocker] ads rulesets on SW wake failed', e));
