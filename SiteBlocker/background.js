@@ -1,17 +1,17 @@
 /**
- * Site Blocker: применяет правила блокировки из storage к declarativeNetRequest.
+ * Site Blocker: пользовательские домены (dynamic rules) + статические фильтры рекламы/трекеров (DNR rulesets, uBlock‑подобно, без EasyList).
  */
 
 const RULE_ID_START = 1;
 const SCHEDULE_ALARM_NAME = 'siteBlockerScheduleTick';
+const FILTER_RULESET_IDS = ['sb_filters_ads'];
 const DEFAULT_SCHEDULE = {
   enabled: false,
   from: '09:00',
   to: '18:00',
-  days: [1, 2, 3, 4, 5], // Mon-Fri
+  days: [1, 2, 3, 4, 5],
 };
 
-/** Нормализует домен: убирает протокол, www, путь */
 function normalizeDomain(input) {
   let s = (input || '').trim().toLowerCase();
   if (!s) return '';
@@ -24,7 +24,6 @@ function normalizeDomain(input) {
   }
 }
 
-/** Создаёт urlFilter для домена (все поддомены + основной) */
 function domainToUrlFilter(domain) {
   return `*://*.${domain}/*`;
 }
@@ -62,22 +61,48 @@ function isInSchedule(schedule, now = new Date()) {
   const nowMin = now.getHours() * 60 + now.getMinutes();
   if (from === to) return true;
   if (from < to) return nowMin >= from && nowMin < to;
-  return nowMin >= from || nowMin < to; // overnight window
+  return nowMin >= from || nowMin < to;
 }
 
-/** Загрузить правила из storage и применить */
-async function applyRules() {
-  const { blocked = [], whitelist = [], enabled = true, schedule = DEFAULT_SCHEDULE } = await chrome.storage.local.get(['blocked', 'whitelist', 'enabled', 'schedule']);
+/** Вкл/выкл статических фильтров (реклама/трекеры) — не зависит от расписания «фокуса». */
+async function applyFilterRulesets() {
+  const { adsFiltersEnabled = true } = await chrome.storage.local.get('adsFiltersEnabled');
+  const on = adsFiltersEnabled !== false;
+  try {
+    if (on) {
+      await chrome.declarativeNetRequest.updateEnabledRulesets({
+        enableRulesetIds: FILTER_RULESET_IDS,
+        disableRulesetIds: [],
+      });
+    } else {
+      await chrome.declarativeNetRequest.updateEnabledRulesets({
+        enableRulesetIds: [],
+        disableRulesetIds: FILTER_RULESET_IDS,
+      });
+    }
+  } catch (e) {
+    console.warn('[SiteBlocker] applyFilterRulesets failed', e);
+  }
+}
+
+/** Пользовательский список сайтов (main_frame) + расписание. */
+async function applyUserBlockingRules() {
+  const { blocked = [], whitelist = [], enabled = true, schedule = DEFAULT_SCHEDULE } = await chrome.storage.local.get([
+    'blocked',
+    'whitelist',
+    'enabled',
+    'schedule',
+  ]);
   const existing = await chrome.declarativeNetRequest.getDynamicRules();
   const toRemove = existing.map((r) => r.id);
   const normalizedSchedule = normalizeSchedule(schedule);
   const scheduleActive = isInSchedule(normalizedSchedule);
+  await chrome.storage.local.set({ scheduleStateActive: scheduleActive, schedule: normalizedSchedule });
 
   if (!enabled || !scheduleActive || blocked.length === 0) {
     if (toRemove.length > 0) {
       await chrome.declarativeNetRequest.updateDynamicRules({ removeRuleIds: toRemove });
     }
-    await chrome.storage.local.set({ scheduleStateActive: scheduleActive, schedule: normalizedSchedule });
     return;
   }
 
@@ -89,6 +114,13 @@ async function applyRules() {
     seen.add(d);
     return true;
   });
+
+  if (uniqueDomains.length === 0) {
+    if (toRemove.length > 0) {
+      await chrome.declarativeNetRequest.updateDynamicRules({ removeRuleIds: toRemove });
+    }
+    return;
+  }
 
   const rules = uniqueDomains.map((domain, i) => ({
     id: RULE_ID_START + i,
@@ -104,18 +136,23 @@ async function applyRules() {
     removeRuleIds: toRemove,
     addRules: rules,
   });
-  await chrome.storage.local.set({ scheduleStateActive: scheduleActive, schedule: normalizedSchedule });
+}
+
+async function applyRules() {
+  await applyFilterRulesets();
+  await applyUserBlockingRules();
 }
 
 chrome.storage.onChanged.addListener((changes, area) => {
-  if (area === 'local' && (changes.blocked || changes.whitelist || changes.enabled || changes.schedule)) {
+  if (area !== 'local') return;
+  if (changes.adsFiltersEnabled || changes.blocked || changes.whitelist || changes.enabled || changes.schedule) {
     applyRules();
   }
 });
 
 chrome.alarms.create(SCHEDULE_ALARM_NAME, { periodInMinutes: 1 }).catch(() => {});
 chrome.alarms.onAlarm.addListener((alarm) => {
-  if (alarm.name === SCHEDULE_ALARM_NAME) applyRules();
+  if (alarm.name === SCHEDULE_ALARM_NAME) applyUserBlockingRules();
 });
 
 chrome.runtime.onStartup.addListener(applyRules);
@@ -123,3 +160,5 @@ chrome.runtime.onInstalled.addListener(async () => {
   await chrome.alarms.create(SCHEDULE_ALARM_NAME, { periodInMinutes: 1 }).catch(() => {});
   await applyRules();
 });
+
+applyRules();
