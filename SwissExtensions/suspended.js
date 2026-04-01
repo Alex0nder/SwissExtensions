@@ -27,6 +27,42 @@ function getLocalFaviconUrl(pageUrl) {
   }
 }
 
+function getFallbackFaviconUrl(pageUrl) {
+  try {
+    const u = new URL(pageUrl);
+    if (u.protocol !== 'http:' && u.protocol !== 'https:') return '';
+    return `https://www.google.com/s2/favicons?sz=64&domain=${encodeURIComponent(u.hostname)}`;
+  } catch (e) {
+    return '';
+  }
+}
+
+function escapeSvgAttr(value) {
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+function makeBlockedFaviconDataUrl(sourceHref) {
+  if (!sourceHref) return '';
+  try {
+    const safeHref = escapeSvgAttr(sourceHref);
+    const svg =
+      `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">` +
+      `<defs><filter id="g"><feColorMatrix type="saturate" values="0"/></filter></defs>` +
+      `<rect width="64" height="64" rx="12" fill="#0f1115"/>` +
+      `<image href="${safeHref}" x="8" y="8" width="48" height="48" filter="url(#g)" opacity="0.9"/>` +
+      `<circle cx="49" cy="49" r="11" fill="#3d414a"/>` +
+      `<rect x="42.5" y="47.5" width="13" height="3" rx="1.5" fill="#f2f3f5" transform="rotate(-45 49 49)"/>` +
+      `</svg>`;
+    return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
+  } catch (e) {
+    return '';
+  }
+}
+
 function setDocumentFavicon(href) {
   if (!href) return;
   try {
@@ -60,13 +96,18 @@ function showUrlAndRestore(url, title, favIconUrl) {
 
   if (pageFaviconEl) {
     const savedIcon = typeof favIconUrl === 'string' ? favIconUrl.trim() : '';
-    const faviconUrl = savedIcon || getLocalFaviconUrl(url);
+    const faviconUrl = savedIcon || getLocalFaviconUrl(url) || getFallbackFaviconUrl(url);
     if (faviconUrl) {
       pageFaviconEl.hidden = true;
       pageFaviconEl.onerror = () => { pageFaviconEl.hidden = true; };
-      pageFaviconEl.onload = () => { pageFaviconEl.hidden = false; };
+      pageFaviconEl.onload = () => {
+        pageFaviconEl.style.filter = 'grayscale(1) saturate(0) brightness(0.85) contrast(0.95)';
+        pageFaviconEl.style.opacity = '0.95';
+        pageFaviconEl.hidden = false;
+      };
       pageFaviconEl.src = faviconUrl;
-      setDocumentFavicon(faviconUrl);
+      const blockedIcon = makeBlockedFaviconDataUrl(faviconUrl);
+      setDocumentFavicon(blockedIcon || faviconUrl);
     } else {
       pageFaviconEl.hidden = true;
     }
