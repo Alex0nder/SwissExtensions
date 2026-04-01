@@ -16,18 +16,129 @@ const pageTitleEl = document.getElementById('pageTitle');
 /** Current URL to restore (if any); used by both button and background click. */
 let currentRestoreUrl = null;
 
-/** Domain from URL for favicon request (http(s) only). */
-function getDomainForFavicon(url) {
+/** Local browser favicon URL (no external requests from extension page). */
+function getLocalFaviconUrl(pageUrl) {
   try {
-    const u = new URL(url);
-    return u.hostname || '';
+    const u = new URL(pageUrl);
+    if (u.protocol !== 'http:' && u.protocol !== 'https:') return '';
+    return `chrome://favicon2/?size=64&pageUrl=${encodeURIComponent(pageUrl)}`;
   } catch (e) {
     return '';
   }
 }
 
-/** Favicon URL by domain (external service; icon hidden on load error). */
-const FAVICON_BASE = 'https://www.google.com/s2/favicons?sz=32&domain=';
+function getFallbackFaviconUrl(pageUrl) {
+  try {
+    const u = new URL(pageUrl);
+    if (u.protocol !== 'http:' && u.protocol !== 'https:') return '';
+    return `https://www.google.com/s2/favicons?sz=64&domain=${encodeURIComponent(u.hostname)}`;
+  } catch (e) {
+    return '';
+  }
+}
+
+/** Порядок URL для загрузки: сохранённый → кэш Chrome → origin → DDG → Google (иногда favicon2/сайт пустой). */
+function faviconCandidateUrls(pageUrl, savedIcon) {
+  const out = [];
+  const add = (u) => {
+    const s = (u || '').trim();
+    if (!s || out.includes(s)) return;
+    out.push(s);
+  };
+  add(typeof savedIcon === 'string' ? savedIcon : '');
+  add(getLocalFaviconUrl(pageUrl));
+  try {
+    const u = new URL(pageUrl);
+    if (u.protocol === 'http:' || u.protocol === 'https:') {
+      add(`${u.origin}/favicon.ico`);
+      add(`https://icons.duckduckgo.com/ip3/${encodeURIComponent(u.hostname)}.ico`);
+      add(getFallbackFaviconUrl(pageUrl));
+    }
+  } catch (e) {
+    /* ignore */
+  }
+  return out;
+}
+
+function fillRoundRect(ctx, x, y, w, h, r) {
+  const rr = Math.min(r, w / 2, h / 2);
+  ctx.beginPath();
+  if (typeof ctx.roundRect === 'function') {
+    ctx.roundRect(x, y, w, h, rr);
+  } else {
+    ctx.moveTo(x + rr, y);
+    ctx.arcTo(x + w, y, x + w, y + h, rr);
+    ctx.arcTo(x + w, y + h, x, y + h, rr);
+    ctx.arcTo(x, y + h, x, y, rr);
+    ctx.arcTo(x, y, x + w, y, rr);
+    ctx.closePath();
+  }
+  ctx.fill();
+}
+
+/**
+ * Favicon вкладки: растровый PNG (SVG с chrome:// внутри часто даёт пустую иконку).
+ * При ошибке canvas — возвращаем пустую строку, снаружи подставят прямой URL.
+ */
+function rasterizeBlockedTabIcon(src, done) {
+  const img = new Image();
+  img.decoding = 'async';
+  img.onload = () => {
+    try {
+      const W = 64;
+      const H = 64;
+      const pad = 8;
+      const side = 48;
+      const c = document.createElement('canvas');
+      c.width = W;
+      c.height = H;
+      const ctx = c.getContext('2d');
+      ctx.fillStyle = '#0f1115';
+      fillRoundRect(ctx, 0, 0, W, H, 12);
+
+      ctx.save();
+      ctx.filter = 'grayscale(1) saturate(0) brightness(0.88) contrast(0.95)';
+      ctx.drawImage(img, pad, pad, side, side);
+      ctx.restore();
+
+      const bx = 49;
+      const by = 49;
+      ctx.beginPath();
+      ctx.arc(bx, by, 11, 0, Math.PI * 2);
+      ctx.fillStyle = '#3d414a';
+      ctx.fill();
+      ctx.save();
+      ctx.translate(bx, by);
+      ctx.rotate(-Math.PI / 4);
+      ctx.fillStyle = '#f2f3f5';
+      fillRoundRect(ctx, -6.5, -1.5, 13, 3, 1.5);
+      ctx.restore();
+
+      done(c.toDataURL('image/png'));
+    } catch (e) {
+      done('');
+    }
+  };
+  img.onerror = () => done('');
+  img.src = src;
+}
+
+function loadFirstWorkingFaviconUrl(candidates, done) {
+  let i = 0;
+  const next = () => {
+    if (i >= candidates.length) {
+      done('');
+      return;
+    }
+    const url = candidates[i++];
+    const probe = new Image();
+    probe.decoding = 'async';
+    probe.onload = () => done(url);
+    probe.onerror = next;
+    probe.src = url;
+  };
+  next();
+}
 
 function setDocumentFavicon(href) {
   if (!href) return;
@@ -62,22 +173,24 @@ function showUrlAndRestore(url, title, favIconUrl) {
 
   if (pageFaviconEl) {
     const savedIcon = typeof favIconUrl === 'string' ? favIconUrl.trim() : '';
-    const domain = getDomainForFavicon(url);
-    if (savedIcon) {
-      pageFaviconEl.hidden = true;
+    const candidates = faviconCandidateUrls(url, savedIcon);
+    pageFaviconEl.hidden = true;
+    loadFirstWorkingFaviconUrl(candidates, (resolved) => {
+      if (!resolved) {
+        pageFaviconEl.hidden = true;
+        return;
+      }
       pageFaviconEl.onerror = () => { pageFaviconEl.hidden = true; };
-      pageFaviconEl.onload = () => { pageFaviconEl.hidden = false; };
-      pageFaviconEl.src = savedIcon;
-      setDocumentFavicon(savedIcon);
-    } else if (domain && (url.startsWith('http://') || url.startsWith('https://'))) {
-      pageFaviconEl.hidden = true;
-      pageFaviconEl.onerror = () => { pageFaviconEl.hidden = true; };
-      pageFaviconEl.onload = () => { pageFaviconEl.hidden = false; };
-      pageFaviconEl.src = FAVICON_BASE + encodeURIComponent(domain);
-      setDocumentFavicon(FAVICON_BASE + encodeURIComponent(domain));
-    } else {
-      pageFaviconEl.hidden = true;
-    }
+      pageFaviconEl.onload = () => {
+        pageFaviconEl.style.filter = 'grayscale(1) saturate(0) brightness(0.85) contrast(0.95)';
+        pageFaviconEl.style.opacity = '0.95';
+        pageFaviconEl.hidden = false;
+      };
+      pageFaviconEl.src = resolved;
+      rasterizeBlockedTabIcon(resolved, (png) => {
+        setDocumentFavicon(png || resolved);
+      });
+    });
   }
 
   urlEl.innerHTML = '';
@@ -122,7 +235,7 @@ if (!tabId) {
   chrome.storage.local.get(key, (data) => {
     if (chrome.runtime.lastError) {
       if (isRestorableUrl(fallbackUrl)) {
-        showUrlAndRestore(fallbackUrl, '');
+        showUrlAndRestore(fallbackUrl, '', '');
       } else {
         showError('Could not load restore data');
       }
