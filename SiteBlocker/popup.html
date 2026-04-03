@@ -164,6 +164,18 @@
     </div>
     <p class="hint" style="margin-top:0;">Встроенный список ~50 сетей (скрипты, картинки, XHR). Не EasyList: сайты могут ломаться — выключите при проблемах.</p>
   </div>
+  <div class="section" style="margin-top:0;border-top:none;padding-top:0;">
+    <p class="section-title">Подписка на список (ABP / EasyList)</p>
+    <div class="toggle-row" style="margin-bottom: 10px; padding-bottom: 10px;">
+      <span>Использовать подписку</span>
+      <button type="button" class="toggle" id="filterListToggle" aria-pressed="false"></button>
+    </div>
+    <div class="add-row" style="margin-bottom: 8px;">
+      <input type="url" id="filterListUrl" placeholder="https://easylist.to/easylist/easylist.txt" autocomplete="off" style="font-size:11px;" />
+    </div>
+    <button type="button" class="btn btn-sec" id="btnRefreshFilterList" style="width:100%;margin-bottom:8px;">Обновить список</button>
+    <p class="hint" id="filterListMeta" style="margin-top:0;">Выключено. Включите и нажмите «Обновить» — парсятся строки <code>||домен^</code> (до ~2200 доменов).</p>
+  </div>
   <div class="add-row">
     <input type="text" id="input" placeholder="example.com" autocomplete="off" />
     <button type="button" class="btn" id="btnAdd">Добавить</button>
