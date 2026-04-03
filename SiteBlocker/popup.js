@@ -1,5 +1,5 @@
 /**
- * Site Blocker popup: переключатель вкл/выкл, список доменов, добавление/удаление.
+ * Site Blocker popup: блокировка сайтов, лёгкие фильтры, подписка EasyList/ABP (URL + обновление), импорт/экспорт.
  */
 
 const toggleEl = document.getElementById('toggle');
@@ -19,6 +19,10 @@ const btnExport = document.getElementById('btnExport');
 const btnImport = document.getElementById('btnImport');
 const importFileEl = document.getElementById('importFile');
 const adsFilterToggleEl = document.getElementById('adsFilterToggle');
+const filterListToggleEl = document.getElementById('filterListToggle');
+const filterListUrlEl = document.getElementById('filterListUrl');
+const filterListMetaEl = document.getElementById('filterListMeta');
+const btnRefreshFilterList = document.getElementById('btnRefreshFilterList');
 const DEFAULT_SCHEDULE = { enabled: false, from: '09:00', to: '18:00', days: [1, 2, 3, 4, 5] };
 
 function normalizeDomain(input) {
@@ -78,7 +82,35 @@ function render(blocked, whitelist, enabled, schedule, scheduleActive, adsFilter
   if (statusEl) {
     if (!enabled) statusEl.textContent = 'Блокировка выключена вручную';
     else if (safeSchedule.enabled) statusEl.textContent = scheduleActive === false ? 'Сейчас вне расписания' : 'Сейчас в окне расписания';
+    else statusEl.textContent = '';
   }
+}
+
+function formatFilterListMeta(data) {
+  const on = data.filterListEnabled === true;
+  if (!on) return 'Подписка выключена.';
+  const n = data.filterListDomainCount;
+  if (data.filterListLastError) return `Ошибка: ${data.filterListLastError}`;
+  if (n != null && n > 0) {
+    const t = data.filterListLastOk ? new Date(data.filterListLastOk).toLocaleString('ru') : '';
+    return `Активно доменов: ${n}${t ? ` · обновлено ${t}` : ''}`;
+  }
+  return 'Включено. Нажмите «Обновить список».';
+}
+
+async function loadFilterListUi() {
+  const data = await chrome.storage.local.get([
+    'filterListUrl',
+    'filterListEnabled',
+    'filterListLastOk',
+    'filterListLastError',
+    'filterListDomainCount',
+  ]);
+  filterListUrlEl.value = data.filterListUrl || '';
+  const flOn = data.filterListEnabled === true;
+  filterListToggleEl.classList.toggle('on', flOn);
+  filterListToggleEl.setAttribute('aria-pressed', flOn);
+  filterListMetaEl.textContent = formatFilterListMeta(data);
 }
 
 function escapeHtml(s) {
@@ -180,6 +212,29 @@ adsFilterToggleEl.addEventListener('click', () => {
   });
 });
 
+filterListToggleEl.addEventListener('click', () => {
+  const filterListEnabled = !filterListToggleEl.classList.contains('on');
+  chrome.storage.local.set({ filterListEnabled }, loadFilterListUi);
+});
+
+filterListUrlEl.addEventListener('change', () => {
+  chrome.storage.local.set({ filterListUrl: filterListUrlEl.value.trim() });
+});
+
+btnRefreshFilterList.addEventListener('click', () => {
+  btnRefreshFilterList.disabled = true;
+  filterListMetaEl.textContent = 'Загрузка…';
+  chrome.runtime.sendMessage({ type: 'refreshFilterList' }, () => {
+    const err = chrome.runtime.lastError;
+    btnRefreshFilterList.disabled = false;
+    if (err) {
+      filterListMetaEl.textContent = 'Ошибка: ' + err.message;
+      return;
+    }
+    loadFilterListUi();
+  });
+});
+
 scheduleToggleEl.addEventListener('click', () => {
   const enabled = !scheduleToggleEl.classList.contains('on');
   scheduleToggleEl.classList.toggle('on', enabled);
@@ -244,7 +299,10 @@ whitelistInputEl.addEventListener('keydown', (e) => {
 });
 
 btnExport.addEventListener('click', async () => {
-  const payload = await chrome.storage.local.get(['blocked', 'whitelist', 'enabled', 'schedule', 'adsFiltersEnabled']);
+  const payload = await chrome.storage.local.get([
+    'blocked', 'whitelist', 'enabled', 'schedule', 'adsFiltersEnabled',
+    'filterListUrl', 'filterListEnabled', 'filterListDomains', 'filterListLastOk',
+  ]);
   const blob = new Blob([JSON.stringify({
     version: 1,
     exportedAt: new Date().toISOString(),
@@ -253,6 +311,10 @@ btnExport.addEventListener('click', async () => {
     enabled: payload.enabled !== false,
     schedule: normalizeSchedule(payload.schedule),
     adsFiltersEnabled: payload.adsFiltersEnabled !== false,
+    filterListUrl: payload.filterListUrl || '',
+    filterListEnabled: payload.filterListEnabled === true,
+    filterListDomains: payload.filterListDomains || [],
+    filterListLastOk: payload.filterListLastOk || null,
   }, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -275,15 +337,26 @@ importFileEl.addEventListener('change', async () => {
     const enabled = json.enabled !== false;
     const schedule = normalizeSchedule(json.schedule);
     const adsFiltersEnabled = json.adsFiltersEnabled !== false;
+    const filterListUrl = typeof json.filterListUrl === 'string' ? json.filterListUrl : '';
+    const filterListEnabled = json.filterListEnabled === true;
+    const filterListDomains = Array.isArray(json.filterListDomains) ? json.filterListDomains : [];
+    const filterListLastOk = json.filterListLastOk != null ? json.filterListLastOk : null;
     await chrome.storage.local.set({
       blocked: [...new Set(blocked)],
       whitelist: [...new Set(whitelist)],
       enabled,
       schedule,
       adsFiltersEnabled,
+      filterListUrl,
+      filterListEnabled,
+      filterListDomains,
+      filterListLastOk,
+      filterListLastError: '',
+      filterListDomainCount: filterListDomains.length,
     });
     const snap = await chrome.storage.local.get(['blocked', 'whitelist', 'enabled', 'schedule', 'scheduleStateActive', 'adsFiltersEnabled']);
     render(snap.blocked || [], snap.whitelist || [], snap.enabled !== false, snap.schedule || DEFAULT_SCHEDULE, snap.scheduleStateActive !== false, snap.adsFiltersEnabled);
+    await loadFilterListUi();
     statusEl.textContent = 'Импорт выполнен';
   } catch (e) {
     statusEl.textContent = 'Ошибка импорта JSON';
@@ -297,4 +370,12 @@ chrome.storage.local.get(['blocked', 'whitelist', 'enabled', 'schedule', 'schedu
   const whitelist = data.whitelist || [];
   const enabled = data.enabled !== false;
   render(blocked, whitelist, enabled, data.schedule || DEFAULT_SCHEDULE, data.scheduleStateActive !== false, data.adsFiltersEnabled);
+  loadFilterListUi();
+});
+
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area !== 'local') return;
+  if (changes.filterListUrl || changes.filterListEnabled || changes.filterListLastError || changes.filterListDomainCount || changes.filterListLastOk) {
+    loadFilterListUi();
+  }
 });
