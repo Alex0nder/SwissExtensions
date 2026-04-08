@@ -1,0 +1,17 @@
+# Статический лендинг без сборки: корень репозитория = публикуемая папка.
+# В Netlify UI: Build command оставить пустым ИЛИ указать `true`.
+# Publish directory: `.` (точка) — должно совпадать с этим файлом.
+
+[build]
+  command = "true"
+  publish = "."
+
+[[headers]]
+  for = "/favicon/*"
+  [headers.values]
+    Cache-Control = "public, max-age=86400"
+
+[[headers]]
+  for = "/css/*"
+  [headers.values]
+    Cache-Control = "public, max-age=3600"
