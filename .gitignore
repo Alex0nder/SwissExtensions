@@ -1,5 +1,8 @@
 .DS_Store
 *.zip
+release-archives/
+*-webstore-v*.zip
+*webstore*.zip
 
 # Артефакты распакованного расширения в Chrome
 **/_metadata/

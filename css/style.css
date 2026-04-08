@@ -182,6 +182,34 @@ h1 {
   gap: 18px;
 }
 
+.store-release {
+  margin-top: 36px;
+  border-top: 2px solid var(--ink);
+  border-bottom: 1px solid var(--rule);
+  padding: 14px 0 20px;
+  max-width: 760px;
+}
+
+.store-release-label {
+  margin: 0 0 8px;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.store-release h3 {
+  margin: 0 0 8px;
+  font-size: 26px;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+}
+
+.store-release p {
+  margin: 0 0 14px;
+  color: var(--muted);
+}
+
 .features article {
   grid-column: span 4;
   border-top: 1.5px solid var(--ink);
@@ -276,6 +304,10 @@ footer a {
   .card,
   .features article {
     grid-column: span 12;
+  }
+
+  .store-release h3 {
+    font-size: 22px;
   }
 }
 
