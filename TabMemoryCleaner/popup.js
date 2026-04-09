@@ -1,5 +1,5 @@
 /**
- * Popup: настройки в storage, discard через service worker.
+ * Popup:   storage, discard  service worker.
  */
 const btn = document.getElementById('btnDiscard');
 const statusEl = document.getElementById('status');
@@ -63,7 +63,7 @@ function setStatus(text, isErr) {
 btn.addEventListener('click', async () => {
   saveSettings();
   btn.disabled = true;
-  setStatus('Выгружаю…', false);
+  setStatus('Discarding...', false);
   try {
     const res = await new Promise((resolve, reject) => {
       chrome.runtime.sendMessage({ type: 'discardBackgroundTabs' }, (r) => {
@@ -76,11 +76,11 @@ btn.addEventListener('click', async () => {
     });
     const n = res?.discarded ?? 0;
     setStatus(
-      n > 0 ? `Выгружено вкладок: ${n}` : 'Готово (нет подходящих вкладок)',
+      n > 0 ? `Discarded tabs: ${n}` : 'Done (no matching tabs)',
       false
     );
   } catch (e) {
-    setStatus('Ошибка: ' + (e.message || 'неизвестная'), true);
+    setStatus('Error: ' + (e.message || 'unknown'), true);
   }
   btn.disabled = false;
   setTimeout(() => { setStatus('', false); }, 3500);

@@ -9,7 +9,7 @@ const INACTIVITY_MINUTES = 5;
 const CHECK_PERIOD_OPTIONS = [1, 2, 5];
 /** Keep backup-by-date keys only for the last N days; remove older ones. */
 const BACKUP_RETENTION_DAYS = 30;
-/** Alarm: пересчёт правил пользовательского списка Site Blocker по расписанию. */
+/** Alarm:     Site Blocker  . */
 const SITE_BLOCKER_SCHEDULE_ALARM = 'swissSiteBlockerSchedule';
 
 // Last activity per tabId (in memory + synced on messages). After SW sleep, memory is empty — restore from storage at start of onAlarmCheck.
@@ -65,25 +65,25 @@ function isPlaceholderTabUrl(url) {
   }
 }
 
-/** Понятные сообщения об ошибках захвата страницы (как в PdfExtensions). */
+/**       (  PdfExtensions). */
 function formatSwissCaptureError(e) {
   const m = (e && e.message) || String(e);
   const lower = m.toLowerCase();
-  if (lower.includes('no active tab')) return 'Нет активной вкладки.';
+  if (lower.includes('no active tab')) return 'No active tab.';
   if (lower.includes('cannot access') || lower.includes('chrome://')) {
-    return 'Эту страницу нельзя сканировать (системная или с ограничениями Chrome).';
+    return 'This page cannot be captured (system page or restricted by Chrome).';
   }
-  if (lower.includes('chrome-extension://')) return 'Страницы расширений сканировать нельзя.';
+  if (lower.includes('chrome-extension://')) return 'Extension pages cannot be captured.';
   if (lower.includes('could not establish connection') || lower.includes('receiving end does not exist')) {
-    return 'Не удалось подключиться к странице. Обновите вкладку и попробуйте снова.';
+    return 'Could not connect to the page. Reload the tab and try again.';
   }
   if (lower.includes('capturevisible') || lower.includes('cannot capture')) {
-    return 'Снимок вкладки недоступен (страница или окно в неподходящем состоянии).';
+    return 'Tab screenshot unavailable (page or window is in an invalid state).';
   }
   return m.length > 160 ? `${m.slice(0, 157)}…` : m;
 }
 
-/** Tab в группе (Chrome Tab Groups): groupId !== -1. */
+/** Tab   (Chrome Tab Groups): groupId !== -1. */
 function isTabInGroup(tab) {
   return tab && tab.groupId != null && tab.groupId !== -1;
 }
@@ -289,7 +289,7 @@ function hasRestorableUrl(url) {
 }
 
 /** Placeholder mode: save url+title, redirect to suspended.html. Add fallback param u (URL) in query so stub can restore if storage is lost. */
-/** Макс длина закодированного URL в query (u param). Слишком длинные — без fallback при потере storage. */
+/**    URL  query (u param). From  —  fallback   storage. */
 const PLACEHOLDER_URL_PARAM_MAX = 1900;
 
 async function toDataUrlFromImageUrl(url) {
@@ -504,7 +504,7 @@ async function pruneStaleSuspendedEntries() {
   }
 }
 
-/** Задержка между операциями при массовом suspend — снижает риск зависания браузера. */
+/**      suspend —    . */
 const SUSPEND_BATCH_DELAY_MS = 80;
 
 /** Manually suspend all eligible tabs (no inactivity timeout check). Batched with delay to avoid browser freeze. */
@@ -570,7 +570,7 @@ async function runSuspendAllNow() {
   return { suspended };
 }
 
-/** Получить URL из placeholder-вкладки: storage или ?u= в URL. */
+/**  URL of placeholder-: storage  ?u=  URL. */
 async function getPlaceholderRestoreUrl(tab) {
   if (!tab?.url || !isPlaceholderTabUrl(tab.url)) return null;
   try {
@@ -587,7 +587,7 @@ async function getPlaceholderRestoreUrl(tab) {
   return null;
 }
 
-/** Закрыть все подходящие вкладки (включая placeholder) и сохранить URL в closedAndSaved. Без дубликатов по URL. */
+/**     ( placeholder)   URL  closedAndSaved.    URL. */
 const CLOSED_SAVED_MAX = 2000;
 async function runCloseAndSaveAll() {
   const tabs = await chrome.tabs.query({});
@@ -680,7 +680,7 @@ async function runRestoreAllSuspended() {
   return { restored };
 }
 
-/** Discard background tabs — настройки как в TabMemoryCleaner (`tmcSettings`). */
+/** Discard background tabs —    TabMemoryCleaner (`tmcSettings`). */
 const DISCARD_DELAY_MS = 300;
 const TMC_DEFAULT_SETTINGS = {
   skipPinned: true,
@@ -761,9 +761,9 @@ async function runDiscardBackgroundTabs() {
 }
 
 /**
- * Восстановить утерянные вкладки из storage + bookmarks (survives reinstall).
- * Создаёт placeholder-вкладки (suspended.html), а не загружает страницы — экономия RAM и CPU при 100+ вкладках.
- * Страница загрузится только при клике «Restore» пользователем.
+ *    of storage + bookmarks (survives reinstall).
+ * From placeholder- (suspended.html),     —  RAM  CPU  100+ .
+ * From     «Restore" .
  */
 const RECOVER_DELAY_MS = 60;
 
@@ -810,7 +810,7 @@ async function runRecoverLostSuspended() {
   return { recovered: items.length };
 }
 
-/** Открыть URL как placeholder-вкладки (заблокированные). items: [{url, title}]. */
+/**  URL  placeholder- (). items: [{url, title}]. */
 async function runOpenUrlsAsPlaceholders(items) {
   if (!items || !items.length) return { opened: 0 };
   const valid = items.filter((x) => x && x.url && (x.url.startsWith('http') || x.url.startsWith('file')));
@@ -918,7 +918,7 @@ async function ensureAlarm(periodMinutes = ALARM_CHECK_PERIOD_MINUTES) {
   }
 }
 
-/** После обновления/переустановки: вкладки с suspended от старого extension ID — мигрировать на наш. */
+/**  /:   suspended   extension ID —   . */
 async function migrateOrphanedSuspendedTabs() {
   try {
     const ourId = chrome.runtime.id;
@@ -1054,10 +1054,10 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
   if (areaName === 'local' && changes.closedAndSaved) updateBadge();
 });
 
-/** Site Blocker: static rulesets + пользовательский список (расписание и whitelist — как в standalone SiteBlocker). */
+/** Site Blocker: static rulesets +   (  whitelist —   standalone SiteBlocker). */
 const SITE_BLOCKER_RULE_ID_START = 10000;
 const NETFILTER_RULESET_IDS = ['ruleset_1', 'ruleset_2', 'ruleset_3', 'ruleset_4', 'ruleset_5', 'ruleset_6'];
-/** Статические фильтры рекламы/трекеров (как в standalone Site Blocker); не отключаются с расписанием «фокуса». */
+/** From  / (  standalone Site Blocker);     «". */
 const SB_ADS_RULESET_IDS = ['sb_siteblocker_ads'];
 const SB_DEFAULT_SCHEDULE = {
   enabled: false,
@@ -1142,7 +1142,7 @@ async function siteBlockerApplyRules() {
   const scheduleActive = sbIsInSchedule(normalizedSchedule);
   await chrome.storage.local.set({ scheduleStateActive: scheduleActive, schedule: normalizedSchedule });
 
-  /** Блокировка «активна» только при master-switch и (если расписание вкл.) внутри окна — и свой список, и NetFilter. */
+  /**  «"   master-switch  (  .)   —   ,  NetFilter. */
   const blockingWindowActive = enabled && scheduleActive;
 
   if (!blockingWindowActive) {
@@ -1407,9 +1407,9 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         const tab = await cap.getActiveTab();
         tabId = tab.id;
         if (!tab.url) {
-          await saveToIDB({ error: 'Нет открытой страницы.' });
+          await saveToIDB({ error: 'No open page.' });
           chrome.tabs.create({ url: chrome.runtime.getURL('result.html'), index: tab.index + 1, windowId: tab.windowId });
-          safeSend({ error: 'Нет открытой страницы.' }); return;
+          safeSend({ error: 'No open page.' }); return;
         }
         await cap.inject(tabId);
         await new Promise(r => setTimeout(r, 200));

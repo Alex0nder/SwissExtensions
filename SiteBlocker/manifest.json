@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Site Blocker",
-  "version": "1.4.0",
-  "description": "Блокировка сайтов + фильтры рекламы/трекеров (DNR). Whitelist, расписание, JSON.",
+  "version": "1.6.0",
+  "description": "Website blocking + ad/tracker filters (DNR). Subscriptions, @@, thirdParty, cosmetics.",
   "icons": {
     "16": "icons/icon16.png",
     "32": "icons/icon32.png",
@@ -23,6 +23,20 @@
   "background": {
     "service_worker": "background.js"
   },
+  "content_scripts": [
+    {
+      "matches": ["http://*/*", "https://*/*"],
+      "run_at": "document_start",
+      "js": ["cosmetic-loader.js"],
+      "all_frames": false
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["cosmetic-lite.css"],
+      "matches": ["http://*/*", "https://*/*"]
+    }
+  ],
   "declarative_net_request": {
     "rule_resources": [
       {

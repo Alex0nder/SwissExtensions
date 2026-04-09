@@ -1,6 +1,6 @@
 /**
- * Страница скриншотов: показывает кадры и скачивание PNG.
- * Поддерживает: 1) выбор папки через showDirectoryPicker; 2) подпапку в «Загрузки».
+ * From :     PNG.
+ * : 1)    showDirectoryPicker; 2)  in "".
  */
 (function () {
   const subEl = document.getElementById('sub');
@@ -58,7 +58,7 @@
     return t || 'capture';
   }
 
-  /** Безопасное имя папки: только буквы, цифры, дефис, подчёркивание. Без .. и слешей. */
+  /**   :  , , , .  ..  . */
   function sanitizeFolderName(raw) {
     if (!raw || typeof raw !== 'string') return '';
     return raw
@@ -75,7 +75,7 @@
   }
 
   function getExportDestText() {
-    if (pickedDirHandle) return `in «${pickedDirHandle.name}»`;
+    if (pickedDirHandle) return `in «${pickedDirHandle.name}"`;
     return `in Downloads${exportFolder ? `/${exportFolder}` : ''}`;
   }
 
@@ -135,7 +135,7 @@
     });
   }
 
-  /** Показать статус скачивания: text — сообщение, state — 'loading' | 'done' | '' */
+  /**   : text — , state — 'loading' | 'done' | '' */
   function setDownloadStatus(text, state = '') {
     if (downloadStatusEl) {
       downloadStatusEl.textContent = text;
@@ -143,7 +143,7 @@
     }
   }
 
-  /** Показать прогресс-бар: current/total, или скрыть при total=0 */
+  /**  -: current/total,    total=0 */
   function setDownloadProgress(current, total) {
     if (!downloadProgressEl || !downloadProgressFillEl) return;
     if (!total) {
@@ -187,7 +187,7 @@
     if (tiles.length > 0) subEl.textContent = `Captured: ${tiles.length} frames. PNG — ${getExportDestText()}.`;
   }
 
-  /** Имя файла: домен + путь страницы (из URL) + дата + время — понятно, с какой страницы скан */
+  /**  :  +   ( URL) +  +  — ,     */
   function getFileBase(pageInfo) {
     let host = 'page-capture';
     let pathPart = '';

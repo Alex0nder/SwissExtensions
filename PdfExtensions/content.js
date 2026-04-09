@@ -1,17 +1,17 @@
 /**
- * Content script: высота страницы, скролл, скрытие фиксированных/липких блоков во время захвата.
- * Сайты со скроллом внутри overflow-контейнера (не document) — ищем контейнер и крутим scrollTop.
+ * Content script:  , ,  /    .
+ * From    overflow- ( document) —     scrollTop.
  */
 const HIDE_CLASS = 'page-capture-hide-fixed';
 
-/** Кэш выбора: window vs вложенный скролл (сбрасываем после capture). */
+/**  : window vs   (  capture). */
 let scrollRootCache = null;
 
 function invalidateScrollRoot() {
   scrollRootCache = null;
 }
 
-/** Макс. прокрутка окна по вертикали. */
+/** .    . */
 function windowMaxScroll() {
   const h = Math.max(
     document.documentElement.scrollHeight,
@@ -20,7 +20,7 @@ function windowMaxScroll() {
   return Math.max(0, h - window.innerHeight);
 }
 
-/** Самый «длинный» внутренний скролл (overflow-y: auto|scroll|overlay). */
+/** From «"   (overflow-y: auto|scroll|overlay). */
 function findLargestScrollableElement() {
   let best = null;
   let bestDelta = 0;
@@ -38,7 +38,7 @@ function findLargestScrollableElement() {
   return best;
 }
 
-/** Если окно почти не скроллится, а внутри есть большой overflow — крутим контейнер. */
+/**     ,     overflow —  . */
 function resolveScrollRoot() {
   const winMax = windowMaxScroll();
   const inner = findLargestScrollableElement();
