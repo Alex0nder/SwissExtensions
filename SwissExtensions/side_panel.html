@@ -20,7 +20,7 @@
     }
     .view { display: none; flex-direction: column; flex: 1; min-height: 0; }
     .view.active { display: flex; }
-    /* Header: Back слева, заголовок — строго по центру всей ширины */
+    /* Header: Back ,  —      */
     .header {
       display: flex;
       align-items: center;
@@ -30,7 +30,7 @@
       flex-shrink: 0;
       position: relative;
     }
-    /* Кнопка назад — текстовая (иконка + текст), без фона и рамки */
+    /*   —  ( + ),     */
     .back-btn {
       display: inline-flex;
       align-items: center;
@@ -57,7 +57,7 @@
       flex-shrink: 0;
       color: inherit;
     }
-    /* Заголовок — строго по центру всей ширины header */
+    /*  —      header */
     .header-title {
       position: absolute;
       left: 50%;
@@ -241,35 +241,35 @@
         <span class="block-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="14" rx="2"/><path d="M12 16a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/><path d="M16 6V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg></span>
         <div class="block-content">
           <div class="block-title">Page Capture</div>
-          <div class="block-desc">Скрин по тайлам окна, PNG/PDF</div>
+          <div class="block-desc">Tiled page capture, PNG/PDF</div>
         </div>
       </button>
       <button type="button" class="block" data-block="tabs">
         <span class="block-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="16" height="16" rx="1"/><rect x="5" y="6" width="16" height="16" rx="1"/><path d="M8 6v12"/></svg></span>
         <div class="block-content">
           <div class="block-title">Tab Hibernate</div>
-          <div class="block-desc">Сон вкладок, бэкап, восстановление</div>
+          <div class="block-desc">Tab suspension, backup, restore</div>
         </div>
       </button>
       <button type="button" class="block" data-block="memory">
         <span class="block-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4"/><path d="M12 18v4"/><path d="M4.93 4.93l2.83 2.83"/><path d="M16.24 16.24l2.83 2.83"/><path d="M2 12h4"/><path d="M18 12h4"/><path d="M4.93 19.07l2.83-2.83"/><path d="M16.24 7.76l2.83-2.83"/><circle cx="12" cy="12" r="3"/></svg></span>
         <div class="block-content">
           <div class="block-title">Memory Cleaner</div>
-          <div class="block-desc">Выгрузка фоновых вкладок, меньше RAM</div>
+          <div class="block-desc">Discard background tabs, less RAM</div>
         </div>
       </button>
       <button type="button" class="block" data-block="blocker">
         <span class="block-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></span>
         <div class="block-content">
           <div class="block-title">Site Blocker</div>
-          <div class="block-desc">Блокировка сайтов и расписание</div>
+          <div class="block-desc">Site blocking and schedule</div>
         </div>
       </button>
       <button type="button" class="block" data-block="clear">
         <span class="block-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M10 11v6"/><path d="M14 11v6"/></svg></span>
         <div class="block-content">
           <div class="block-title">Site Data Clear</div>
-          <div class="block-desc">Очистка cookies и хранилищ сайта</div>
+          <div class="block-desc">Clear cookies and site storage</div>
         </div>
       </button>
     </div>
@@ -277,13 +277,13 @@
 
   <div class="view" id="view-capture">
     <div class="header">
-      <button type="button" class="back-btn" data-back><svg class="back-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>Назад</button>
+      <button type="button" class="back-btn" data-back><svg class="back-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>Back</button>
       <span class="header-title">Page Capture</span>
     </div>
     <div class="panel-content">
       <h2>Page Capture</h2>
-      <p class="hint">Снимок страницы по тайлам области просмотра (PNG/PDF).</p>
-      <button id="btnCapture">Сканировать страницу</button>
+      <p class="hint">Tiled screenshot of the current viewport (PNG/PDF).</p>
+      <button id="btnCapture">Scan page</button>
       <div class="capture-progress" id="captureProgress">
         <div class="capture-progress-bar"><div class="capture-progress-fill" id="captureProgressFill"></div></div>
       </div>
@@ -293,7 +293,7 @@
 
   <div class="view" id="view-tabs">
     <div class="header">
-      <button type="button" class="back-btn" data-back><svg class="back-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>Назад</button>
+      <button type="button" class="back-btn" data-back><svg class="back-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>Back</button>
       <span class="header-title">Tab Hibernate</span>
     </div>
     <div class="panel-content">
@@ -372,7 +372,7 @@
         <button id="thRestoreAll" class="btn-sec">Restore all</button>
       </div>
       <div class="restore-progress" id="thRestoreProgress" style="display:none;">
-        Restored <span id="thRestoreDone">0</span> of <span id="thRestoreTotal">0</span>, left <span id="thRestoreRemain">0</span>
+        Restored <span id="thRestoreDone">0</span>Open from history<span id="thRestoreTotal">0</span>, left <span id="thRestoreRemain">0</span>
       </div>
       <div class="row row-full">
         <button id="thCloseSave" class="btn-sec">Close all and save</button>
@@ -383,131 +383,131 @@
       <div class="row row-full">
         <button id="thRecoverLost" class="btn-sec">Recover lost tabs</button>
       </div>
-      <p class="hint" style="margin-top: 4px;">Restores as placeholders — pages load only when you click «Restore». Saves RAM.</p>
+      <p class="hint" style="margin-top: 4px;">Restores as placeholders — pages load only when you click «Restore". Saves RAM.</p>
       <div class="stats">Suspended / saved: <span id="thStats">—</span></div>
     </div>
   </div>
 
   <div class="view" id="view-memory">
     <div class="header">
-      <button type="button" class="back-btn" data-back><svg class="back-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>Назад</button>
+      <button type="button" class="back-btn" data-back><svg class="back-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>Back</button>
       <span class="header-title">Memory Cleaner</span>
     </div>
     <div class="panel-content">
       <h2>Memory Cleaner</h2>
-      <p class="hint">Настройки в <code style="font-size:10px;">tmcSettings</code> — совместимо с расширением Tab Memory Cleaner.</p>
-      <button id="btnDiscard">Выгрузить фоновые вкладки</button>
+      <p class="hint">Settings use <code style="font-size:10px;">tmcSettings</code> format — compatible with Tab Memory Cleaner.</p>
+      <button id="btnDiscard">Discard background tabs</button>
       <div class="row">
-        <label for="memorySkipPinned">Не трогать закреплённые</label>
+        <label for="memorySkipPinned">Skip pinned tabs</label>
         <input type="checkbox" id="memorySkipPinned" checked>
       </div>
       <div class="row">
-        <label for="memorySkipAudible">Не трогать со звуком</label>
+        <label for="memorySkipAudible">Skip audible tabs</label>
         <input type="checkbox" id="memorySkipAudible" checked>
       </div>
       <div class="row">
-        <label for="memorySkipIncognito">Не трогать инкогнито</label>
+        <label for="memorySkipIncognito">Skip incognito tabs</label>
         <input type="checkbox" id="memorySkipIncognito" checked>
       </div>
       <div class="row">
-        <label for="memorySkipGrouped">Не трогать вкладки в группах</label>
+        <label for="memorySkipGrouped">Skip grouped tabs</label>
         <input type="checkbox" id="memorySkipGrouped" checked>
       </div>
       <div class="row row-full" style="margin-top: 10px;">
-        <label style="width:100%;margin-bottom:6px;display:block;color:var(--th-text-muted);font-size:10px;text-transform:uppercase;letter-spacing:0.06em;">Никогда не выгружать (домены)</label>
+        <label style="width:100%;margin-bottom:6px;display:block;color:var(--th-text-muted);font-size:10px;text-transform:uppercase;letter-spacing:0.06em;">Never discard (domains)</label>
         <textarea id="memoryExcludedDomains" placeholder="mail.google.com" style="width:100%;min-height:48px;resize:vertical;padding:8px 10px;border:1px solid var(--th-border);border-radius:var(--th-radius);background:var(--th-bg-input);color:var(--th-text-primary);font-size:11px;font-family:inherit;"></textarea>
       </div>
-      <p class="hint" style="margin-top:8px;">Горячая клавиша: Option+Shift+K (настройки расширения → сочетания клавиш).</p>
+      <p class="hint" style="margin-top:8px;">Hotkey: Option+Shift+K (extension settings -> keyboard shortcuts).</p>
       <div id="memoryStatus"></div>
     </div>
   </div>
 
   <div class="view" id="view-blocker">
     <div class="header">
-      <button type="button" class="back-btn" data-back><svg class="back-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>Назад</button>
+      <button type="button" class="back-btn" data-back><svg class="back-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>Back</button>
       <span class="header-title">Site Blocker</span>
     </div>
     <div class="panel-content">
       <h2>Site Blocker</h2>
       <div class="row">
-        <label for="blockerToggle">Блокировка</label>
+        <label for="blockerToggle">Blocking</label>
         <input type="checkbox" id="blockerToggle" checked>
       </div>
       <div class="blocker-section" style="margin-top:8px;padding-top:10px;">
-        <p class="blocker-section-title">Реклама и трекеры</p>
+        <p class="blocker-section-title">Ads and trackers</p>
         <div class="row">
-          <label for="blockerAdsFilters">Фильтры (лёгкий adblock)</label>
+          <label for="blockerAdsFilters">Filters (light adblock)</label>
           <input type="checkbox" id="blockerAdsFilters" checked>
         </div>
-        <p class="hint" style="margin-top:6px;font-size:10px;">~50 сетей (скрипты, XHR, картинки). Не EasyList. Работает независимо от расписания фокуса.</p>
+        <p class="hint" style="margin-top:6px;font-size:10px;">~50 networks (scripts, XHR, images). Not EasyList. Works independently of focus schedule.</p>
       </div>
       <div class="add-row">
         <input type="text" id="blockerInput" placeholder="example.com" autocomplete="off">
-        <button type="button" id="blockerAdd">Добавить</button>
+        <button type="button" id="blockerAdd">Add</button>
       </div>
       <ul class="block-list" id="blockerList"></ul>
-      <p class="hint" id="blockerEmpty">Список пуст</p>
+      <p class="hint" id="blockerEmpty">List is empty</p>
       <div class="blocker-section">
-        <p class="blocker-section-title">Whitelist (не блокировать)</p>
+        <p class="blocker-section-title">Whitelist (do not block)</p>
         <div class="add-row">
           <input type="text" id="blockerWhitelistInput" placeholder="allowed.com" autocomplete="off">
-          <button type="button" id="blockerWhitelistAdd">Добавить</button>
+          <button type="button" id="blockerWhitelistAdd">Add</button>
         </div>
         <ul class="block-list" id="blockerWhitelistList"></ul>
-        <p class="hint" id="blockerWhitelistEmpty">Whitelist пуст</p>
+        <p class="hint" id="blockerWhitelistEmpty">Whitelist is empty</p>
       </div>
       <div class="blocker-section">
-        <p class="blocker-section-title">Расписание</p>
+        <p class="blocker-section-title">Schedule</p>
         <div class="row">
-          <label for="blockerScheduleEnabled">По времени</label>
+          <label for="blockerScheduleEnabled">Time-based</label>
           <input type="checkbox" id="blockerScheduleEnabled">
         </div>
         <div class="time-row">
-          <label for="blockerScheduleFrom">С</label>
+          <label for="blockerScheduleFrom">From</label>
           <input type="time" id="blockerScheduleFrom" value="09:00">
-          <label for="blockerScheduleTo">До</label>
+          <label for="blockerScheduleTo">Add</label>
           <input type="time" id="blockerScheduleTo" value="18:00">
         </div>
         <div class="days-row" id="blockerScheduleDays">
-          <label><input type="checkbox" data-day="1" checked>Пн</label>
-          <label><input type="checkbox" data-day="2" checked>Вт</label>
-          <label><input type="checkbox" data-day="3" checked>Ср</label>
-          <label><input type="checkbox" data-day="4" checked>Чт</label>
-          <label><input type="checkbox" data-day="5" checked>Пт</label>
-          <label><input type="checkbox" data-day="6">Сб</label>
-          <label><input type="checkbox" data-day="0">Вс</label>
+          <label><input type="checkbox" data-day="1" checked>Mon</label>
+          <label><input type="checkbox" data-day="2" checked>Tue</label>
+          <label><input type="checkbox" data-day="3" checked>Wed</label>
+          <label><input type="checkbox" data-day="4" checked>Thu</label>
+          <label><input type="checkbox" data-day="5" checked>Fri</label>
+          <label><input type="checkbox" data-day="6">Sat</label>
+          <label><input type="checkbox" data-day="0">All</label>
         </div>
       </div>
       <div class="row row-full" style="margin-top: 12px;">
-        <button type="button" class="btn-sec" id="blockerOpenFromHistory">Открыть из истории</button>
+        <button type="button" class="btn-sec" id="blockerOpenFromHistory">Open from history</button>
       </div>
       <div class="row row-full">
-        <button type="button" class="btn-sec" id="blockerExport">Экспорт JSON</button>
+        <button type="button" class="btn-sec" id="blockerExport">Export JSON</button>
       </div>
       <div class="row row-full">
-        <button type="button" class="btn-sec" id="blockerImport">Импорт JSON</button>
+        <button type="button" class="btn-sec" id="blockerImport">Import JSON</button>
         <input type="file" id="blockerImportFile" accept="application/json" style="display:none;">
       </div>
       <div id="blockerStatus" class="hint" style="margin-top: 8px;"></div>
-      <p class="hint" style="margin-top: 4px;">Домен без протокола. NetFilter (6 rulesets) — с режимом фокуса; фильтры рекламы — отдельным переключателем выше.</p>
+      <p class="hint" style="margin-top: 4px;">Enter domain without protocol. NetFilter (6 rulesets) follows focus mode; ad filters use the separate toggle above.</p>
     </div>
   </div>
 
   <div class="view" id="view-clear">
     <div class="header">
-      <button type="button" class="back-btn" data-back><svg class="back-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>Назад</button>
+      <button type="button" class="back-btn" data-back><svg class="back-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>Back</button>
       <span class="header-title">Site Data Clear</span>
     </div>
     <div class="panel-content">
-      <h2>Очистка данных сайта</h2>
-      <p class="hint">Формат настроек как в расширении Site Data Clear (ключ sdcOptions).</p>
+      <h2>Site Data Clear</h2>
+      <p class="hint">Settings format matches Site Data Clear extension (key: sdcOptions).</p>
       <div class="sdc-presets">
-        <div class="sdc-presets-title">Пресеты</div>
+        <div class="sdc-presets-title">Presets</div>
         <div class="sdc-preset-row">
-          <button type="button" data-sdc-preset="all">Всё</button>
+          <button type="button" data-sdc-preset="all">All</button>
           <button type="button" data-sdc-preset="cookies">Cookies</button>
-          <button type="button" data-sdc-preset="storage">Хранилища</button>
-          <button type="button" data-sdc-preset="session">Сессия</button>
+          <button type="button" data-sdc-preset="storage">Storage</button>
+          <button type="button" data-sdc-preset="session">Session</button>
         </div>
       </div>
       <div class="clear-options">
@@ -516,9 +516,9 @@
         <label><input type="checkbox" id="optSessionStorage" checked> sessionStorage</label>
         <label><input type="checkbox" id="optCacheStorage" checked> Cache storage (SW)</label>
       </div>
-      <button type="button" id="btnClearSite">Очистить для этого сайта</button>
+      <button type="button" id="btnClearSite">Clear for this site</button>
       <div id="clearStatus"></div>
-      <p class="hint" style="margin-top: 10px;">Выбор сохраняется. Системные и служебные страницы недоступны.</p>
+      <p class="hint" style="margin-top: 10px;">Selection is saved. System and internal pages are unavailable.</p>
     </div>
   </div>
 

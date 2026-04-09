@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Скриншоты страницы</title>
+  <title>From </title>
   <style>
     /* Swiss style: minimalism, grid, strict typography, black/white */
     * { box-sizing: border-box; }
@@ -158,27 +158,27 @@
   </style>
 </head>
 <body>
-  <h1>Скриншоты страницы</h1>
-  <p class="sub" id="sub">Загрузка…</p>
+  <h1>Page screenshots</h1>
+  <p class="sub" id="sub">Loading...</p>
 
   <div class="frames" id="frames"></div>
-  <div id="empty" style="display:none;">Нет кадров.</div>
+  <div id="empty" style="display:none;">No frames.</div>
 
   <div class="settings" id="settings">
     <div class="settings-group export-block">
-      <label>Расширения скриншоты</label>
-      <p class="settings-hint">1. Выбор директории: папка или подпапка в Downloads. 2. Скачайте картинки.</p>
+      <label>Export settings</label>
+      <p class="settings-hint">1. Choose destination: selected folder or Downloads subfolder. 2. Download images/PDF.</p>
       <div class="settings-row settings-row-center">
-        <button type="button" class="btn btn-pick" id="btnPickFolder">Выбрать папку…</button>
+        <button type="button" class="btn btn-pick" id="btnPickFolder">Pick folder...</button>
         <span class="folder-status" id="folderStatus"></span>
       </div>
       <div class="settings-row">
-        <input type="text" id="exportFolder" placeholder="Подпапка в Downloads (если папка не выбрана)" />
-        <button type="button" class="btn btn-save" id="btnSaveFolder">Сохранить</button>
+        <input type="text" id="exportFolder" placeholder="Subfolder in Downloads (if no folder selected)" />
+        <button type="button" class="btn btn-save" id="btnSaveFolder">Save</button>
       </div>
       <div class="actions" id="actions" style="display:none; margin-top:16px;">
-        <button type="button" class="btn btn-png" id="btnPng">Скачать PNG</button>
-        <button type="button" class="btn btn-pdf" id="btnPdf">Скачать PDF</button>
+        <button type="button" class="btn btn-png" id="btnPng">Download PNG</button>
+        <button type="button" class="btn btn-pdf" id="btnPdf">Download PDF</button>
       </div>
       <div class="download-progress" id="downloadProgress" style="display:none; margin-top:12px; height:4px; background:#e0e0e0; overflow:hidden;">
         <div class="download-progress-fill" id="downloadProgressFill" style="height:100%; background:#000; width:0%; transition:width 0.15s ease;"></div>
@@ -186,18 +186,18 @@
       <div class="download-status" id="downloadStatus" aria-live="polite"></div>
     </div>
     <div class="settings-group">
-      <label>Формат PNG:</label>
+      <label>PNG format:</label>
       <div class="format-row">
         <label class="format-option">
           <input type="radio" name="pngFormat" value="tiles" id="formatTiles" checked />
-          <span>Несколько кадров</span>
+          <span>Multiple frames</span>
         </label>
         <label class="format-option">
           <input type="radio" name="pngFormat" value="whole" id="formatWhole" />
-          <span>Один цельный</span>
+          <span>Merged single image</span>
         </label>
       </div>
-      <p class="settings-hint">«Цельный» — все кадры склеены в один длинный PNG.</p>
+      <p class="settings-hint">"Merged" combines all frames into one long PNG.</p>
     </div>
   </div>
   <script src="lib/jspdf.umd.min.js"></script>

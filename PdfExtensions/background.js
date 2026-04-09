@@ -1,17 +1,17 @@
 /**
- * Service worker: скролл + captureVisibleTab по тайлам (без ресайза окна — без chrome.windows).
- * Размер кадра = текущий viewport окна браузера.
+ * Service worker:  + captureVisibleTab   (   —  chrome.windows).
+ *   =  viewport  .
  */
 
-/** Задержка между кадрами: Chrome ограничивает captureVisibleTab (лимит вызовов в секунду) */
+/**   : Chrome  captureVisibleTab (   ) */
 const SCROLL_DELAY_MS = 1500;
-/** Доп. пауза перед первым кадром, чтобы верх страницы успел отрисоваться */
+/** To.    ,      */
 const FIRST_FRAME_DELAY_MS = 500;
 
-/** Только активная вкладка — не трогаем окно (избегаем "No window with id") */
+/**    —    ( "No window with id") */
 async function getActiveTab() {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  if (!tab?.id) throw new Error('Нет активной вкладки');
+  if (!tab?.id) throw new Error('No active tab');
   return tab;
 }
 
@@ -42,7 +42,7 @@ function showFloating(tabId) {
   return chrome.tabs.sendMessage(tabId, { type: 'showFloating' }).catch(() => {});
 }
 
-/** Шаг скролла = высота viewport, чтобы кадры стыковались без обрезков и пропусков. */
+/**   =  viewport,       . */
 async function captureTiles(tabId, windowId, pageHeight, viewportHeight, onProgress) {
   const step = Math.max(1, Math.floor(viewportHeight));
   const tiles = [];
@@ -68,7 +68,7 @@ const DB_NAME = 'PdfCaptureDB';
 const DB_STORE = 'capture';
 const DB_KEY = 'pending';
 
-/** Сохранить данные в IndexedDB (переживают завершение service worker) */
+/** From   IndexedDB (  service worker) */
 function saveToIndexedDB(data) {
   return new Promise((resolve, reject) => {
     const req = indexedDB.open(DB_NAME, 1);
@@ -86,7 +86,7 @@ function saveToIndexedDB(data) {
   });
 }
 
-/** Открыть страницу результата рядом с текущей вкладкой (справа) */
+/**        () */
 function openResultPage(tab) {
   chrome.tabs.create({
     url: chrome.runtime.getURL('result.html'),
@@ -95,20 +95,20 @@ function openResultPage(tab) {
   });
 }
 
-/** Понятные сообщения для типичных ошибок захвата. */
+/**      . */
 function formatCaptureError(e) {
   const msg = (e && e.message) || String(e);
   const lower = msg.toLowerCase();
-  if (lower.includes('no active tab') || msg.includes('Нет активной')) return 'Нет активной вкладки.';
+  if (lower.includes('no active tab') || msg.includes(' ')) return 'No active tab.';
   if (lower.includes('cannot access') || lower.includes('chrome://')) {
-    return 'Эту страницу нельзя сканировать (системная или с ограничениями Chrome).';
+    return 'This page cannot be captured (system page or restricted by Chrome).';
   }
-  if (lower.includes('chrome-extension://')) return 'Страницы расширений сканировать нельзя.';
+  if (lower.includes('chrome-extension://')) return 'Extension pages cannot be captured.';
   if (lower.includes('could not establish connection') || lower.includes('receiving end does not exist')) {
-    return 'Не удалось подключиться к странице. Обновите вкладку и попробуйте снова.';
+    return 'Could not connect to the page. Reload the tab and try again.';
   }
   if (lower.includes('capturevisible') || lower.includes('cannot capture')) {
-    return 'Снимок экрана вкладки недоступен (страница или окно в неподходящем состоянии).';
+    return 'Tab screenshot unavailable (page or window is in an invalid state).';
   }
   return msg.length > 160 ? `${msg.slice(0, 157)}…` : msg;
 }
@@ -133,10 +133,10 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       };
       getReq.onerror = () => {
         db.close();
-        sendResponse({ tiles: [], pageInfo: null, error: 'Ошибка чтения данных' });
+        sendResponse({ tiles: [], pageInfo: null, error: 'Error  ' });
       };
     };
-    req.onerror = () => sendResponse({ tiles: [], pageInfo: null, error: 'IndexedDB недоступна' });
+    req.onerror = () => sendResponse({ tiles: [], pageInfo: null, error: 'IndexedDB unavailable' });
     req.onupgradeneeded = (e) => e.target.result.createObjectStore(DB_STORE);
     return true;
   }
@@ -150,9 +150,9 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       tabId = tab.id;
 
       if (!tab.url) {
-        await saveToIndexedDB({ error: 'Нет открытой страницы.' });
+        await saveToIndexedDB({ error: 'No open page.' });
         openResultPage(tab);
-        sendResponse({ error: 'Нет открытой страницы.' });
+        sendResponse({ error: 'No open page.' });
         return;
       }
 
@@ -185,7 +185,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         tiles,
         pageInfo: { url: tab.url, title: tab.title || '' },
       });
-      // Небольшая задержка — гарантирует commit IndexedDB до загрузки result.html
+      //   —  commit IndexedDB   result.html
       await new Promise((r) => setTimeout(r, 150));
       openResultPage(tab);
       sendResponse({ ok: true, count: tiles.length });

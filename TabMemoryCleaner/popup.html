@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <style>
@@ -83,28 +83,28 @@
 </head>
 <body>
   <h2>Tab Memory Cleaner</h2>
-  <button type="button" class="primary" id="btnDiscard">Выгрузить фоновые вкладки</button>
+  <button type="button" class="primary" id="btnDiscard">Discard background tabs</button>
   <div class="row">
     <input type="checkbox" id="skipPinned" checked>
-    <label for="skipPinned">Не трогать закреплённые</label>
+    <label for="skipPinned">Skip pinned tabs</label>
   </div>
   <div class="row">
     <input type="checkbox" id="skipAudible" checked>
-    <label for="skipAudible">Не трогать вкладки со звуком</label>
+    <label for="skipAudible">Skip audible tabs</label>
   </div>
   <div class="row">
     <input type="checkbox" id="skipIncognito" checked>
-    <label for="skipIncognito">Не трогать инкогнито</label>
+    <label for="skipIncognito">Skip incognito tabs</label>
   </div>
   <div class="row">
     <input type="checkbox" id="skipGrouped" checked>
-    <label for="skipGrouped">Не трогать вкладки в группах</label>
+    <label for="skipGrouped">Skip grouped tabs</label>
   </div>
   <div class="section">
-    <div class="section-title">Никогда не выгружать (домены, по одному в строке)</div>
+    <div class="section-title">Never discard (domains, one per line)</div>
     <textarea id="excludedDomains" placeholder="mail.google.com"></textarea>
   </div>
-  <p class="kbd-hint">Горячая клавиша: Option+Shift+K (Chrome → Управление расширением → Сочетания клавиш).</p>
+  <p class="kbd-hint">Hotkey: Option+Shift+K (Chrome -> Manage extension -> Keyboard shortcuts).</p>
   <div id="status"></div>
   <script src="popup.js"></script>
 </body>

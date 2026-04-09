@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Page Capture — тайлы 1440×1024",
+  "name": "Page Capture - tiles 1440x1024",
   "version": "1.0.2",
-  "description": "Скрин страницы по тайлам в PNG или PDF. Понятные сообщения об ошибках.",
+  "description": "Capture page screenshots as tiles in PNG or PDF. Clear error messages.",
   "icons": {
     "16": "icons/16.png",
     "48": "icons/48.png",

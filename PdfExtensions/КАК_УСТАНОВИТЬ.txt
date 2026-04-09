@@ -1,19 +1,14 @@
-ЧТО ЗАГРУЖАТЬ В CHROME
-======================
+WHAT TO LOAD IN CHROME
 
-Загружать нужно папку проекта PdfExtensions (именно её целиком).
+Load the PdfExtensions project folder (the folder itself).
 
-Путь: Projects/PdfExtensions
-(например: Рабочий стол/Projects/PdfExtensions или Desktop/Projects/PdfExtensions)
+Path: Projects/PdfExtensions
 
-Шаги:
-------
-1. Откройте в Chrome: chrome://extensions/
-2. Включите переключатель «Режим разработчика» (справа сверху).
-3. Нажмите «Загрузить распакованное расширение».
-4. В диалоге зайдите в папку проекта и выберите папку PdfExtensions.
-5. Нажмите «Выбор папки» / «Открыть».
+Steps:
+1. Open chrome://extensions/
+2. Enable Developer mode (top-right).
+3. Click "Load unpacked".
+4. Select the PdfExtensions folder.
+5. Confirm.
 
-Расширение появится в списке. Иконку можно закрепить на панели (клик по значку пазла → булавка у «Page Capture»).
-
-Использование: откройте любую страницу по http(s), нажмите на иконку расширения → «Скачать PNG» или «Скачать PDF».
+Usage: open any http(s) page, click extension icon, then choose "Download PNG" or "Download PDF".

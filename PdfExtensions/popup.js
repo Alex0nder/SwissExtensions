@@ -1,5 +1,5 @@
 /**
- * Popup: сканирование страницы с прогресс-баром. После захвата открывается result.html со скриншотами.
+ * Popup:    -.    result.html  .
  */
 const status = document.getElementById('status');
 const btnScan = document.getElementById('btnScan');
@@ -18,7 +18,7 @@ function showProgress(visible) {
 
 btnScan.addEventListener('click', async () => {
   btnScan.disabled = true;
-  setStatus('Сканирую…');
+  setStatus('Scanning...');
   showProgress(true);
 
   const onProgress = (changes, areaName) => {
@@ -26,7 +26,7 @@ btnScan.addEventListener('click', async () => {
     const { total, current } = changes.captureProgress.newValue;
     const pct = total > 0 ? Math.round((current / total) * 100) : 0;
     if (captureProgressFillEl) captureProgressFillEl.style.width = pct + '%';
-    setStatus(`Кадр ${current} из ${total}…`);
+    setStatus(`Frame ${current} of ${total}…`);
   };
 
   chrome.storage.onChanged.addListener(onProgress);
@@ -54,12 +54,12 @@ btnScan.addEventListener('click', async () => {
       return;
     }
     if (res?.ok && res?.count > 0) {
-      setStatus('Открыта страница со скриншотами.');
+      setStatus('Screenshots page opened.');
     } else {
-      setStatus('Нет кадров.', true);
+      setStatus('No frames.', true);
     }
   } catch (e) {
     cleanup();
-    setStatus(e?.message || 'Ошибка', true);
+    setStatus(e?.message || 'Error', true);
   }
 });

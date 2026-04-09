@@ -6,12 +6,46 @@
   command = "true"
   publish = "."
 
+# HTML: не кэшировать надолго — после деплоя подтягивается новая версия страницы.
 [[headers]]
-  for = "/favicon/*"
+  for = "/"
   [headers.values]
-    Cache-Control = "public, max-age=86400"
+    Cache-Control = "public, max-age=0, must-revalidate"
 
+[[headers]]
+  for = "/index.html"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+[[headers]]
+  for = "/**/*.html"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+# CSS/JS: короткий TTL + revalidate, чтобы обновления стилей и скриптов не залипали.
 [[headers]]
   for = "/css/*"
   [headers.values]
-    Cache-Control = "public, max-age=3600"
+    Cache-Control = "public, max-age=300, must-revalidate"
+
+[[headers]]
+  for = "/js/*"
+  [headers.values]
+    Cache-Control = "public, max-age=300, must-revalidate"
+
+# Манифест и иконки: умеренно; при смене favicon — быстрее подхват.
+[[headers]]
+  for = "/favicon/*"
+  [headers.values]
+    Cache-Control = "public, max-age=3600, must-revalidate"
+
+[[headers]]
+  for = "/favicon/site.webmanifest"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+# Архивы с версией в имени — можно кэшировать дольше (имя меняется при новом релизе).
+[[headers]]
+  for = "/downloads/*.zip"
+  [headers.values]
+    Cache-Control = "public, max-age=86400, immutable"

@@ -1,23 +1,30 @@
 # Site Blocker
 
-Блокировщик отвлекающих сайтов + **лёгкие фильтры рекламы/трекеров** (Chrome `declarativeNetRequest`), без своего сервера.
+Blocks distracting websites and provides **lightweight ad/tracker filtering** via Chrome `declarativeNetRequest` (no backend).
 
-## Возможности
+## Features
 
-- **Вкл/выкл** — общий переключатель блокировки вашего списка сайтов
-- **Фильтры рекламы** — встроенный статический список ~50 рекламных/трекерных доменов (скрипты, картинки, XHR, sub_frame и т.д.). Это **не EasyList** и не uBlock: покрытие меньше, зато без подписок и парсинга ABP-синтаксиса
-- **Подписка на список (ABP / EasyList)** — опционально: URL текстового списка, парсятся только строки вида `||домен^` (без модификаторов `$`, без исключений `@@`). Правила подписки живут в **отдельном диапазоне ID** динамических правил (`declarativeNetRequest`), чтобы не пересекаться с вашим списком «отвлекающих» сайтов. Сохраняется до **~2200 доменов** (остальное отбрасывается из‑за лимита Chrome на число правил)
-- **Список доменов** — полная блокировка страниц (main_frame) для своих «отвлекающих» сайтов
-- **Whitelist**, **расписание**, **импорт/экспорт JSON** — в экспорт также входят `adsFiltersEnabled`, `filterListUrl`, `filterListEnabled`, при необходимости сохранённые `filterListDomains` (для офлайн-восстановления после импорта)
+- **Global on/off** toggle for your site blocklist.
+- **Ad filters** via static ruleset with common resource types + **WebSocket**; network rules use **`domainType: thirdParty`** to reduce breakage.
+- **Optional cosmetic mode** with a separate toggle: lightweight CSS for common AdSense/iframe containers (not a full AdGuard engine).
+- **Subscription support** for up to **two list URLs** (for example EasyList + EasyPrivacy):
+  - parses `||domain^` / `||domain/` as block rules,
+  - parses `@@||domain^` as allow rules,
+  - applies subscription blocking as **thirdParty** only.
+- **Auto-refresh** for subscriptions using alarms (6–168 hours).
+- **Site blocklist** for full page blocking (`main_frame`) of your own distracting domains.
+- **Whitelist, schedule, JSON import/export**, including `filterListUrl2`, `filterListAllowDomains`, auto-refresh settings, and `adsCosmeticLiteEnabled`.
 
-## Установка
+## Installation
 
-1. Откройте `chrome://extensions`
-2. Включите «Режим разработчика»
-3. «Загрузить распакованное расширение» → папка `SiteBlocker`
+1. Open `chrome://extensions`.
+2. Enable Developer mode.
+3. Click "Load unpacked" and select the `SiteBlocker` folder.
 
-## Ограничения (честно)
+## Limitations
 
-- Некоторые сайты могут работать некорректно с включёнными фильтрами — выключите «Фильтры» в popup
-- Полноценная замена uBlock в MV3 потребовала бы огромных списков и постоянного обновления; здесь — осознанно узкий набор правил
-- **Подписка:** большой файл (например полный EasyList) целиком скачивается в service worker — первое обновление может занять время и нагрузить память; после парсинга в хранилище остаётся только список доменов. Исключения из списка (`@@`) и сложные правила ABP **не** поддерживаются — только домены из `||…^`
+- Some websites may break when filters are enabled; disable filters in the popup when needed.
+- This is intentionally narrower than full adblock engines like uBlock/AdGuard in MV3.
+- Subscription parser still ignores lines with `$` modifiers (no full ABP parser yet).
+- No scriptlets, no cosmetic filters from remote lists, and no request logger yet.
+- With two URLs configured, a failed fetch for either URL currently fails the refresh run.

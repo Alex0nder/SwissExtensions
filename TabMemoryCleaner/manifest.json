@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Tab Memory Cleaner",
   "version": "1.0.2",
-  "description": "Discard фоновых вкладок для освобождения RAM. Горячая клавиша, исключения по доменам.",
+  "description": "Discard background tabs to free RAM. Hotkey and domain exclusions.",
   "icons": {
     "16": "icons/icon16.png",
     "32": "icons/icon32.png",
@@ -16,7 +16,7 @@
         "default": "Alt+Shift+K",
         "mac": "Alt+Shift+K"
       },
-      "description": "Выгрузить фоновые вкладки (освободить RAM)"
+      "description": "Discard background tabs (free RAM)"
     }
   },
   "action": {

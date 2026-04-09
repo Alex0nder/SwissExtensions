@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Site Data Clear",
   "version": "1.0.1",
-  "description": "Очистка cookies, localStorage, sessionStorage и cache storage для текущего сайта. Пресеты, сохранение выбора.",
+  "description": "Clear cookies, localStorage, sessionStorage and cache storage for the current site. Presets and saved choices.",
   "icons": {
     "16": "icons/icon16.png",
     "32": "icons/icon32.png",

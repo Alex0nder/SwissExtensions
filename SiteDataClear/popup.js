@@ -1,5 +1,5 @@
 /**
- * Очистка данных origin текущей вкладки: пресеты, сохранение выбора в storage.
+ *   origin  : ,    storage.
  */
 
 const STORAGE_KEY = 'sdcOptions';
@@ -78,14 +78,14 @@ async function clearSiteData() {
   const opt = readOptionsFromUi();
   const anyBrowsing = opt.cookies || opt.localStorage || opt.cacheStorage;
   if (!anyBrowsing && !opt.sessionStorage) {
-    status.textContent = 'Выберите хотя бы один пункт';
+    status.textContent = 'Select at least one option';
     status.className = 'err';
     return;
   }
 
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (!tab?.id || !tab.url) {
-    status.textContent = 'Нет активной вкладки';
+    status.textContent = 'No active tab';
     status.className = 'err';
     return;
   }
@@ -94,7 +94,7 @@ async function clearSiteData() {
     const url = new URL(tab.url);
     const origin = url.origin;
     if (url.protocol === 'chrome:' || url.protocol === 'chrome-extension:' || url.protocol === 'edge:' || url.protocol === 'about:') {
-      status.textContent = 'Недоступно для системных страниц';
+      status.textContent = 'Unavailable on system pages';
       status.className = 'err';
       return;
     }
@@ -114,12 +114,12 @@ async function clearSiteData() {
       });
     }
 
-    status.textContent = 'Готово';
+    status.textContent = 'Done';
     status.className = 'ok';
     saveOptions();
     setTimeout(() => chrome.tabs.reload(tab.id), 800);
   } catch (e) {
-    status.textContent = 'Ошибка: ' + (e.message || 'неизвестная');
+    status.textContent = 'Error: ' + (e.message || 'unknown');
     status.className = 'err';
   }
 }

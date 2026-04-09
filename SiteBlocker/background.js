@@ -1,5 +1,5 @@
 /**
- * Site Blocker: пользовательские домены + статические фильтры + опциональная подписка на ABP-список (||host^) в dynamic rules.
+ * Site Blocker: custom domains + static filters + ABP subscription (|| / @@), thirdParty, auto-refresh.
  */
 
 const USER_RULE_ID_MIN = 1;
@@ -7,6 +7,7 @@ const USER_RULE_ID_MAX = 500;
 const SUB_RULE_ID_MIN = 501;
 const SUB_RULE_ID_MAX = 5000;
 const SCHEDULE_ALARM_NAME = 'siteBlockerScheduleTick';
+const FILTER_LIST_ALARM_NAME = 'siteBlockerFilterListRefresh';
 const FILTER_RULESET_IDS = ['sb_filters_ads'];
 const DEFAULT_SCHEDULE = {
   enabled: false,
@@ -14,8 +15,9 @@ const DEFAULT_SCHEDULE = {
   to: '18:00',
   days: [1, 2, 3, 4, 5],
 };
-/** Макс. доменов из подписки (2 DNR-правила на домен → укладываемся в лимит Chrome). */
-const SUBSCRIPTION_MAX_DOMAINS = 2200;
+/** 2 rules per domain (block) + 2 per domain (allow). Reserve for Chrome dynamic rules limit (~5000). */
+const SUBSCRIPTION_MAX_BLOCKS = 1850;
+const SUBSCRIPTION_MAX_ALLOWS = 280;
 
 function normalizeDomain(input) {
   let s = (input || '').trim().toLowerCase();
@@ -69,29 +71,52 @@ function isInSchedule(schedule, now = new Date()) {
   return nowMin >= from || nowMin < to;
 }
 
-/** Из текста EasyList/ABP: только строки ||hostname^ (без $, @@, косметики). */
-function parseFilterListDomains(text, maxDomains) {
-  const out = [];
-  const seen = new Set();
-  const lines = text.split(/\r?\n/);
-  for (const line of lines) {
-    if (out.length >= maxDomains) break;
-    const t = line.trim();
-    if (!t || t.startsWith('!') || t.startsWith('#')) continue;
-    if (t.startsWith('@@')) continue;
-    if (t.includes('$')) continue;
-    const m = /^\|\|([a-z0-9.-]+)/i.exec(t);
-    if (!m) continue;
-    const host = m[1].trim().toLowerCase();
-    if (!host || host.includes('*')) continue;
-    if (seen.has(host)) continue;
-    seen.add(host);
-    out.push(host);
-  }
-  return out;
+function normalizeFilterHost(raw) {
+  const host = String(raw || '')
+    .trim()
+    .toLowerCase()
+    .replace(/^\.+/, '');
+  if (!host || host.includes('*') || host.startsWith('-') || host.endsWith('-')) return '';
+  return host;
 }
 
-const SUB_RES_TYPES = ['script', 'image', 'xmlhttprequest', 'sub_frame', 'ping', 'media', 'other'];
+/**
+ * Two passes: first @@|| (allow), then || (block), skipping lines with $ (same as before).
+ */
+function parseFilterListAbp(text, maxBlocks, maxAllows) {
+  const lines = text.split(/\r?\n/);
+  const allowSet = new Set();
+  const allows = [];
+  for (const line of lines) {
+    if (allows.length >= maxAllows) break;
+    const t = line.trim();
+    if (!t || t.startsWith('!') || t.startsWith('#') || t.includes('$')) continue;
+    const allowM = /^@@\|\|([a-z0-9._-]+)(?:\^|\/|$)/i.exec(t);
+    if (!allowM) continue;
+    const host = normalizeFilterHost(allowM[1]);
+    if (!host || allowSet.has(host)) continue;
+    allowSet.add(host);
+    allows.push(host);
+  }
+  const blockSeen = new Set();
+  const blocks = [];
+  for (const line of lines) {
+    if (blocks.length >= maxBlocks) break;
+    const t = line.trim();
+    if (!t || t.startsWith('!') || t.startsWith('#') || t.startsWith('@@') || t.includes('$')) continue;
+    const m = /^\|\|([a-z0-9._-]+)(?:\^|\/|$)/i.exec(t);
+    if (!m) continue;
+    const host = normalizeFilterHost(m[1]);
+    if (!host || allowSet.has(host) || blockSeen.has(host)) continue;
+    blockSeen.add(host);
+    blocks.push(host);
+  }
+  return { blocks, allows };
+}
+
+const SUB_RES_TYPES = ['script', 'image', 'xmlhttprequest', 'sub_frame', 'ping', 'media', 'other', 'websocket'];
+const BLOCK_PRIORITY = 1;
+const ALLOW_PRIORITY = 10;
 
 async function applyFilterRulesets() {
   const { adsFiltersEnabled = true } = await chrome.storage.local.get('adsFiltersEnabled');
@@ -113,7 +138,6 @@ async function applyFilterRulesets() {
   }
 }
 
-/** main_frame: только USER_RULE_ID_MIN..MAX */
 async function applyUserBlockingRules() {
   const { blocked = [], whitelist = [], enabled = true, schedule = DEFAULT_SCHEDULE } = await chrome.storage.local.get([
     'blocked',
@@ -145,7 +169,7 @@ async function applyUserBlockingRules() {
 
   const capped = uniqueDomains.slice(0, USER_RULE_ID_MAX - USER_RULE_ID_MIN + 1);
   if (uniqueDomains.length > capped.length) {
-    console.warn('[SiteBlocker] список блокировок обрезан до', capped.length, 'доменов (лимит DNR)');
+    console.warn('[SiteBlocker] block list truncated to', capped.length, 'domains (DNR limit)');
   }
 
   if (capped.length === 0) {
@@ -171,16 +195,66 @@ async function applyUserBlockingRules() {
   });
 }
 
-/** Подписка: ресурсы как у лёгкого adblock, ID SUB_RULE_ID_MIN..MAX */
+function pushPairBlock(rules, idRef, domain) {
+  if (idRef.v > SUB_RULE_ID_MAX - 1) return false;
+  rules.push({
+    id: idRef.v++,
+    priority: BLOCK_PRIORITY,
+    action: { type: 'block' },
+    condition: {
+      urlFilter: `*://*.${domain}/*`,
+      resourceTypes: SUB_RES_TYPES,
+      domainType: 'thirdParty',
+    },
+  });
+  if (idRef.v > SUB_RULE_ID_MAX) return true;
+  rules.push({
+    id: idRef.v++,
+    priority: BLOCK_PRIORITY,
+    action: { type: 'block' },
+    condition: {
+      urlFilter: `*://${domain}/*`,
+      resourceTypes: SUB_RES_TYPES,
+      domainType: 'thirdParty',
+    },
+  });
+  return idRef.v > SUB_RULE_ID_MAX;
+}
+
+function pushPairAllow(rules, idRef, domain) {
+  if (idRef.v > SUB_RULE_ID_MAX - 1) return;
+  rules.push({
+    id: idRef.v++,
+    priority: ALLOW_PRIORITY,
+    action: { type: 'allow' },
+    condition: {
+      urlFilter: `*://*.${domain}/*`,
+      resourceTypes: SUB_RES_TYPES,
+    },
+  });
+  if (idRef.v > SUB_RULE_ID_MAX) return;
+  rules.push({
+    id: idRef.v++,
+    priority: ALLOW_PRIORITY,
+    action: { type: 'allow' },
+    condition: {
+      urlFilter: `*://${domain}/*`,
+      resourceTypes: SUB_RES_TYPES,
+    },
+  });
+}
+
+/** Subscription: block thirdParty + allow (@@) with higher priority. */
 async function applySubscriptionDynamicRules() {
-  const { filterListEnabled, filterListDomains = [] } = await chrome.storage.local.get([
+  const { filterListEnabled, filterListDomains = [], filterListAllowDomains = [] } = await chrome.storage.local.get([
     'filterListEnabled',
     'filterListDomains',
+    'filterListAllowDomains',
   ]);
   const existing = await chrome.declarativeNetRequest.getDynamicRules();
   const toRemoveSub = existing.filter((r) => r.id >= SUB_RULE_ID_MIN && r.id <= SUB_RULE_ID_MAX).map((r) => r.id);
 
-  if (!filterListEnabled || !filterListDomains.length) {
+  if (!filterListEnabled || (!filterListDomains.length && !filterListAllowDomains.length)) {
     if (toRemoveSub.length > 0) {
       await chrome.declarativeNetRequest.updateDynamicRules({ removeRuleIds: toRemoveSub });
     }
@@ -188,22 +262,14 @@ async function applySubscriptionDynamicRules() {
   }
 
   const rules = [];
-  let id = SUB_RULE_ID_MIN;
+  const idRef = { v: SUB_RULE_ID_MIN };
+
   for (const domain of filterListDomains) {
-    if (id > SUB_RULE_ID_MAX - 1) break;
-    rules.push({
-      id: id++,
-      priority: 1,
-      action: { type: 'block' },
-      condition: { urlFilter: `*://*.${domain}/*`, resourceTypes: SUB_RES_TYPES },
-    });
-    if (id > SUB_RULE_ID_MAX) break;
-    rules.push({
-      id: id++,
-      priority: 1,
-      action: { type: 'block' },
-      condition: { urlFilter: `*://${domain}/*`, resourceTypes: SUB_RES_TYPES },
-    });
+    if (pushPairBlock(rules, idRef, domain)) break;
+  }
+  for (const domain of filterListAllowDomains) {
+    pushPairAllow(rules, idRef, domain);
+    if (idRef.v > SUB_RULE_ID_MAX) break;
   }
 
   await chrome.declarativeNetRequest.updateDynamicRules({
@@ -212,44 +278,95 @@ async function applySubscriptionDynamicRules() {
   });
 }
 
+function validListUrl(s) {
+  const u = String(s || '').trim();
+  return u.length > 0 && /^https?:\/\//i.test(u);
+}
+
 async function refreshFilterListFromUrl() {
-  const { filterListUrl, whitelist = [] } = await chrome.storage.local.get(['filterListUrl', 'whitelist']);
-  const url = String(filterListUrl || '').trim();
-  if (!url || !/^https?:\/\//i.test(url)) {
+  const { filterListUrl, filterListUrl2 = '', whitelist = [] } = await chrome.storage.local.get([
+    'filterListUrl',
+    'filterListUrl2',
+    'whitelist',
+  ]);
+  const urls = [filterListUrl, filterListUrl2].map((u) => String(u || '').trim()).filter(validListUrl);
+  if (urls.length === 0) {
     await chrome.storage.local.set({
-      filterListLastError: 'Укажите URL списка (https://…)',
+      filterListLastError: 'Specify at least one list URL (https://...)',
       filterListDomains: [],
+      filterListAllowDomains: [],
       filterListLastOk: null,
+      filterListDomainCount: 0,
+      filterListAllowCount: 0,
     });
     await applySubscriptionDynamicRules();
     return { ok: false, error: 'bad_url' };
   }
   try {
-    const res = await fetch(url, { cache: 'no-cache' });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const text = await res.text();
+    const texts = await Promise.all(
+      urls.map(async (url) => {
+        const res = await fetch(url, { cache: 'no-cache' });
+        if (!res.ok) throw new Error(`${url} → HTTP ${res.status}`);
+        return res.text();
+      }),
+    );
+    const combined = texts.join('\n');
     const wl = new Set((whitelist || []).map(normalizeDomain).filter(Boolean));
-    const raw = parseFilterListDomains(text, SUBSCRIPTION_MAX_DOMAINS + wl.size + 100);
-    const domains = raw.filter((d) => !wl.has(d));
-    const capped = domains.slice(0, SUBSCRIPTION_MAX_DOMAINS);
+    const parsed = parseFilterListAbp(combined, SUBSCRIPTION_MAX_BLOCKS + wl.size + 50, SUBSCRIPTION_MAX_ALLOWS);
+    const blocks = parsed.blocks.filter((d) => !wl.has(d)).slice(0, SUBSCRIPTION_MAX_BLOCKS);
+    const allows = parsed.allows.slice(0, SUBSCRIPTION_MAX_ALLOWS);
+
     await chrome.storage.local.set({
-      filterListDomains: capped,
+      filterListDomains: blocks,
+      filterListAllowDomains: allows,
       filterListLastOk: Date.now(),
       filterListLastError: '',
-      filterListDomainCount: capped.length,
+      filterListDomainCount: blocks.length,
+      filterListAllowCount: allows.length,
     });
     await applySubscriptionDynamicRules();
-    return { ok: true, count: capped.length };
+    await rescheduleFilterListAlarm();
+    return { ok: true, count: blocks.length, allows: allows.length };
   } catch (e) {
     const msg = (e && e.message) || String(e);
     await chrome.storage.local.set({
       filterListLastError: msg,
       filterListDomains: [],
+      filterListAllowDomains: [],
       filterListLastOk: null,
+      filterListDomainCount: 0,
+      filterListAllowCount: 0,
     });
     await applySubscriptionDynamicRules();
     return { ok: false, error: msg };
   }
+}
+
+async function rescheduleFilterListAlarm() {
+  try {
+    await chrome.alarms.clear(FILTER_LIST_ALARM_NAME);
+  } catch (e) {
+    /* ignore */
+  }
+  const {
+    filterListEnabled,
+    filterListAutoRefreshEnabled = true,
+    filterListAutoRefreshHours = 24,
+    filterListUrl,
+    filterListUrl2,
+  } = await chrome.storage.local.get([
+    'filterListEnabled',
+    'filterListAutoRefreshEnabled',
+    'filterListAutoRefreshHours',
+    'filterListUrl',
+    'filterListUrl2',
+  ]);
+  if (!filterListEnabled || filterListAutoRefreshEnabled === false) return;
+  const hasUrl = [filterListUrl, filterListUrl2].some((u) => validListUrl(u));
+  if (!hasUrl) return;
+  const hours = Math.max(6, Math.min(168, Number(filterListAutoRefreshHours) || 24));
+  const period = Math.min(hours * 60, 24 * 7 * 60);
+  await chrome.alarms.create(FILTER_LIST_ALARM_NAME, { periodInMinutes: period });
 }
 
 async function applyRules() {
@@ -267,9 +384,19 @@ chrome.storage.onChanged.addListener((changes, area) => {
     changes.enabled ||
     changes.schedule ||
     changes.filterListEnabled ||
-    changes.filterListDomains
+    changes.filterListDomains ||
+    changes.filterListAllowDomains
   ) {
     applyRules();
+  }
+  if (
+    changes.filterListEnabled ||
+    changes.filterListUrl ||
+    changes.filterListUrl2 ||
+    changes.filterListAutoRefreshEnabled ||
+    changes.filterListAutoRefreshHours
+  ) {
+    rescheduleFilterListAlarm();
   }
 });
 
@@ -280,7 +407,17 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   }
   if (msg.type === 'getFilterListMeta') {
     chrome.storage.local
-      .get(['filterListUrl', 'filterListEnabled', 'filterListLastOk', 'filterListLastError', 'filterListDomainCount'])
+      .get([
+        'filterListUrl',
+        'filterListUrl2',
+        'filterListEnabled',
+        'filterListLastOk',
+        'filterListLastError',
+        'filterListDomainCount',
+        'filterListAllowCount',
+        'filterListAutoRefreshEnabled',
+        'filterListAutoRefreshHours',
+      ])
       .then(sendResponse);
     return true;
   }
@@ -290,12 +427,22 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
 chrome.alarms.create(SCHEDULE_ALARM_NAME, { periodInMinutes: 1 }).catch(() => {});
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === SCHEDULE_ALARM_NAME) applyUserBlockingRules();
+  if (alarm.name === FILTER_LIST_ALARM_NAME) {
+    chrome.storage.local.get('filterListEnabled', (d) => {
+      if (d.filterListEnabled === true) refreshFilterListFromUrl();
+    });
+  }
 });
 
-chrome.runtime.onStartup.addListener(applyRules);
+chrome.runtime.onStartup.addListener(() => {
+  applyRules();
+  rescheduleFilterListAlarm();
+});
 chrome.runtime.onInstalled.addListener(async () => {
   await chrome.alarms.create(SCHEDULE_ALARM_NAME, { periodInMinutes: 1 }).catch(() => {});
   await applyRules();
+  await rescheduleFilterListAlarm();
 });
 
 applyRules();
+rescheduleFilterListAlarm();

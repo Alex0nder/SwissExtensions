@@ -1,5 +1,5 @@
 /**
- * Discard фоновых вкладок для освобождения памяти. Настройки в chrome.storage (tmcSettings).
+ * Discard     .   chrome.storage (tmcSettings).
  */
 const DISCARD_DELAY_MS = 300;
 

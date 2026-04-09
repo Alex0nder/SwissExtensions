@@ -1,0 +1,10 @@
+/* Light cosmetic rules: only common ad containers (controlled by a separate toggle). */
+ins.adsbygoogle,
+iframe[src*="googlesyndication.com"],
+iframe[src*="doubleclick.net"],
+iframe[src*="googleads.g.doubleclick.net"] {
+  display: none !important;
+  visibility: hidden !important;
+  max-height: 0 !important;
+  overflow: hidden !important;
+}

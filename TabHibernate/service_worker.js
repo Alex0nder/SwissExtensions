@@ -64,7 +64,7 @@ function isPlaceholderTabUrl(url) {
   }
 }
 
-/** Вкладка в группе Chrome — не засыпаем автоматически (как в Swiss Extensions). */
+/**    Chrome —    (  Swiss Extensions). */
 function isTabInGroup(tab) {
   return tab && tab.groupId != null && tab.groupId !== -1;
 }
@@ -568,10 +568,10 @@ async function runCloseAndSaveAll() {
   return { closed: idsToClose.length };
 }
 
-/** Задержка между восстановлениями вкладок (мс), чтобы не грузить память одновременно */
+/**     (),      */
 const RESTORE_DELAY_MS = 1000;
 
-/** Restore all tabs: по одной вкладке с задержкой, пишет restoreProgress в storage. */
+/** Restore all tabs:     ,  restoreProgress  storage. */
 async function runRestoreAllSuspended() {
   const tabs = await chrome.tabs.query({});
   const placeholders = [];
@@ -755,7 +755,7 @@ async function ensureAlarm(periodMinutes = ALARM_CHECK_PERIOD_MINUTES) {
   }
 }
 
-/** После обновления: вкладки с suspended от старого extension ID — мигрировать на наш. */
+/**  :   suspended   extension ID —   . */
 async function migrateOrphanedSuspendedTabs() {
   const ourId = chrome.runtime.id;
   const ourOrigin = `chrome-extension://${ourId}`;

@@ -108,7 +108,7 @@ function escapeAttr(s) {
     .replace(/>/g, '&gt;');
 }
 
-/** Сохранить выбранные URL перед перерисовкой, восстановить после. */
+/** From  URL  ,  . */
 function getCheckedClosedUrls() {
   const urls = new Set();
   document.querySelectorAll('.cb-closed:checked').forEach((cb) => {
@@ -152,7 +152,7 @@ function getSelectedUrls() {
   return [...new Set(urls)];
 }
 
-/** Выбранные элементы {url, title} — из Closed and saved и Backups. */
+/**   {url, title} — of Closed and saved  Backups. */
 function getSelectedItems() {
   const seen = new Set();
   const items = [];
@@ -178,7 +178,7 @@ function getSelectedItems() {
   return items;
 }
 
-/** Открыть выбранные вкладки как placeholder (заблокированные). Удалить из closedAndSaved. */
+/**     placeholder (). Remove of closedAndSaved. */
 async function openSelected() {
   const items = getSelectedItems();
   if (!items.length) return alert('Select at least one item.');
@@ -193,12 +193,12 @@ async function openSelected() {
     await chrome.runtime.sendMessage({ type: 'openUrlsAsPlaceholders', items });
   } catch (e) {
     console.warn(e);
-    alert('Ошибка: ' + (e?.message || e));
+    alert('Error: ' + (e?.message || e));
   }
   await refresh();
 }
 
-/** Открыть все из Closed and saved как placeholder (заблокированные). Сначала очищаем список. */
+/**   of Closed and saved  placeholder (). From  . */
 async function openAll() {
   const items = window.__backupsCache?.closedAndSaved;
   if (!Array.isArray(items) || !items.length) return alert('No closed-and-saved tabs.');
@@ -211,11 +211,11 @@ async function openAll() {
     await chrome.runtime.sendMessage({ type: 'openUrlsAsPlaceholders', items: toOpen });
   } catch (e) {
     console.warn(e);
-    alert('Ошибка: ' + (e?.message || e));
+    alert('Error: ' + (e?.message || e));
   }
 }
 
-/** Удалить выбранные вручную (без открытия). Из Closed and saved — по URL; из Backups — целиком дату. */
+/** Remove   ( ).  Closed and saved —  URL; of Backups —  . */
 async function removeSelected() {
   const urlSet = new Set();
   const backupDatesToRemove = new Set();

@@ -1,6 +1,6 @@
 /**
- * Страница скриншотов: показывает кадры, кнопки «Скачать PNG» и «Скачать PDF».
- * Поддерживает: 1) выбор папки через showDirectoryPicker; 2) подпапку в «Загрузки».
+ * :  ,  «PNG"  «PDF".
+ * : 1)    showDirectoryPicker; 2)  in "".
  */
 (function () {
   const subEl = document.getElementById('sub');
@@ -19,19 +19,19 @@
 
   let tiles = [];
   let pageInfo = null;
-  /** Подпапка внутри Downloads: '' или 'Screenshots', 'PageCapture' и т.д. */
+  /** Subfolder inside Downloads: ''  'Screenshots', 'PageCapture'  .. */
   let exportFolder = '';
-  /** 'tiles' — несколько PNG; 'whole' — один цельный PNG */
+  /** 'tiles' - multiple PNGs; 'whole' - one merged PNG */
   let pngFormat = 'tiles';
-  /** Папка, выбранная через showDirectoryPicker (действует до закрытия страницы) */
+  /** ,   showDirectoryPicker (   ) */
   let pickedDirHandle = null;
 
-  /** Двухуровневые «зоны» (.co.uk и т.п.) — берём имя сайта с уровень выше. */
+  /**  «" (.co.uk  ..) —      . */
   const MULTI_TLD_PREFIXES = new Set([
     'co', 'com', 'org', 'net', 'ac', 'gov', 'edu', 'sch', 'ne', 'or', 'go', 'gv', 'lg', 'mil', 'nom', 'gob',
   ]);
 
-  /** Короткое имя сайта: без www и без зоны (jetsense.io → jetsense). */
+  /**   :  www    (jetsense.io → jetsense). */
   function getShortSiteName(url) {
     if (!url || typeof url !== 'string') return 'capture';
     try {
@@ -63,7 +63,7 @@
     return t || 'capture';
   }
 
-  /** Безопасное имя папки: только буквы, цифры, дефис, подчёркивание. Без .. и слешей. */
+  /**   :  , , , .  ..  . */
   function sanitizeFolderName(raw) {
     if (!raw || typeof raw !== 'string') return '';
     return raw
@@ -80,30 +80,30 @@
   }
 
   function getExportDestText() {
-    if (pickedDirHandle) return `в «${pickedDirHandle.name}»`;
-    return `в «Загрузки»${exportFolder ? `/${exportFolder}` : ''}`;
+    if (pickedDirHandle) return `in "${pickedDirHandle.name}"`;
+    return `in ""${exportFolder ? `/${exportFolder}` : ''}`;
   }
 
-  /** Открыть диалог выбора папки (File System Access API). Выбранная папка действует до закрытия страницы. */
+  /**     (File System Access API).      . */
   async function pickFolder() {
     if (!('showDirectoryPicker' in self)) {
-      folderStatusEl.textContent = 'Ваш браузер не поддерживает выбор папки.';
+      folderStatusEl.textContent = 'Your browser does not support folder picker.';
       folderStatusEl.style.color = '#c00';
       return;
     }
     try {
       pickedDirHandle = await window.showDirectoryPicker({ mode: 'readwrite', startIn: 'downloads' });
-      folderStatusEl.textContent = `Выбрана: ${pickedDirHandle.name}`;
+      folderStatusEl.textContent = `Selected: ${pickedDirHandle.name}`;
       folderStatusEl.style.color = '#34a853';
-      if (tiles.length > 0) subEl.textContent = `Захвачено кадров: ${tiles.length}. PNG и PDF — ${getExportDestText()}.`;
+      if (tiles.length > 0) subEl.textContent = `Captured frames: ${tiles.length}. PNG and PDF -> ${getExportDestText()}.`;
     } catch (e) {
       if (e.name === 'AbortError') return;
-      folderStatusEl.textContent = 'Ошибка: ' + (e.message || String(e));
+      folderStatusEl.textContent = 'Error: ' + (e.message || String(e));
       folderStatusEl.style.color = '#c00';
     }
   }
 
-  /** Записать blob в выбранную папку через File System Access API */
+  /**  blob     File System Access API */
   async function writeBlobToDir(dirHandle, filename, blob) {
     const fh = await dirHandle.getFileHandle(filename, { create: true });
     const w = await fh.createWritable();
@@ -115,13 +115,13 @@
     return fetch(dataUrl).then((r) => r.blob());
   }
 
-  /** Склеить все тайлы в один PNG: canvas → blob */
+  /**     PNG: canvas → blob */
   async function stitchTilesToBlob(dataUrls, onProgress) {
     const loadImage = (dataUrl) =>
       new Promise((resolve, reject) => {
         const img = new Image();
         img.onload = () => resolve({ img, w: img.naturalWidth, h: img.naturalHeight });
-        img.onerror = () => reject(new Error('Ошибка загрузки кадра'));
+        img.onerror = () => reject(new Error('Frame load error'));
         img.src = dataUrl;
       });
     const specs = await Promise.all(dataUrls.map(loadImage));
@@ -139,11 +139,11 @@
       if (onProgress) onProgress(i + 1, specs.length);
     }
     return new Promise((resolve, reject) => {
-      canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error('Ошибка создания PNG'))), 'image/png');
+      canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error('PNG creation error'))), 'image/png');
     });
   }
 
-  /** Показать прогресс-бар: current/total, скрыть при total=0 */
+  /**  -: current/total,   total=0 */
   function setDownloadProgress(current, total) {
     if (!downloadProgressEl || !downloadProgressFillEl) return;
     if (!total) {
@@ -156,7 +156,7 @@
     downloadProgressFillEl.style.width = pct + '%';
   }
 
-  /** Показать статус скачивания: text — сообщение, state — 'loading' | 'done' | '' */
+  /**   : text — , state — 'loading' | 'done' | '' */
   function setDownloadStatus(text, state = '') {
     if (downloadStatusEl) {
       downloadStatusEl.textContent = text;
@@ -178,7 +178,7 @@
       const wholeEl = document.getElementById('formatWhole');
       if (tilesEl) tilesEl.checked = pngFormat === 'tiles';
       if (wholeEl) wholeEl.checked = pngFormat === 'whole';
-      if (tiles.length > 0) subEl.textContent = `Захвачено кадров: ${tiles.length}. PNG и PDF — ${getExportDestText()}.`;
+      if (tiles.length > 0) subEl.textContent = `Captured frames: ${tiles.length}. PNG and PDF -> ${getExportDestText()}.`;
     });
   }
 
@@ -194,10 +194,10 @@
     exportFolder = sanitizeFolderName(raw);
     exportFolderInput.value = exportFolder;
     chrome.storage.local.set({ exportFolder });
-    if (tiles.length > 0) subEl.textContent = `Захвачено кадров: ${tiles.length}. PNG и PDF — ${getExportDestText()}.`;
+    if (tiles.length > 0) subEl.textContent = `Captured frames: ${tiles.length}. PNG and PDF -> ${getExportDestText()}.`;
   }
 
-  /** Имя файла: домен + путь страницы (из URL) + дата + время — понятно, с какой страницы скан */
+  /**  :  +   ( URL) +  +  — ,     */
   function getFileBase(pageInfo) {
     let host = 'page-capture';
     let pathPart = '';
@@ -221,14 +221,14 @@
     tiles = tilesList || [];
     pageInfo = info || null;
     if (tiles.length === 0) {
-      subEl.textContent = 'Нет кадров.';
+      subEl.textContent = 'No frames.';
       emptyEl.style.display = 'block';
-      emptyEl.textContent = 'Нет кадров.';
+      emptyEl.textContent = 'No frames.';
       emptyEl.style.color = '';
       framesEl.innerHTML = '';
       return;
     }
-    subEl.textContent = `Захвачено кадров: ${tiles.length}. PNG и PDF — ${getExportDestText()}.`;
+    subEl.textContent = `Captured frames: ${tiles.length}. PNG and PDF -> ${getExportDestText()}.`;
     emptyEl.style.display = 'none';
     framesEl.innerHTML = '';
     tiles.forEach((dataUrl, i) => {
@@ -236,9 +236,9 @@
       div.className = 'frame';
       const img = document.createElement('img');
       img.src = dataUrl;
-      img.alt = `Кадр ${i + 1}`;
+      img.alt = `Frame ${i + 1}`;
       const span = document.createElement('span');
-      span.textContent = `Кадр ${i + 1}`;
+      span.textContent = `Frame ${i + 1}`;
       div.appendChild(img);
       div.appendChild(span);
       framesEl.appendChild(div);
@@ -247,40 +247,40 @@
   }
 
   /**
-   * Сохранить PNG (целиком или тайлами). isAuto — после скана: не блокируем кнопки, своё имя файла.
+   * PNG (  ). isAuto —  :   ,   .
    */
   async function savePngToDisk(base, isWhole, isAuto) {
     if (!isAuto) setButtonsEnabled(false);
-    setDownloadStatus(isWhole ? 'Склеиваю кадры…' : 'Сохранение PNG…', 'loading');
+    setDownloadStatus(isWhole ? 'Merging frames...' : 'Saving PNG...', 'loading');
     setDownloadProgress(0, tiles.length);
     try {
       if (isWhole) {
-        setDownloadStatus('Склеиваю кадры…', 'loading');
+        setDownloadStatus('Merging frames...', 'loading');
         const blob = await stitchTilesToBlob(tiles, (cur, tot) => {
-          setDownloadStatus(`Склеиваю ${cur} из ${tot}…`, 'loading');
+          setDownloadStatus(`Merging ${cur} of ${tot}...`, 'loading');
           setDownloadProgress(cur, tot);
         });
         const filename = `${base}.png`;
         if (pickedDirHandle) {
           await writeBlobToDir(pickedDirHandle, filename, blob);
-          setDownloadStatus(isAuto ? `Автосохранение: ${base}.png` : 'Один файл сохранён.', 'done');
+          setDownloadStatus(isAuto ? `Auto-save: ${base}.png` : 'Single file saved.', 'done');
         } else {
           const url = URL.createObjectURL(blob);
           chrome.downloads.download({ url, filename: getFullFilename(base, 'png'), saveAs: false });
           setTimeout(() => URL.revokeObjectURL(url), 2000);
-          setDownloadStatus(isAuto ? `Скачивается ${base}.png` : 'Скачивание начато.', 'done');
+          setDownloadStatus(isAuto ? `Auto-save: ${base}.png` : 'Single file saved.', 'done');
         }
         setDownloadProgress(tiles.length, tiles.length);
       } else {
         if (pickedDirHandle) {
           for (let i = 0; i < tiles.length; i++) {
-            setDownloadStatus(`Сохранено ${i + 1} из ${tiles.length}…`, 'loading');
+            setDownloadStatus(`Saved ${i + 1} of ${tiles.length}...`, 'loading');
             setDownloadProgress(i + 1, tiles.length);
             const blob = await dataUrlToBlob(tiles[i]);
             await writeBlobToDir(pickedDirHandle, `${base}_${i + 1}.png`, blob);
           }
           setDownloadStatus(
-            isAuto ? `Автосохранение: ${tiles.length} файлов (${base}_*.png)` : `Сохранено ${tiles.length} файлов.`,
+            isAuto ? `Auto-save: ${tiles.length} files (${base}_*.png)` : `${tiles.length} files.`,
             'done'
           );
           setDownloadProgress(tiles.length, tiles.length);
@@ -294,7 +294,7 @@
           });
           setDownloadProgress(tiles.length, tiles.length);
           setDownloadStatus(
-            isAuto ? `Скачивание ${tiles.length} файлов (${base}_*.png)` : `Запрос на скачивание ${tiles.length} файлов отправлен.`,
+            isAuto ? `Downloading ${tiles.length} files (${base}_*.png)` : `Download request for ${tiles.length} files sent.`,
             'done'
           );
         }
@@ -303,9 +303,9 @@
       setDownloadProgress(0, 0);
       setDownloadStatus('', '');
       if (isAuto) {
-        console.error('Автосохранение PNG:', e);
+        console.error('PNG autosave error:', e);
       } else {
-        alert('Ошибка сохранения: ' + (e.message || String(e)));
+        alert('Save error: ' + (e.message || String(e)));
       }
     } finally {
       if (!isAuto) setButtonsEnabled(true);
@@ -327,32 +327,32 @@
     await savePngToDisk(getFileBase(pageInfo), pngFormat === 'whole', false);
   }
 
-  /** После скана: один скриншот (склейка), имя = короткое имя сайта. */
+  /**  :   (),  =   . */
   async function autoSaveScreenshotAfterScan() {
     const base = getShortSiteName(pageInfo?.url || '');
     await savePngToDisk(base, true, true);
   }
 
-  /** PDF — одна длинная страница: все кадры склеены вертикально */
+  /** PDF —   :     */
   function downloadPdf() {
     if (!window.jspdf?.jsPDF) {
-      alert('Библиотека PDF ещё не загружена, подождите и нажмите снова.');
+      alert('PDF library is not loaded yet, wait and click again.');
       return;
     }
     setButtonsEnabled(false);
-    setDownloadStatus('Формирую PDF…', 'loading');
+    setDownloadStatus('Building PDF...', 'loading');
     const { jsPDF } = window.jspdf;
     const loadImage = (dataUrl) =>
       new Promise((resolve, reject) => {
         const img = new Image();
         img.onload = () => resolve({ dataUrl, w: img.naturalWidth, h: img.naturalHeight });
-        img.onerror = () => reject(new Error('Ошибка загрузки изображения'));
+        img.onerror = () => reject(new Error('Frame load error'));
         img.src = dataUrl;
       });
 
     Promise.all(tiles.map(loadImage))
       .then(async (specs) => {
-        setDownloadStatus('Собираю страницы…', 'loading');
+        setDownloadStatus('Merging frames...', 'loading');
         const width = Math.max(...specs.map((s) => s.w));
         const totalHeight = specs.reduce((sum, s) => sum + s.h, 0);
         const doc = new jsPDF({
@@ -368,7 +368,7 @@
         const blob = doc.output('blob');
         const filename = getFileBase(pageInfo) + '.pdf';
         if (pickedDirHandle) {
-          setDownloadStatus('Сохраняю PDF…', 'loading');
+          setDownloadStatus('Saving PDF...', 'loading');
           await writeBlobToDir(pickedDirHandle, filename, blob);
         } else {
           const url = URL.createObjectURL(blob);
@@ -379,13 +379,13 @@
           });
           setTimeout(() => URL.revokeObjectURL(url), 2000);
         }
-        setDownloadStatus('PDF сохранён.', 'done');
+        setDownloadStatus('PDF saved.', 'done');
         setTimeout(() => setDownloadStatus(''), 3000);
       })
       .catch((e) => {
         setDownloadStatus('', '');
         setButtonsEnabled(true);
-        alert('Ошибка: ' + (e?.message || String(e)));
+        alert('Error: ' + (e?.message || String(e)));
       })
       .finally(() => setButtonsEnabled(true));
   }
@@ -405,13 +405,13 @@
 
   function handleTilesResponse(res) {
     if (chrome.runtime.lastError) {
-      subEl.textContent = 'Ошибка: ' + chrome.runtime.lastError.message;
+      subEl.textContent = 'Error: ' + chrome.runtime.lastError.message;
       return;
     }
     if (res?.error) {
       subEl.textContent = '';
       emptyEl.style.display = 'block';
-      emptyEl.textContent = 'Ошибка: ' + res.error;
+      emptyEl.textContent = 'Error: ' + res.error;
       emptyEl.style.color = '#c00';
       return;
     }
@@ -422,11 +422,11 @@
       if (tilesRetryCount > TILES_RETRY_MAX) {
         subEl.textContent = '';
         emptyEl.style.display = 'block';
-        emptyEl.textContent = 'Данные не получены. Запустите сканирование снова.';
+        emptyEl.textContent = 'No data received. Run scan again.';
         emptyEl.style.color = '#c00';
         return;
       }
-      subEl.textContent = `Загрузка кадров… (${tilesRetryCount}/${TILES_RETRY_MAX})`;
+      subEl.textContent = `Loading frames... (${tilesRetryCount}/${TILES_RETRY_MAX})`;
       setTimeout(() => {
         chrome.runtime.sendMessage({ type: 'getTiles' }, handleTilesResponse);
       }, TILES_RETRY_DELAY);

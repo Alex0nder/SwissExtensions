@@ -28,8 +28,10 @@
         "sub_frame",
         "ping",
         "media",
-        "other"
-      ]
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
     }
   },
   {
@@ -47,8 +49,10 @@
         "sub_frame",
         "ping",
         "media",
-        "other"
-      ]
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
     }
   },
   {
@@ -66,8 +70,10 @@
         "sub_frame",
         "ping",
         "media",
-        "other"
-      ]
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
     }
   },
   {
@@ -85,8 +91,10 @@
         "sub_frame",
         "ping",
         "media",
-        "other"
-      ]
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
     }
   },
   {
@@ -104,8 +112,10 @@
         "sub_frame",
         "ping",
         "media",
-        "other"
-      ]
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
     }
   },
   {
@@ -123,8 +133,10 @@
         "sub_frame",
         "ping",
         "media",
-        "other"
-      ]
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
     }
   },
   {
@@ -142,8 +154,10 @@
         "sub_frame",
         "ping",
         "media",
-        "other"
-      ]
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
     }
   },
   {
@@ -161,8 +175,10 @@
         "sub_frame",
         "ping",
         "media",
-        "other"
-      ]
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
     }
   },
   {
@@ -180,8 +196,10 @@
         "sub_frame",
         "ping",
         "media",
-        "other"
-      ]
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
     }
   },
   {
@@ -199,8 +217,10 @@
         "sub_frame",
         "ping",
         "media",
-        "other"
-      ]
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
     }
   },
   {
@@ -218,8 +238,10 @@
         "sub_frame",
         "ping",
         "media",
-        "other"
-      ]
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
     }
   },
   {
@@ -237,8 +259,10 @@
         "sub_frame",
         "ping",
         "media",
-        "other"
-      ]
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
     }
   },
   {
@@ -256,8 +280,10 @@
         "sub_frame",
         "ping",
         "media",
-        "other"
-      ]
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
     }
   },
   {
@@ -275,8 +301,10 @@
         "sub_frame",
         "ping",
         "media",
-        "other"
-      ]
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
     }
   },
   {
@@ -294,8 +322,10 @@
         "sub_frame",
         "ping",
         "media",
-        "other"
-      ]
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
     }
   },
   {
@@ -313,8 +343,10 @@
         "sub_frame",
         "ping",
         "media",
-        "other"
-      ]
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
     }
   },
   {
@@ -332,8 +364,10 @@
         "sub_frame",
         "ping",
         "media",
-        "other"
-      ]
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
     }
   },
   {
@@ -351,8 +385,10 @@
         "sub_frame",
         "ping",
         "media",
-        "other"
-      ]
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
     }
   },
   {
@@ -370,8 +406,10 @@
         "sub_frame",
         "ping",
         "media",
-        "other"
-      ]
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
     }
   },
   {
@@ -389,8 +427,10 @@
         "sub_frame",
         "ping",
         "media",
-        "other"
-      ]
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
     }
   },
   {
@@ -408,8 +448,10 @@
         "sub_frame",
         "ping",
         "media",
-        "other"
-      ]
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
     }
   },
   {
@@ -427,8 +469,10 @@
         "sub_frame",
         "ping",
         "media",
-        "other"
-      ]
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
     }
   },
   {
@@ -446,8 +490,10 @@
         "sub_frame",
         "ping",
         "media",
-        "other"
-      ]
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
     }
   },
   {
@@ -465,8 +511,10 @@
         "sub_frame",
         "ping",
         "media",
-        "other"
-      ]
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
     }
   },
   {
@@ -484,8 +532,10 @@
         "sub_frame",
         "ping",
         "media",
-        "other"
-      ]
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
     }
   },
   {
@@ -503,8 +553,10 @@
         "sub_frame",
         "ping",
         "media",
-        "other"
-      ]
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
     }
   },
   {
@@ -522,8 +574,10 @@
         "sub_frame",
         "ping",
         "media",
-        "other"
-      ]
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
     }
   },
   {
@@ -541,8 +595,10 @@
         "sub_frame",
         "ping",
         "media",
-        "other"
-      ]
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
     }
   },
   {
@@ -560,8 +616,10 @@
         "sub_frame",
         "ping",
         "media",
-        "other"
-      ]
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
     }
   },
   {
@@ -579,8 +637,10 @@
         "sub_frame",
         "ping",
         "media",
-        "other"
-      ]
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
     }
   },
   {
@@ -598,8 +658,10 @@
         "sub_frame",
         "ping",
         "media",
-        "other"
-      ]
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
     }
   },
   {
@@ -617,8 +679,10 @@
         "sub_frame",
         "ping",
         "media",
-        "other"
-      ]
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
     }
   },
   {
@@ -636,8 +700,10 @@
         "sub_frame",
         "ping",
         "media",
-        "other"
-      ]
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
     }
   },
   {
@@ -655,8 +721,10 @@
         "sub_frame",
         "ping",
         "media",
-        "other"
-      ]
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
     }
   },
   {
@@ -674,8 +742,10 @@
         "sub_frame",
         "ping",
         "media",
-        "other"
-      ]
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
     }
   },
   {
@@ -693,8 +763,10 @@
         "sub_frame",
         "ping",
         "media",
-        "other"
-      ]
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
     }
   },
   {
@@ -712,8 +784,10 @@
         "sub_frame",
         "ping",
         "media",
-        "other"
-      ]
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
     }
   },
   {
@@ -731,8 +805,10 @@
         "sub_frame",
         "ping",
         "media",
-        "other"
-      ]
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
     }
   },
   {
@@ -750,8 +826,10 @@
         "sub_frame",
         "ping",
         "media",
-        "other"
-      ]
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
     }
   },
   {
@@ -769,8 +847,10 @@
         "sub_frame",
         "ping",
         "media",
-        "other"
-      ]
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
     }
   },
   {
@@ -788,8 +868,10 @@
         "sub_frame",
         "ping",
         "media",
-        "other"
-      ]
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
     }
   },
   {
@@ -807,8 +889,10 @@
         "sub_frame",
         "ping",
         "media",
-        "other"
-      ]
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
     }
   },
   {
@@ -826,8 +910,10 @@
         "sub_frame",
         "ping",
         "media",
-        "other"
-      ]
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
     }
   },
   {
@@ -845,8 +931,10 @@
         "sub_frame",
         "ping",
         "media",
-        "other"
-      ]
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
     }
   },
   {
@@ -864,8 +952,10 @@
         "sub_frame",
         "ping",
         "media",
-        "other"
-      ]
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
     }
   },
   {
@@ -883,8 +973,10 @@
         "sub_frame",
         "ping",
         "media",
-        "other"
-      ]
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
     }
   },
   {
@@ -902,8 +994,10 @@
         "sub_frame",
         "ping",
         "media",
-        "other"
-      ]
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
     }
   },
   {
@@ -921,8 +1015,10 @@
         "sub_frame",
         "ping",
         "media",
-        "other"
-      ]
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
     }
   },
   {
@@ -940,8 +1036,10 @@
         "sub_frame",
         "ping",
         "media",
-        "other"
-      ]
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
     }
   },
   {
@@ -959,8 +1057,10 @@
         "sub_frame",
         "ping",
         "media",
-        "other"
-      ]
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
     }
   },
   {
@@ -978,8 +1078,10 @@
         "sub_frame",
         "ping",
         "media",
-        "other"
-      ]
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
     }
   },
   {
@@ -997,8 +1099,10 @@
         "sub_frame",
         "ping",
         "media",
-        "other"
-      ]
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
     }
   },
   {
@@ -1016,8 +1120,10 @@
         "sub_frame",
         "ping",
         "media",
-        "other"
-      ]
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
     }
   },
   {
@@ -1035,8 +1141,10 @@
         "sub_frame",
         "ping",
         "media",
-        "other"
-      ]
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
     }
   },
   {
@@ -1054,8 +1162,10 @@
         "sub_frame",
         "ping",
         "media",
-        "other"
-      ]
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
     }
   },
   {
@@ -1073,8 +1183,10 @@
         "sub_frame",
         "ping",
         "media",
-        "other"
-      ]
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
     }
   },
   {
@@ -1092,8 +1204,10 @@
         "sub_frame",
         "ping",
         "media",
-        "other"
-      ]
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
     }
   },
   {
@@ -1111,8 +1225,10 @@
         "sub_frame",
         "ping",
         "media",
-        "other"
-      ]
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
     }
   },
   {
@@ -1130,8 +1246,10 @@
         "sub_frame",
         "ping",
         "media",
-        "other"
-      ]
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
     }
   },
   {
@@ -1149,8 +1267,10 @@
         "sub_frame",
         "ping",
         "media",
-        "other"
-      ]
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
     }
   },
   {
@@ -1168,8 +1288,10 @@
         "sub_frame",
         "ping",
         "media",
-        "other"
-      ]
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
     }
   },
   {
@@ -1187,8 +1309,10 @@
         "sub_frame",
         "ping",
         "media",
-        "other"
-      ]
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
     }
   },
   {
@@ -1206,8 +1330,10 @@
         "sub_frame",
         "ping",
         "media",
-        "other"
-      ]
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
     }
   },
   {
@@ -1225,8 +1351,10 @@
         "sub_frame",
         "ping",
         "media",
-        "other"
-      ]
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
     }
   },
   {
@@ -1244,8 +1372,10 @@
         "sub_frame",
         "ping",
         "media",
-        "other"
-      ]
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
     }
   },
   {
@@ -1263,8 +1393,10 @@
         "sub_frame",
         "ping",
         "media",
-        "other"
-      ]
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
     }
   },
   {
@@ -1282,8 +1414,10 @@
         "sub_frame",
         "ping",
         "media",
-        "other"
-      ]
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
     }
   },
   {
@@ -1301,8 +1435,10 @@
         "sub_frame",
         "ping",
         "media",
-        "other"
-      ]
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
     }
   },
   {
@@ -1320,8 +1456,10 @@
         "sub_frame",
         "ping",
         "media",
-        "other"
-      ]
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
     }
   },
   {
@@ -1339,8 +1477,10 @@
         "sub_frame",
         "ping",
         "media",
-        "other"
-      ]
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
     }
   },
   {
@@ -1358,8 +1498,10 @@
         "sub_frame",
         "ping",
         "media",
-        "other"
-      ]
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
     }
   },
   {
@@ -1377,8 +1519,10 @@
         "sub_frame",
         "ping",
         "media",
-        "other"
-      ]
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
     }
   },
   {
@@ -1396,8 +1540,10 @@
         "sub_frame",
         "ping",
         "media",
-        "other"
-      ]
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
     }
   },
   {
@@ -1415,8 +1561,10 @@
         "sub_frame",
         "ping",
         "media",
-        "other"
-      ]
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
     }
   },
   {
@@ -1434,8 +1582,10 @@
         "sub_frame",
         "ping",
         "media",
-        "other"
-      ]
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
     }
   },
   {
@@ -1453,8 +1603,10 @@
         "sub_frame",
         "ping",
         "media",
-        "other"
-      ]
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
     }
   },
   {
@@ -1472,8 +1624,10 @@
         "sub_frame",
         "ping",
         "media",
-        "other"
-      ]
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
     }
   },
   {
@@ -1491,8 +1645,10 @@
         "sub_frame",
         "ping",
         "media",
-        "other"
-      ]
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
     }
   },
   {
@@ -1510,8 +1666,10 @@
         "sub_frame",
         "ping",
         "media",
-        "other"
-      ]
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
     }
   },
   {
@@ -1529,8 +1687,10 @@
         "sub_frame",
         "ping",
         "media",
-        "other"
-      ]
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
     }
   },
   {
@@ -1548,8 +1708,10 @@
         "sub_frame",
         "ping",
         "media",
-        "other"
-      ]
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
     }
   },
   {
@@ -1567,8 +1729,10 @@
         "sub_frame",
         "ping",
         "media",
-        "other"
-      ]
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
     }
   },
   {
@@ -1586,8 +1750,10 @@
         "sub_frame",
         "ping",
         "media",
-        "other"
-      ]
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
     }
   },
   {
@@ -1605,8 +1771,10 @@
         "sub_frame",
         "ping",
         "media",
-        "other"
-      ]
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
     }
   },
   {
@@ -1624,8 +1792,10 @@
         "sub_frame",
         "ping",
         "media",
-        "other"
-      ]
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
     }
   },
   {
@@ -1643,8 +1813,10 @@
         "sub_frame",
         "ping",
         "media",
-        "other"
-      ]
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
     }
   },
   {
@@ -1662,8 +1834,10 @@
         "sub_frame",
         "ping",
         "media",
-        "other"
-      ]
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
     }
   },
   {
@@ -1681,8 +1855,10 @@
         "sub_frame",
         "ping",
         "media",
-        "other"
-      ]
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
     }
   },
   {
@@ -1700,8 +1876,10 @@
         "sub_frame",
         "ping",
         "media",
-        "other"
-      ]
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
     }
   },
   {
@@ -1719,8 +1897,10 @@
         "sub_frame",
         "ping",
         "media",
-        "other"
-      ]
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
     }
   },
   {
@@ -1738,8 +1918,10 @@
         "sub_frame",
         "ping",
         "media",
-        "other"
-      ]
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
     }
   },
   {
@@ -1757,8 +1939,10 @@
         "sub_frame",
         "ping",
         "media",
-        "other"
-      ]
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
     }
   },
   {
@@ -1776,8 +1960,10 @@
         "sub_frame",
         "ping",
         "media",
-        "other"
-      ]
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
     }
   },
   {
@@ -1795,8 +1981,10 @@
         "sub_frame",
         "ping",
         "media",
-        "other"
-      ]
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
     }
   },
   {
@@ -1814,8 +2002,10 @@
         "sub_frame",
         "ping",
         "media",
-        "other"
-      ]
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
     }
   },
   {
@@ -1833,8 +2023,10 @@
         "sub_frame",
         "ping",
         "media",
-        "other"
-      ]
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
     }
   },
   {
@@ -1852,8 +2044,10 @@
         "sub_frame",
         "ping",
         "media",
-        "other"
-      ]
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
     }
   },
   {
@@ -1871,8 +2065,10 @@
         "sub_frame",
         "ping",
         "media",
-        "other"
-      ]
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
     }
   },
   {
@@ -1890,8 +2086,10 @@
         "sub_frame",
         "ping",
         "media",
-        "other"
-      ]
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
     }
   },
   {
@@ -1909,8 +2107,10 @@
         "sub_frame",
         "ping",
         "media",
-        "other"
-      ]
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
     }
   },
   {
@@ -1928,8 +2128,10 @@
         "sub_frame",
         "ping",
         "media",
-        "other"
-      ]
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
     }
   },
   {
@@ -1947,8 +2149,10 @@
         "sub_frame",
         "ping",
         "media",
-        "other"
-      ]
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
     }
   },
   {
@@ -1966,8 +2170,10 @@
         "sub_frame",
         "ping",
         "media",
-        "other"
-      ]
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
     }
   },
   {
@@ -1985,8 +2191,472 @@
         "sub_frame",
         "ping",
         "media",
-        "other"
-      ]
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
+    }
+  },
+  {
+    "id": 100105,
+    "priority": 1,
+    "action": {
+      "type": "block"
+    },
+    "condition": {
+      "urlFilter": "*://*.analytics.tiktok.com/*",
+      "resourceTypes": [
+        "script",
+        "image",
+        "xmlhttprequest",
+        "sub_frame",
+        "ping",
+        "media",
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
+    }
+  },
+  {
+    "id": 100106,
+    "priority": 1,
+    "action": {
+      "type": "block"
+    },
+    "condition": {
+      "urlFilter": "*://analytics.tiktok.com/*",
+      "resourceTypes": [
+        "script",
+        "image",
+        "xmlhttprequest",
+        "sub_frame",
+        "ping",
+        "media",
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
+    }
+  },
+  {
+    "id": 100107,
+    "priority": 1,
+    "action": {
+      "type": "block"
+    },
+    "condition": {
+      "urlFilter": "*://*.ads.tiktok.com/*",
+      "resourceTypes": [
+        "script",
+        "image",
+        "xmlhttprequest",
+        "sub_frame",
+        "ping",
+        "media",
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
+    }
+  },
+  {
+    "id": 100108,
+    "priority": 1,
+    "action": {
+      "type": "block"
+    },
+    "condition": {
+      "urlFilter": "*://ads.tiktok.com/*",
+      "resourceTypes": [
+        "script",
+        "image",
+        "xmlhttprequest",
+        "sub_frame",
+        "ping",
+        "media",
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
+    }
+  },
+  {
+    "id": 100109,
+    "priority": 1,
+    "action": {
+      "type": "block"
+    },
+    "condition": {
+      "urlFilter": "*://*.tr.snapchat.com/*",
+      "resourceTypes": [
+        "script",
+        "image",
+        "xmlhttprequest",
+        "sub_frame",
+        "ping",
+        "media",
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
+    }
+  },
+  {
+    "id": 100110,
+    "priority": 1,
+    "action": {
+      "type": "block"
+    },
+    "condition": {
+      "urlFilter": "*://tr.snapchat.com/*",
+      "resourceTypes": [
+        "script",
+        "image",
+        "xmlhttprequest",
+        "sub_frame",
+        "ping",
+        "media",
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
+    }
+  },
+  {
+    "id": 100111,
+    "priority": 1,
+    "action": {
+      "type": "block"
+    },
+    "condition": {
+      "urlFilter": "*://*.static.ads-twitter.com/*",
+      "resourceTypes": [
+        "script",
+        "image",
+        "xmlhttprequest",
+        "sub_frame",
+        "ping",
+        "media",
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
+    }
+  },
+  {
+    "id": 100112,
+    "priority": 1,
+    "action": {
+      "type": "block"
+    },
+    "condition": {
+      "urlFilter": "*://static.ads-twitter.com/*",
+      "resourceTypes": [
+        "script",
+        "image",
+        "xmlhttprequest",
+        "sub_frame",
+        "ping",
+        "media",
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
+    }
+  },
+  {
+    "id": 100113,
+    "priority": 1,
+    "action": {
+      "type": "block"
+    },
+    "condition": {
+      "urlFilter": "*://*.ads-twitter.com/*",
+      "resourceTypes": [
+        "script",
+        "image",
+        "xmlhttprequest",
+        "sub_frame",
+        "ping",
+        "media",
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
+    }
+  },
+  {
+    "id": 100114,
+    "priority": 1,
+    "action": {
+      "type": "block"
+    },
+    "condition": {
+      "urlFilter": "*://ads-twitter.com/*",
+      "resourceTypes": [
+        "script",
+        "image",
+        "xmlhttprequest",
+        "sub_frame",
+        "ping",
+        "media",
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
+    }
+  },
+  {
+    "id": 100115,
+    "priority": 1,
+    "action": {
+      "type": "block"
+    },
+    "condition": {
+      "urlFilter": "*://*.ads.reddit.com/*",
+      "resourceTypes": [
+        "script",
+        "image",
+        "xmlhttprequest",
+        "sub_frame",
+        "ping",
+        "media",
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
+    }
+  },
+  {
+    "id": 100116,
+    "priority": 1,
+    "action": {
+      "type": "block"
+    },
+    "condition": {
+      "urlFilter": "*://ads.reddit.com/*",
+      "resourceTypes": [
+        "script",
+        "image",
+        "xmlhttprequest",
+        "sub_frame",
+        "ping",
+        "media",
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
+    }
+  },
+  {
+    "id": 100117,
+    "priority": 1,
+    "action": {
+      "type": "block"
+    },
+    "condition": {
+      "urlFilter": "*://*.creativecdn.com/*",
+      "resourceTypes": [
+        "script",
+        "image",
+        "xmlhttprequest",
+        "sub_frame",
+        "ping",
+        "media",
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
+    }
+  },
+  {
+    "id": 100118,
+    "priority": 1,
+    "action": {
+      "type": "block"
+    },
+    "condition": {
+      "urlFilter": "*://creativecdn.com/*",
+      "resourceTypes": [
+        "script",
+        "image",
+        "xmlhttprequest",
+        "sub_frame",
+        "ping",
+        "media",
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
+    }
+  },
+  {
+    "id": 100119,
+    "priority": 1,
+    "action": {
+      "type": "block"
+    },
+    "condition": {
+      "urlFilter": "*://*.adroll.com/*",
+      "resourceTypes": [
+        "script",
+        "image",
+        "xmlhttprequest",
+        "sub_frame",
+        "ping",
+        "media",
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
+    }
+  },
+  {
+    "id": 100120,
+    "priority": 1,
+    "action": {
+      "type": "block"
+    },
+    "condition": {
+      "urlFilter": "*://adroll.com/*",
+      "resourceTypes": [
+        "script",
+        "image",
+        "xmlhttprequest",
+        "sub_frame",
+        "ping",
+        "media",
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
+    }
+  },
+  {
+    "id": 100121,
+    "priority": 1,
+    "action": {
+      "type": "block"
+    },
+    "condition": {
+      "urlFilter": "*://*.adsymptotic.com/*",
+      "resourceTypes": [
+        "script",
+        "image",
+        "xmlhttprequest",
+        "sub_frame",
+        "ping",
+        "media",
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
+    }
+  },
+  {
+    "id": 100122,
+    "priority": 1,
+    "action": {
+      "type": "block"
+    },
+    "condition": {
+      "urlFilter": "*://adsymptotic.com/*",
+      "resourceTypes": [
+        "script",
+        "image",
+        "xmlhttprequest",
+        "sub_frame",
+        "ping",
+        "media",
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
+    }
+  },
+  {
+    "id": 100123,
+    "priority": 1,
+    "action": {
+      "type": "block"
+    },
+    "condition": {
+      "urlFilter": "*://*.casalemedia.com/*",
+      "resourceTypes": [
+        "script",
+        "image",
+        "xmlhttprequest",
+        "sub_frame",
+        "ping",
+        "media",
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
+    }
+  },
+  {
+    "id": 100124,
+    "priority": 1,
+    "action": {
+      "type": "block"
+    },
+    "condition": {
+      "urlFilter": "*://casalemedia.com/*",
+      "resourceTypes": [
+        "script",
+        "image",
+        "xmlhttprequest",
+        "sub_frame",
+        "ping",
+        "media",
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
+    }
+  },
+  {
+    "id": 100125,
+    "priority": 1,
+    "action": {
+      "type": "block"
+    },
+    "condition": {
+      "urlFilter": "*://*.media.net/*",
+      "resourceTypes": [
+        "script",
+        "image",
+        "xmlhttprequest",
+        "sub_frame",
+        "ping",
+        "media",
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
+    }
+  },
+  {
+    "id": 100126,
+    "priority": 1,
+    "action": {
+      "type": "block"
+    },
+    "condition": {
+      "urlFilter": "*://media.net/*",
+      "resourceTypes": [
+        "script",
+        "image",
+        "xmlhttprequest",
+        "sub_frame",
+        "ping",
+        "media",
+        "other",
+        "websocket"
+      ],
+      "domainType": "thirdParty"
     }
   }
 ]

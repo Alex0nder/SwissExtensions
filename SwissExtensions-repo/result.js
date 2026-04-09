@@ -1,6 +1,6 @@
 /**
- * Страница скриншотов: показывает кадры, кнопки «Скачать PNG» и «Скачать PDF».
- * Поддерживает: 1) выбор папки через showDirectoryPicker; 2) подпапку в «Загрузки».
+ * From :  ,  «From PNG"  «From PDF".
+ * : 1)    showDirectoryPicker; 2)  in "".
  */
 (function () {
   const subEl = document.getElementById('sub');
@@ -23,7 +23,7 @@
   let pngFormat = 'tiles';
   let pickedDirHandle = null;
 
-  /** Безопасное имя папки: только буквы, цифры, дефис, подчёркивание. Без .. и слешей. */
+  /**   :  , , , .  ..  . */
   function sanitizeFolderName(raw) {
     if (!raw || typeof raw !== 'string') return '';
     return raw
@@ -40,7 +40,7 @@
   }
 
   function getExportDestText() {
-    if (pickedDirHandle) return `in «${pickedDirHandle.name}»`;
+    if (pickedDirHandle) return `in «${pickedDirHandle.name}"`;
     return `in Downloads${exportFolder ? `/${exportFolder}` : ''}`;
   }
 
@@ -100,7 +100,7 @@
     });
   }
 
-  /** Показать статус скачивания: text — сообщение, state — 'loading' | 'done' | '' */
+  /**   : text — , state — 'loading' | 'done' | '' */
   function setDownloadStatus(text, state = '') {
     if (downloadStatusEl) {
       downloadStatusEl.textContent = text;
@@ -108,7 +108,7 @@
     }
   }
 
-  /** Показать прогресс-бар: current/total, или скрыть при total=0 */
+  /**  -: current/total,    total=0 */
   function setDownloadProgress(current, total) {
     if (!downloadProgressEl || !downloadProgressFillEl) return;
     if (!total) {
@@ -153,7 +153,7 @@
     if (tiles.length > 0) subEl.textContent = `Captured: ${tiles.length} frames. PNG and PDF — ${getExportDestText()}.`;
   }
 
-  /** Имя файла: домен + путь страницы (из URL) + дата + время — понятно, с какой страницы скан */
+  /**  :  +   ( URL) +  +  — ,     */
   function getFileBase(pageInfo) {
     let host = 'page-capture';
     let pathPart = '';
@@ -260,7 +260,7 @@
     }
   }
 
-  /** PDF — одна длинная страница: все кадры склеены вертикально */
+  /** PDF —   :     */
   function downloadPdf() {
     if (!window.jspdf?.jsPDF) {
       alert('PDF library loading. Wait and try again.');

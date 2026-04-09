@@ -37,7 +37,7 @@ function getFallbackFaviconUrl(pageUrl) {
   }
 }
 
-/** Порядок URL для загрузки: сохранённый → кэш Chrome → origin → DDG → Google (иногда favicon2/сайт пустой). */
+/**  URL  :  →  Chrome → origin → DDG → Google ( favicon2/ ). */
 function faviconCandidateUrls(pageUrl, savedIcon) {
   const out = [];
   const add = (u) => {
@@ -77,8 +77,8 @@ function fillRoundRect(ctx, x, y, w, h, r) {
 }
 
 /**
- * Favicon вкладки: растровый PNG (SVG с chrome:// внутри часто даёт пустую иконку).
- * При ошибке canvas — возвращаем пустую строку, снаружи подставят прямой URL.
+ * Favicon :  PNG (SVG  chrome://     ).
+ *   canvas —   ,    URL.
  */
 function rasterizeBlockedTabIcon(src, done) {
   const img = new Image();

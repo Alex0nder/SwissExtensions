@@ -15,14 +15,14 @@ document.querySelectorAll('.back-btn[data-back]').forEach((b) => {
   b.addEventListener('click', () => showView('home'));
 });
 
-// Capture — прогресс через storage.onChanged
+// Capture —   storage.onChanged
 document.getElementById('btnCapture').addEventListener('click', () => {
   const st = document.getElementById('captureStatus');
   const btn = document.getElementById('btnCapture');
   const progEl = document.getElementById('captureProgress');
   const fillEl = document.getElementById('captureProgressFill');
   btn.disabled = true;
-  st.textContent = 'Сканирую…';
+  st.textContent = 'Scanning...';
   st.className = '';
   progEl.classList.add('visible');
   fillEl.style.width = '0%';
@@ -32,7 +32,7 @@ document.getElementById('btnCapture').addEventListener('click', () => {
     const { total, current } = changes.captureProgress.newValue;
     const pct = total > 0 ? Math.round((current / total) * 100) : 0;
     fillEl.style.width = pct + '%';
-    st.textContent = `Кадр ${current} из ${total}…`;
+    st.textContent = `Frame ${current} of ${total}…`;
   };
 
   const cleanup = () => {
@@ -48,13 +48,13 @@ document.getElementById('btnCapture').addEventListener('click', () => {
   chrome.runtime.sendMessage({ type: 'capture' }, (res) => {
     cleanup();
     if (chrome.runtime.lastError) {
-      st.textContent = chrome.runtime.lastError.message || 'Ошибка';
+      st.textContent = chrome.runtime.lastError.message || 'Error';
       st.className = 'err';
       return;
     }
     if (res?.error) { st.textContent = res.error; st.className = 'err'; }
-    else if (res?.ok) st.textContent = 'Открыта страница со скриншотами.';
-    else st.textContent = 'Нет кадров.';
+    else if (res?.ok) st.textContent = 'Screenshots page opened.';
+    else st.textContent = 'No frames.';
   });
 });
 
@@ -263,9 +263,9 @@ chrome.storage.onChanged.addListener((changes, area) => {
 
 loadThSettings().then(refreshThStats);
 
-// Site Blocker — паритет с standalone SiteBlocker (whitelist, расписание, JSON).
+// Site Blocker —   standalone SiteBlocker (whitelist, , JSON).
 const SB_DEFAULT_SCHEDULE = { enabled: false, from: '09:00', to: '18:00', days: [1, 2, 3, 4, 5] };
-/** После импорта показать текст, не затираясь до следующего refresh из storage. */
+/**    ,     refresh of storage. */
 let blockerStatusOverride = null;
 
 function normDomain(input) {
@@ -314,7 +314,7 @@ function renderBlocker(blocked, whitelist, enabled, schedule, scheduleActive, ad
     empty.style.display = 'none';
     blocked.forEach((d) => {
       const li = document.createElement('li');
-      li.innerHTML = `<span>${esc(d)}</span><button type="button" class="rm" data-domain="${esc(d)}">Удалить</button>`;
+      li.innerHTML = `<span>${esc(d)}</span><button type="button" class="rm" data-domain="${esc(d)}">Remove</button>`;
       list.appendChild(li);
     });
     list.querySelectorAll('.rm').forEach((b) => {
@@ -327,7 +327,7 @@ function renderBlocker(blocked, whitelist, enabled, schedule, scheduleActive, ad
     wlEmpty.style.display = 'none';
     whitelist.forEach((d) => {
       const li = document.createElement('li');
-      li.innerHTML = `<span>${esc(d)}</span><button type="button" class="rm rm-wl" data-domain="${esc(d)}">Удалить</button>`;
+      li.innerHTML = `<span>${esc(d)}</span><button type="button" class="rm rm-wl" data-domain="${esc(d)}">Remove</button>`;
       wlList.appendChild(li);
     });
     wlList.querySelectorAll('.rm-wl').forEach((b) => {
@@ -342,8 +342,8 @@ function renderBlocker(blocked, whitelist, enabled, schedule, scheduleActive, ad
   });
   const statusEl = document.getElementById('blockerStatus');
   if (statusEl) {
-    if (!enabled) statusEl.textContent = 'Блокировка выключена вручную';
-    else if (sch.enabled) statusEl.textContent = scheduleActive === false ? 'Сейчас вне расписания' : 'Сейчас в окне расписания';
+    if (!enabled) statusEl.textContent = 'Blocking disabled manually';
+    else if (sch.enabled) statusEl.textContent = scheduleActive === false ? 'Outside schedule window' : 'Inside schedule window';
     else statusEl.textContent = '';
   }
 }
@@ -444,11 +444,11 @@ document.getElementById('blockerOpenFromHistory').addEventListener('click', asyn
   const statusEl = document.getElementById('blockerStatus');
   const btn = document.getElementById('blockerOpenFromHistory');
   btn.disabled = true;
-  statusEl.textContent = 'Загрузка…';
+  statusEl.textContent = 'Loading...';
   try {
     const { blocked = [] } = await chrome.storage.local.get('blocked');
     if (!blocked.length) {
-      statusEl.textContent = 'Нет заблокированных доменов';
+      statusEl.textContent = 'No blocked domains';
       return;
     }
     const since = Date.now() - 90 * 24 * 60 * 60 * 1000;
@@ -465,11 +465,11 @@ document.getElementById('blockerOpenFromHistory').addEventListener('click', asyn
         urls.push(item.url);
       } catch (_) {}
     }
-    // Параллельное открытие вкладок — быстрая массовая блокировка вместо по одной
+    //    —      
     await Promise.all(urls.map((url) => chrome.tabs.create({ url })));
-    statusEl.textContent = urls.length > 0 ? `Открыто: ${urls.length}` : 'Нет посещений заблокированных сайтов';
+    statusEl.textContent = urls.length > 0 ? `Opened: ${urls.length}` : 'No visits for blocked domains';
   } catch (e) {
-    statusEl.textContent = 'Ошибка: ' + (e.message || '');
+    statusEl.textContent = 'Error: ' + (e.message || '');
   }
   btn.disabled = false;
   setTimeout(() => { refreshBlockerFromStorage(); }, 4000);
@@ -513,7 +513,7 @@ document.getElementById('blockerImportFile').addEventListener('change', async ()
     const enabled = json.enabled !== false;
     const schedule = normalizeBlockerSchedule(json.schedule);
     const adsFiltersEnabled = json.adsFiltersEnabled !== false;
-    blockerStatusOverride = 'Импорт выполнен';
+    blockerStatusOverride = 'Import completed';
     await chrome.storage.local.set({
       blocked: [...new Set(blocked)],
       whitelist: [...new Set(whitelist)],
@@ -523,7 +523,7 @@ document.getElementById('blockerImportFile').addEventListener('change', async ()
     });
   } catch {
     blockerStatusOverride = null;
-    statusEl.textContent = 'Ошибка импорта JSON';
+    statusEl.textContent = 'Error  JSON';
   } finally {
     input.value = '';
   }
@@ -538,7 +538,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
 
 refreshBlockerFromStorage();
 
-// Memory Cleaner (tmcSettings — совместимо с Tab Memory Cleaner)
+// Memory Cleaner (tmcSettings —   Tab Memory Cleaner)
 function memoryNormalizeDomainsText(value) {
   return String(value || '')
     .split('\n')
@@ -584,13 +584,13 @@ document.getElementById('btnDiscard').addEventListener('click', async () => {
   const st = document.getElementById('memoryStatus');
   saveMemorySettings();
   btn.disabled = true;
-  st.textContent = 'Выгружаю…';
+  st.textContent = 'Discarding...';
   try {
     const r = await send({ type: 'discardBackgroundTabs' });
     const n = r?.discarded ?? 0;
-    st.textContent = n > 0 ? `Выгружено вкладок: ${n}` : 'Готово (нет подходящих вкладок)';
+    st.textContent = n > 0 ? `Discarded tabs: ${n}` : 'Done (no matching tabs)';
   } catch {
-    st.textContent = 'Ошибка';
+    st.textContent = 'Error';
   }
   btn.disabled = false;
   setTimeout(() => { st.textContent = ''; }, 3000);
@@ -598,7 +598,7 @@ document.getElementById('btnDiscard').addEventListener('click', async () => {
 
 loadMemorySettings();
 
-// Site Data Clear — паритет с standalone (sdcOptions, пресеты, cacheStorage).
+// Site Data Clear —   standalone (sdcOptions, , cacheStorage).
 const SDC_STORAGE_KEY = 'sdcOptions';
 const SDC_DEFAULT = {
   cookies: true,
@@ -669,14 +669,14 @@ document.getElementById('btnClearSite').addEventListener('click', async () => {
   const opt = sdcReadOptionsFromUi();
   const anyBrowsing = opt.cookies || opt.localStorage || opt.cacheStorage;
   if (!anyBrowsing && !opt.sessionStorage) {
-    st.textContent = 'Выберите хотя бы один пункт';
+    st.textContent = 'Select at least one option';
     st.className = 'err';
     return;
   }
 
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (!tab?.id || !tab.url) {
-    st.textContent = 'Нет активной вкладки';
+    st.textContent = 'No active tab';
     st.className = 'err';
     return;
   }
@@ -685,7 +685,7 @@ document.getElementById('btnClearSite').addEventListener('click', async () => {
     const url = new URL(tab.url);
     const origin = url.origin;
     if (url.protocol === 'chrome:' || url.protocol === 'chrome-extension:' || url.protocol === 'edge:' || url.protocol === 'about:') {
-      st.textContent = 'Недоступно для системных страниц';
+      st.textContent = 'Unavailable on system pages';
       st.className = 'err';
       return;
     }
@@ -705,12 +705,12 @@ document.getElementById('btnClearSite').addEventListener('click', async () => {
       });
     }
 
-    st.textContent = 'Готово';
+    st.textContent = 'Done';
     st.className = 'ok';
     sdcSaveOptions();
     setTimeout(() => chrome.tabs.reload(tab.id), 800);
   } catch (e) {
-    st.textContent = 'Ошибка: ' + (e.message || 'неизвестная');
+    st.textContent = 'Error: ' + (e.message || 'unknown');
     st.className = 'err';
   }
 });
