@@ -1,5 +1,7 @@
 .DS_Store
 *.zip
+# Публичные архивы для лендинга (Netlify)
+!/downloads/*.zip
 release-archives/
 *-webstore-v*.zip
 *webstore*.zip

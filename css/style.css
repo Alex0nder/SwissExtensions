@@ -1,14 +1,22 @@
-/* Swiss Extensions — editorial poster style */
+/* Swiss Extensions — editorial poster, dark theme */
 
 :root {
-  --bg: #f8f8f8;
-  --paper: #ffffff;
-  --ink: #111111;
-  --muted: #535353;
-  --rule: #d4d4d4;
+  --bg: #0c0c0e;
+  --paper: #111114;
+  --ink: #ececf0;
+  --muted: #9898a3;
+  --rule: #2a2a31;
+  --card-bg: #16161c;
+  --card-zip-bg: #1a1a22;
+  --btn-primary-bg: #ececf0;
+  --btn-primary-fg: #0c0c0e;
 }
 
 * { box-sizing: border-box; }
+
+html {
+  color-scheme: dark;
+}
 
 body {
   margin: 0;
@@ -65,6 +73,7 @@ h1 {
   letter-spacing: -0.045em;
   margin: 0;
   text-transform: uppercase;
+  color: var(--ink);
 }
 
 .accent {
@@ -79,7 +88,7 @@ h1 {
 }
 
 .btn {
-  border: 1.5px solid var(--ink);
+  border: 1.5px solid var(--rule);
   padding: 10px 14px;
   text-decoration: none;
   font-size: 12px;
@@ -87,18 +96,20 @@ h1 {
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--ink);
-  transition: background 0.15s, color 0.15s;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
 
 .btn-primary {
-  background: var(--ink);
-  color: #fff;
+  background: var(--btn-primary-bg);
+  color: var(--btn-primary-fg);
+  border-color: var(--btn-primary-bg);
 }
 
 .btn-primary:hover,
 .btn-ghost:hover {
   background: var(--ink);
-  color: #fff;
+  color: var(--bg);
+  border-color: var(--ink);
 }
 
 .tagline {
@@ -107,6 +118,7 @@ h1 {
   font-size: clamp(18px, 2.3vw, 32px);
   line-height: 1.1;
   letter-spacing: -0.02em;
+  color: var(--ink);
 }
 
 .hero-meta {
@@ -130,26 +142,34 @@ h1 {
   gap: 18px;
 }
 
-.card {
+.card-stack {
   grid-column: span 4;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.card-stack.card-featured {
+  grid-column: span 8;
+}
+
+.card {
+  flex: 1;
   border-top: 2px solid var(--ink);
   border-left: 1px solid var(--rule);
   border-right: 1px solid var(--rule);
-  border-bottom: 1px solid var(--rule);
+  border-bottom: none;
   padding: 16px 14px 18px;
   text-decoration: none;
   color: inherit;
-  background: #fff;
+  background: var(--card-bg);
   transition: transform 0.12s, border-color 0.12s, background 0.12s;
-}
-
-.card-featured {
-  grid-column: span 8;
+  display: block;
 }
 
 .card:hover {
   transform: translateY(-2px);
-  border-color: var(--ink);
+  border-color: var(--muted);
 }
 
 .card-num {
@@ -167,12 +187,34 @@ h1 {
   font-size: 22px;
   line-height: 1.1;
   letter-spacing: -0.02em;
+  color: var(--ink);
 }
 
 .card p {
   margin: 0;
   color: var(--muted);
   font-size: 14px;
+}
+
+.card-zip {
+  display: block;
+  padding: 10px 14px 12px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  text-decoration: none;
+  color: var(--muted);
+  background: var(--card-zip-bg);
+  border: 1px solid var(--rule);
+  border-top: 1px solid var(--rule);
+  transition: color 0.15s, background 0.15s, border-color 0.15s;
+}
+
+.card-zip:hover {
+  color: var(--ink);
+  background: var(--card-bg);
+  border-color: var(--muted);
 }
 
 .features {
@@ -203,11 +245,17 @@ h1 {
   font-size: 26px;
   line-height: 1.05;
   letter-spacing: -0.02em;
+  color: var(--ink);
 }
 
 .store-release p {
   margin: 0 0 14px;
   color: var(--muted);
+}
+
+.store-release code {
+  font-size: 0.9em;
+  color: var(--ink);
 }
 
 .features article {
@@ -220,6 +268,7 @@ h1 {
   margin: 0 0 6px;
   font-size: 17px;
   letter-spacing: -0.01em;
+  color: var(--ink);
 }
 
 .features p {
@@ -236,10 +285,19 @@ footer {
   color: var(--muted);
 }
 
+footer code {
+  color: var(--ink);
+  font-size: 0.95em;
+}
+
 footer a {
   color: var(--ink);
   text-decoration: none;
-  border-bottom: 1px solid var(--ink);
+  border-bottom: 1px solid var(--muted);
+}
+
+footer a:hover {
+  border-bottom-color: var(--ink);
 }
 
 .footer-links {
@@ -247,6 +305,42 @@ footer a {
   display: flex;
   gap: 14px;
   flex-wrap: wrap;
+}
+
+/* Страницы папок расширений */
+.ext-folder-page {
+  max-width: 720px;
+}
+
+.ext-folder-page h1 {
+  font-size: clamp(28px, 5vw, 44px);
+  line-height: 1.12;
+  letter-spacing: -0.02em;
+  text-transform: none;
+  margin: 0 0 14px;
+  color: var(--ink);
+}
+
+.ext-folder-back {
+  margin: 0 0 20px;
+}
+
+.ext-folder-lead {
+  margin: 0 0 12px;
+  color: var(--muted);
+  font-size: 16px;
+}
+
+.ext-folder-page p {
+  margin: 0 0 12px;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.ext-folder-page code {
+  font-size: 0.95em;
+  color: var(--ink);
 }
 
 @media (max-width: 980px) {
@@ -260,11 +354,11 @@ footer a {
     gap: 10px;
   }
 
-  .card {
+  .card-stack {
     grid-column: span 6;
   }
 
-  .card-featured {
+  .card-stack.card-featured {
     grid-column: span 12;
   }
 
@@ -301,7 +395,7 @@ footer a {
     font-size: clamp(17px, 6vw, 28px);
   }
 
-  .card,
+  .card-stack,
   .features article {
     grid-column: span 12;
   }
