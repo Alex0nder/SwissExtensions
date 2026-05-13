@@ -292,7 +292,47 @@ async function importData(file) {
   alert('Import done.');
 }
 
+/** Синхронизация переключателя темы с uiTheme (как в side panel). */
+const HISTORY_UI_THEME_KEY = 'uiTheme';
+
+function initHistoryThemeSwitcher() {
+  const darkBtn = document.getElementById('historyThemeDark');
+  const lightBtn = document.getElementById('historyThemeLight');
+  if (!darkBtn || !lightBtn) return;
+
+  const apply = (mode) => {
+    document.documentElement.dataset.theme = mode === 'light' ? 'light' : 'dark';
+  };
+
+  const sync = () => {
+    const t = document.documentElement.dataset.theme === 'light' ? 'light' : 'dark';
+    darkBtn.classList.toggle('active', t === 'dark');
+    lightBtn.classList.toggle('active', t === 'light');
+  };
+
+  darkBtn.addEventListener('click', () => {
+    apply('dark');
+    chrome.storage.local.set({ [HISTORY_UI_THEME_KEY]: 'dark' }, sync);
+  });
+  lightBtn.addEventListener('click', () => {
+    apply('light');
+    chrome.storage.local.set({ [HISTORY_UI_THEME_KEY]: 'light' }, sync);
+  });
+
+  chrome.storage.local.get([HISTORY_UI_THEME_KEY], (r) => {
+    if (!chrome.runtime.lastError) apply(r[HISTORY_UI_THEME_KEY]);
+    sync();
+  });
+
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area !== 'local' || !changes[HISTORY_UI_THEME_KEY]) return;
+    apply(changes[HISTORY_UI_THEME_KEY].newValue);
+    sync();
+  });
+}
+
 async function init() {
+  initHistoryThemeSwitcher();
   try {
     const res = await new Promise((resolve) => {
       chrome.runtime.sendMessage({ type: 'getConstants' }, resolve);

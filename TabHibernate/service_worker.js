@@ -70,7 +70,7 @@ function isTabInGroup(tab) {
 }
 
 /**
- * Tab cannot be suspended: active, pinned, audible, system, incognito, in tab group, or already a placeholder.
+ * Tab cannot be suspended: active, pinned, audible, system, incognito, or already a placeholder.
  * allowActive: when true, allows suspending the active tab (e.g. "Suspend current" button).
  * Note: Both Discard and Placeholder unload the page; unsaved forms and SPA state may be lost (Chrome API limitation).
  */
@@ -80,7 +80,6 @@ async function isTabEligibleForSuspend(tab, { allowActive = false } = {}) {
   if (tab.pinned) return false;
   if (tab.audible) return false;
   if (tab.incognito) return false;
-  if (isTabInGroup(tab)) return false;
   const u = (tab.url || '').toLowerCase();
   if (u.startsWith('chrome://') || u.startsWith('chrome-extension://')) return false;
   if (isSuspendedPlaceholderUrl(tab.url) || isPlaceholderTabUrl(tab.url)) return false; // already a placeholder
@@ -108,7 +107,7 @@ async function getSettings() {
     smartUseHeuristicsFallback: s.smartUseHeuristicsFallback !== false,
     smartPlaceholderDomains,
     smartDiscardDomains,
-    mode: ['placeholder', 'smart', 'discard'].includes(s.mode) ? s.mode : 'discard',
+    mode: ['placeholder', 'smart', 'discard'].includes(s.mode) ? s.mode : 'placeholder',
   };
 }
 

@@ -2,8 +2,10 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
+  <meta name="color-scheme" content="dark light">
   <title>Tab Hibernate — History</title>
   <link rel="stylesheet" href="theme.css">
+  <script src="theme_apply.js"></script>
   <style>
     /* SaaS-style History: layout, custom scrollbar, styled checkboxes */
     html, body {
@@ -52,13 +54,13 @@
       transition: background 0.15s, border-color 0.15s;
     }
     .toolbar button:first-of-type {
-      background: var(--th-accent-cyan);
-      color: #0c0e12;
+      background: var(--th-btn-primary-bg);
+      color: var(--th-btn-primary-text);
       border: none;
     }
     .toolbar button:first-of-type:hover {
-      background: #5a8a9e;
-      color: #fff;
+      background: var(--th-btn-primary-hover);
+      color: var(--th-btn-primary-text);
     }
     .toolbar button.secondary {
       background: var(--th-bg-elevated);
@@ -142,14 +144,14 @@
       border-color: var(--th-accent-cyan);
       background: var(--th-accent-cyan);
     }
-    .checkbox-wrap input:focus-visible + .checkbox-box { box-shadow: 0 0 0 2px rgba(107, 155, 181, 0.35); }
+    .checkbox-wrap input:focus-visible + .checkbox-box { box-shadow: 0 0 0 2px var(--th-focus-ring); }
     .checkbox-wrap .checkbox-box::after {
       content: '';
       position: absolute;
       inset: 2px;
       -webkit-mask: url('icons/check.svg') center/contain no-repeat;
       mask: url('icons/check.svg') center/contain no-repeat;
-      background: #0c0e12;
+      background: var(--th-checkbox-tick);
       opacity: 0;
       transition: opacity 0.15s;
     }
@@ -252,6 +254,41 @@
       text-align: center;
       font-size: 13px;
     }
+    .toolbar-theme {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-left: auto;
+    }
+    .toolbar-theme-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--th-text-muted);
+    }
+    .theme-chip {
+      padding: 6px 12px;
+      font-size: 12px;
+      font-weight: 500;
+      border-radius: 6px;
+      cursor: pointer;
+      border: 1px solid var(--th-border);
+      background: var(--th-bg-elevated);
+      color: var(--th-text-secondary);
+      transition: background 0.15s, border-color 0.15s, color 0.15s;
+    }
+    .theme-chip:hover {
+      background: var(--th-bg-card);
+      color: var(--th-text-primary);
+      border-color: var(--th-text-muted);
+    }
+    .theme-chip.active {
+      background: var(--th-btn-primary-bg);
+      color: var(--th-btn-primary-text);
+      border-color: var(--th-btn-primary-bg);
+    }
   </style>
 </head>
 <body>
@@ -264,6 +301,11 @@
       <button id="openSelected" class="secondary">Open selected</button>
       <button id="openAllBtn" class="secondary">Open all</button>
       <button id="removeSelectedBtn" class="secondary">Remove selected</button>
+      <div class="toolbar-theme" role="group" aria-label="Interface theme">
+        <span class="toolbar-theme-label">Theme</span>
+        <button type="button" class="theme-chip" id="historyThemeDark" data-theme-pick="dark">Dark</button>
+        <button type="button" class="theme-chip" id="historyThemeLight" data-theme-pick="light">Light</button>
+      </div>
     </div>
     <p style="font-size: 11px; color: var(--th-text-muted); margin: 10px 0 0;">Open as placeholders — pages load only when you click «Restore».</p>
   </header>

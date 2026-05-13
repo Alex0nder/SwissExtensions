@@ -1,51 +1,34 @@
-# Swiss Extensions
+# Extensions (Swiss family)
 
-Swiss Extensions is an all-in-one Chrome productivity toolkit built around a clean Side Panel workflow.
+В репозитории два варианта:
 
-It combines five focused tools:
+- **`SwissExtensions/`** — один пакет (Side Panel): захват страницы, Tab Hibernate, Memory Cleaner, Site Blocker, Site Data Clear. Больше прав в `manifest.json` → ревью в Chrome Web Store обычно дольше и с большим числом вопросов.
+- **Отдельные папки ниже** — те же идеи с **минимальными** правами под задачу. Их удобнее подавать в Store по одному: меньше поверхность для проверки, проще обосновать каждое разрешение.
 
-1. **Page Capture** - capture long pages by viewport tiles and export to PNG or PDF.
-2. **Tab Hibernate** - suspend inactive tabs and restore them when needed.
-3. **Memory Cleaner** - discard background tabs to reduce RAM usage.
-4. **Site Blocker** - block distracting domains with built-in and custom rules.
-5. **Site Data Clear** - clear cookies and storage for the current site on demand.
+## Отдельные расширения (рекомендуется для публикации)
 
-## Installation (developer mode)
+| Папка | Название для Store | Суть |
+|--------|-------------------|------|
+| `PdfExtensions/` | Page Capture (tiles / PNG) | Скан страницы, плитки, экспорт PNG; `activeTab` + узкие `host_permissions` где возможно |
+| `TabHibernate/` | Tab Hibernate | Сон вкладок, закладки-бэкап, side panel |
+| `TabMemoryCleaner/` | Tab Memory Cleaner | Discard фоновых вкладок, горячая клавиша |
+| `SiteBlocker/` | Site Blocker | DNR, списки блокировки, отдельный `background.js` |
+| `SiteDataClear/` | Site Data Clear | Очистка данных сайта по кнопке |
 
-1. Open `chrome://extensions/`.
-2. Enable **Developer mode**.
-3. Click **Load unpacked**.
-4. Select this project folder.
+Загрузка в режиме разработчика: для каждого пункта — **Load unpacked** и выбор **соответствующей папки** (не корень репозитория).
 
-## Main workflows
+## Монолит (опционально)
 
-- **Page Capture:** scan page -> open result page -> export PNG/PDF.
-- **Tab Hibernate:** backup tabs to bookmarks, suspend current/all, restore all, recover lost tabs.
-- **Memory Cleaner:** discard background tabs with optional pinned-tab protection.
-- **Site Blocker:** enable/disable blocker, manage blocked domains.
-- **Site Data Clear:** clear cookies, localStorage, and sessionStorage for the active site.
+`SwissExtensions/` — для тех, кто хочет одну иконку и одну панель. Можно оставить как «suite» или не публиковать в Store, если цель — быстрее пройти модерацию через сплиты.
 
-## Permissions and purpose
+Дубликат для истории/сравнения: `SwissExtensions-repo/` (по необходимости не смешивать с активной разработкой).
 
-- `tabs`, `activeTab`, `<all_urls>`: capture pages, manage tabs, apply domain blocking.
-- `history`: optional blocked-from-history helper flow.
-- `browsingData`: clear site data on user action.
-- `bookmarks`: backup and restore hibernated tabs.
-- `declarativeNetRequest`: static and dynamic blocking rules.
-- `downloads`: export capture files.
-- `scripting`: inject helper scripts for capture/clear actions.
-- `sidePanel`, `alarms`, `storage`: side panel UI, periodic checks, settings persistence.
+## Установка (developer mode)
 
-## Technical notes
+1. `chrome://extensions/` → **Режим разработчика**.
+2. **Загрузить распакованное** → указать папку нужного расширения (например `PdfExtensions` или `SwissExtensions`).
 
-- Manifest V3 with one service worker.
-- Capture data is stored in IndexedDB `PdfCaptureDB`.
-- Blocker uses static rulesets (`blocker/ruleset_*.json`) plus dynamic user rules.
+## Privacy / лицензия
 
-## Privacy Policy
-
-- https://github.com/Alex0nder/SwissExtensions/blob/main/PRIVACY_POLICY.md
-
-## License
-
-MIT
+- Политика (для Store): https://github.com/Alex0nder/SwissExtensions/blob/main/PRIVACY_POLICY.md  
+- Лицензия: MIT (см. файлы в подпроектах при наличии).

@@ -70,6 +70,8 @@ const el = {
   smartHeuristicsFallback: document.getElementById('thSmartHeuristicsFallback'),
   smartPlaceholderDomains: document.getElementById('thSmartPlaceholderDomains'),
   smartDiscardDomains: document.getElementById('thSmartDiscardDomains'),
+  suspendPinned: document.getElementById('thSuspendPinned'),
+  skipGroupedHibernate: document.getElementById('thSkipGroupedHibernate'),
   backup: document.getElementById('thBackup'),
   suspendCurrent: document.getElementById('thSuspendCurrent'),
   suspendAll: document.getElementById('thSuspendAll'),
@@ -98,7 +100,7 @@ async function loadThSettings() {
   if (settings) {
     el.enabled.checked = settings.enabled !== false;
     el.timeout.value = String(settings.timeoutMinutes ?? 5);
-    el.mode.value = ['placeholder', 'smart', 'discard'].includes(settings.mode) ? settings.mode : 'discard';
+    el.mode.value = ['placeholder', 'smart', 'discard'].includes(settings.mode) ? settings.mode : 'placeholder';
     if (el.checkPeriod) el.checkPeriod.value = ['1', '2', '5'].includes(String(settings.checkPeriodMinutes)) ? String(settings.checkPeriodMinutes) : '1';
     if (el.excludedDomains) el.excludedDomains.value = Array.isArray(settings.excludedDomains) ? settings.excludedDomains.join('\n') : '';
     if (el.smartRulesEnabled) el.smartRulesEnabled.checked = settings.smartRulesEnabled === true;
@@ -106,6 +108,8 @@ async function loadThSettings() {
     if (el.smartHeuristicsFallback) el.smartHeuristicsFallback.checked = settings.smartUseHeuristicsFallback !== false;
     if (el.smartPlaceholderDomains) el.smartPlaceholderDomains.value = Array.isArray(settings.smartPlaceholderDomains) ? settings.smartPlaceholderDomains.join('\n') : '';
     if (el.smartDiscardDomains) el.smartDiscardDomains.value = Array.isArray(settings.smartDiscardDomains) ? settings.smartDiscardDomains.join('\n') : '';
+    if (el.suspendPinned) el.suspendPinned.checked = settings.suspendPinnedTabs !== false;
+    if (el.skipGroupedHibernate) el.skipGroupedHibernate.checked = settings.skipGroupedInHibernate === true;
   }
 }
 
@@ -136,7 +140,9 @@ function saveThSettings() {
       smartUseHeuristicsFallback: el.smartHeuristicsFallback ? el.smartHeuristicsFallback.checked : true,
       smartPlaceholderDomains,
       smartDiscardDomains,
-      mode: ['placeholder', 'smart', 'discard'].includes(el.mode.value) ? el.mode.value : 'discard',
+      mode: ['placeholder', 'smart', 'discard'].includes(el.mode.value) ? el.mode.value : 'placeholder',
+      suspendPinnedTabs: el.suspendPinned ? el.suspendPinned.checked : true,
+      skipGroupedInHibernate: el.skipGroupedHibernate ? el.skipGroupedHibernate.checked : false,
     },
   }, () => {
     chrome.runtime.sendMessage({ type: 'settingsUpdated' }, () => {});
@@ -160,6 +166,8 @@ if (el.smartDefaultMode) el.smartDefaultMode.addEventListener('change', saveThSe
 if (el.smartHeuristicsFallback) el.smartHeuristicsFallback.addEventListener('change', saveThSettings);
 if (el.smartPlaceholderDomains) el.smartPlaceholderDomains.addEventListener('blur', saveThSettings);
 if (el.smartDiscardDomains) el.smartDiscardDomains.addEventListener('blur', saveThSettings);
+if (el.suspendPinned) el.suspendPinned.addEventListener('change', saveThSettings);
+if (el.skipGroupedHibernate) el.skipGroupedHibernate.addEventListener('change', saveThSettings);
 
 el.backup.addEventListener('click', async () => {
   el.backup.disabled = true;
@@ -227,12 +235,77 @@ el.restoreAll.addEventListener('click', async () => {
 
 el.closeSave.addEventListener('click', async () => {
   el.closeSave.disabled = true;
+  el.closeSave.textContent = 'Closing…';
+  const progEl = document.getElementById('thCloseSaveProgress');
+  const doneEl = document.getElementById('thCloseSaveDone');
+  const totalEl = document.getElementById('thCloseSaveTotal');
+  const remainEl = document.getElementById('thCloseSaveRemain');
+  const savedEl = document.getElementById('thCloseSaveSaved');
+  if (progEl) progEl.style.display = 'block';
+  if (doneEl) doneEl.textContent = '0';
+  if (totalEl) totalEl.textContent = '0';
+  if (remainEl) remainEl.textContent = '0';
+  if (savedEl) savedEl.textContent = '0';
+
+  let finished = false;
+  const onProgress = (changes, areaName) => {
+    if (areaName !== 'local') return;
+    if (changes.closeAndSaveProgress?.newValue) {
+      const p = changes.closeAndSaveProgress.newValue;
+      const total = p.totalToClose ?? p.totalCandidates ?? 0;
+      const closed = p.closed ?? 0;
+      const saved = p.saved ?? 0;
+      const remaining = Math.max(0, total - closed);
+      if (doneEl) doneEl.textContent = String(closed);
+      if (totalEl) totalEl.textContent = String(total);
+      if (remainEl) remainEl.textContent = String(remaining);
+      if (savedEl) savedEl.textContent = String(saved);
+      return;
+    }
+    if (changes.closeAndSaveResult?.newValue) {
+      const r = changes.closeAndSaveResult.newValue;
+      const closed = r?.closed || 0;
+      const saved = typeof r?.saved === 'number' ? r.saved : closed;
+      finished = true;
+      cleanup(false);
+      el.closeSave.textContent = r?.ok === false
+        ? `Error: ${r.error || 'failed'}`
+        : (closed > 0 ? `Closed: ${closed}, saved: ${saved}` : 'Done');
+      refreshThStats();
+      setTimeout(() => { el.closeSave.textContent = 'Close all and save'; }, 2500);
+    }
+  };
+  chrome.storage.onChanged.addListener(onProgress);
+
+  const cleanup = (clearState = true) => {
+    chrome.storage.onChanged.removeListener(onProgress);
+    if (clearState) chrome.storage.local.remove(['closeAndSaveProgress', 'closeAndSaveResult']);
+    if (progEl) progEl.style.display = 'none';
+    el.closeSave.disabled = false;
+  };
+
   try {
-    const r = await send({ type: 'closeAndSaveAll' });
-    el.closeSave.textContent = (r?.closed || 0) > 0 ? `Closed: ${r.closed}` : 'Done';
-    refreshThStats();
-  } catch { el.closeSave.textContent = 'Error'; }
-  setTimeout(() => { el.closeSave.textContent = 'Close all and save'; el.closeSave.disabled = false; }, 2000);
+    const start = await send({ type: 'closeAndSaveAllAsync' });
+    if (!start?.started) {
+      cleanup();
+      if (start?.reason === 'already-running') {
+        el.closeSave.textContent = 'Already running…';
+      } else {
+        el.closeSave.textContent = `Error: ${start?.reason || 'start failed'}`;
+      }
+      setTimeout(() => { el.closeSave.textContent = 'Close all and save'; }, 2500);
+      return;
+    }
+  } catch (e) {
+    cleanup();
+    el.closeSave.textContent = `Error: ${e?.message || 'unknown'}`;
+    setTimeout(() => { el.closeSave.textContent = 'Close all and save'; }, 3000);
+    return;
+  }
+
+  setTimeout(() => {
+    if (!finished) el.closeSave.textContent = 'Running…';
+  }, 2000);
 });
 
 el.history.addEventListener('click', (e) => {
@@ -538,7 +611,15 @@ chrome.storage.onChanged.addListener((changes, area) => {
 
 refreshBlockerFromStorage();
 
-// Memory Cleaner (tmcSettings —   Tab Memory Cleaner)
+// Memory Cleaner (tmcSettings — Tab Memory Cleaner; defaults discard pinned + grouped unless user opts out)
+const TMC_UI_DEFAULTS = {
+  skipPinned: false,
+  skipAudible: true,
+  skipIncognito: true,
+  skipGrouped: false,
+  excludedDomains: [],
+};
+
 function memoryNormalizeDomainsText(value) {
   return String(value || '')
     .split('\n')
@@ -565,11 +646,11 @@ function saveMemorySettings() {
 
 async function loadMemorySettings() {
   const { tmcSettings = {} } = await chrome.storage.local.get('tmcSettings');
-  const s = { ...readMemorySettingsFromUi(), ...tmcSettings };
-  document.getElementById('memorySkipPinned').checked = s.skipPinned !== false;
+  const s = { ...TMC_UI_DEFAULTS, ...tmcSettings };
+  document.getElementById('memorySkipPinned').checked = !!s.skipPinned;
   document.getElementById('memorySkipAudible').checked = s.skipAudible !== false;
   document.getElementById('memorySkipIncognito').checked = s.skipIncognito !== false;
-  document.getElementById('memorySkipGrouped').checked = s.skipGrouped !== false;
+  document.getElementById('memorySkipGrouped').checked = !!s.skipGrouped;
   const list = Array.isArray(s.excludedDomains) ? s.excludedDomains : [];
   document.getElementById('memoryExcludedDomains').value = list.join('\n');
 }
@@ -721,4 +802,44 @@ chrome.storage.onChanged.addListener((changes, area) => {
   }
 });
 
+/** Тёмная/светлая тема: ключ chrome.storage.local uiTheme — общий для side panel, History, suspended. */
+const UI_THEME_KEY = 'uiTheme';
+
+function applyUiThemePanel(mode) {
+  document.documentElement.dataset.theme = mode === 'light' ? 'light' : 'dark';
+}
+
+function initUiThemeSwitcher() {
+  const darkBtn = document.getElementById('themeDark');
+  const lightBtn = document.getElementById('themeLight');
+  if (!darkBtn || !lightBtn) return;
+
+  const sync = () => {
+    const t = document.documentElement.dataset.theme === 'light' ? 'light' : 'dark';
+    darkBtn.classList.toggle('active', t === 'dark');
+    lightBtn.classList.toggle('active', t === 'light');
+  };
+
+  darkBtn.addEventListener('click', () => {
+    applyUiThemePanel('dark');
+    chrome.storage.local.set({ [UI_THEME_KEY]: 'dark' }, sync);
+  });
+  lightBtn.addEventListener('click', () => {
+    applyUiThemePanel('light');
+    chrome.storage.local.set({ [UI_THEME_KEY]: 'light' }, sync);
+  });
+
+  chrome.storage.local.get([UI_THEME_KEY], (r) => {
+    if (!chrome.runtime.lastError) applyUiThemePanel(r[UI_THEME_KEY]);
+    sync();
+  });
+
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area !== 'local' || !changes[UI_THEME_KEY]) return;
+    applyUiThemePanel(changes[UI_THEME_KEY].newValue);
+    sync();
+  });
+}
+
+initUiThemeSwitcher();
 sdcLoadOptions();

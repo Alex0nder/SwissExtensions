@@ -30,7 +30,7 @@ async function loadSettings() {
   if (settings) {
     el.enabled.checked = settings.enabled !== false;
     el.timeout.value = String(settings.timeoutMinutes ?? 5);
-    el.mode.value = ['placeholder', 'smart', 'discard'].includes(settings.mode) ? settings.mode : 'discard';
+    el.mode.value = ['placeholder', 'smart', 'discard'].includes(settings.mode) ? settings.mode : 'placeholder';
     el.checkPeriod.value = ['1', '2', '5'].includes(String(settings.checkPeriodMinutes)) ? String(settings.checkPeriodMinutes) : '1';
     const domains = Array.isArray(settings.excludedDomains) ? settings.excludedDomains : [];
     el.excludedDomains.value = domains.join('\n');
@@ -75,7 +75,7 @@ function saveSettings() {
     smartUseHeuristicsFallback: el.smartHeuristicsFallback ? el.smartHeuristicsFallback.checked : true,
     smartPlaceholderDomains,
     smartDiscardDomains,
-    mode: ['placeholder', 'smart', 'discard'].includes(el.mode.value) ? el.mode.value : 'discard',
+    mode: ['placeholder', 'smart', 'discard'].includes(el.mode.value) ? el.mode.value : 'placeholder',
   };
   chrome.storage.local.set({ settings }, () => {
     chrome.runtime.sendMessage({ type: 'settingsUpdated' }, () => {});

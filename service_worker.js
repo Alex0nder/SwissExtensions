@@ -68,7 +68,7 @@ function isTabInGroup(tab) {
 }
 
 /**
- * Tab cannot be suspended: active, pinned, audible, system, incognito, in tab group, or already a placeholder.
+ * Tab cannot be suspended: active, pinned, audible, system, incognito, or already a placeholder.
  * allowActive: when true, allows suspending the active tab (e.g. "Suspend current" button).
  * Note: Both Discard and Placeholder unload the page; unsaved forms and SPA state may be lost (Chrome API limitation).
  */
@@ -78,7 +78,6 @@ async function isTabEligibleForSuspend(tab, { allowActive = false } = {}) {
   if (tab.pinned) return false;
   if (tab.audible) return false;
   if (tab.incognito) return false;
-  if (isTabInGroup(tab)) return false;
   const u = (tab.url || '').toLowerCase();
   if (u.startsWith('chrome://') || u.startsWith('chrome-extension://')) return false;
   if (isSuspendedPlaceholderUrl(tab.url) || isPlaceholderTabUrl(tab.url)) return false; // already a placeholder
@@ -245,7 +244,6 @@ async function getEligibleTabsForBackup() {
   const eligible = [];
   for (const tab of tabs) {
     if (!tab.url || !tab.id) continue;
-    if (isTabInGroup(tab)) continue;
     const u = (tab.url || '').toLowerCase();
     if (u.startsWith('chrome://') || u.startsWith('chrome-extension://')) continue;
     if (tab.incognito) continue;
@@ -548,13 +546,12 @@ async function runRestoreAllSuspended() {
   return { restored };
 }
 
-/** Discard background tabs to free memory. Skip active, pinned, system, tab groups. */
+/** Discard background tabs to free memory. Skip active, pinned when requested, and system tabs. */
 const DISCARD_DELAY_MS = 300;
 async function runDiscardBackgroundTabs(skipPinned) {
   const tabs = await chrome.tabs.query({});
   const toDiscard = tabs.filter((tab) => {
     if (!tab.id) return false;
-    if (isTabInGroup(tab)) return false;
     const u = (tab.url || '').toLowerCase();
     if (u.startsWith('chrome://') || u.startsWith('chrome-extension://')) return false;
     if (tab.active) return false;
@@ -856,7 +853,36 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
 const SITE_BLOCKER_RULE_ID_START = 10000;
 const NETFILTER_RULESET_IDS = ['ruleset_1', 'ruleset_2', 'ruleset_3', 'ruleset_4', 'ruleset_5', 'ruleset_6'];
 
-async function siteBlockerApplyRules() {
+function sbHostMatchesDomains(hostname, domains) {
+  if (!hostname || !Array.isArray(domains) || domains.length === 0) return false;
+  const host = hostname.replace(/^www\./, '').toLowerCase();
+  return domains.some((domain) => host === domain || host.endsWith(`.${domain}`));
+}
+
+function sbUrlMatchesBlockedDomains(url, domains) {
+  try {
+    const parsed = new URL(url || '');
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return false;
+    return sbHostMatchesDomains(parsed.hostname, domains);
+  } catch (_) {
+    return false;
+  }
+}
+
+async function siteBlockerReloadBlockedOpenTabs(domains) {
+  if (!domains.length) return;
+  const tabs = await chrome.tabs.query({});
+  for (const tab of tabs) {
+    if (!tab?.id || !sbUrlMatchesBlockedDomains(tab.url, domains)) continue;
+    try {
+      await chrome.tabs.reload(tab.id, { bypassCache: true });
+    } catch (e) {
+      console.warn('[SiteBlocker] reload blocked tab failed', tab.id, e);
+    }
+  }
+}
+
+async function siteBlockerApplyRules({ enforceOpenTabs = false } = {}) {
   const { blocked = [], enabled = true } = await chrome.storage.local.get(['blocked', 'enabled']);
   const existing = await chrome.declarativeNetRequest.getDynamicRules();
   const toRemove = existing.map((r) => r.id).filter((id) => id >= SITE_BLOCKER_RULE_ID_START);
@@ -887,11 +913,15 @@ async function siteBlockerApplyRules() {
     try { if (!s.startsWith('http')) s = 'https://' + s; return new URL(s).hostname.replace(/^www\./, '') || ''; } catch { return s.replace(/^www\./, '').split('/')[0].split('?')[0]; }
   }
   const domains = [...new Set(blocked.map(norm).filter(Boolean))];
-  const rules = domains.map((d, i) => ({ id: SITE_BLOCKER_RULE_ID_START + i, priority: 1, action: { type: 'block' }, condition: { urlFilter: `*://*.${d}/*`, resourceTypes: ['main_frame', 'sub_frame'] } }));
+  const rules = domains.flatMap((d, i) => ([
+    { id: SITE_BLOCKER_RULE_ID_START + i * 2, priority: 1, action: { type: 'block' }, condition: { urlFilter: `*://${d}/*`, resourceTypes: ['main_frame', 'sub_frame'] } },
+    { id: SITE_BLOCKER_RULE_ID_START + i * 2 + 1, priority: 1, action: { type: 'block' }, condition: { urlFilter: `*://*.${d}/*`, resourceTypes: ['main_frame', 'sub_frame'] } },
+  ]));
   await chrome.declarativeNetRequest.updateDynamicRules({ removeRuleIds: toRemove, addRules: rules });
+  if (enforceOpenTabs) await siteBlockerReloadBlockedOpenTabs(domains);
 }
 chrome.storage.onChanged.addListener((changes, areaName) => {
-  if (areaName === 'local' && (changes.blocked || changes.enabled)) siteBlockerApplyRules();
+  if (areaName === 'local' && (changes.blocked || changes.enabled)) siteBlockerApplyRules({ enforceOpenTabs: true });
 });
 
 /** On tab URL change (e.g. single-tab restore) refresh badge. */

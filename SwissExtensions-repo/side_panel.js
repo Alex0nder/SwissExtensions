@@ -98,7 +98,7 @@ async function loadThSettings() {
   if (settings) {
     el.enabled.checked = settings.enabled !== false;
     el.timeout.value = String(settings.timeoutMinutes ?? 5);
-    el.mode.value = ['placeholder', 'smart', 'discard'].includes(settings.mode) ? settings.mode : 'discard';
+    el.mode.value = ['placeholder', 'smart', 'discard'].includes(settings.mode) ? settings.mode : 'placeholder';
     if (el.checkPeriod) el.checkPeriod.value = ['1', '2', '5'].includes(String(settings.checkPeriodMinutes)) ? String(settings.checkPeriodMinutes) : '1';
     if (el.excludedDomains) el.excludedDomains.value = Array.isArray(settings.excludedDomains) ? settings.excludedDomains.join('\n') : '';
     if (el.smartRulesEnabled) el.smartRulesEnabled.checked = settings.smartRulesEnabled === true;
@@ -136,7 +136,7 @@ function saveThSettings() {
       smartUseHeuristicsFallback: el.smartHeuristicsFallback ? el.smartHeuristicsFallback.checked : true,
       smartPlaceholderDomains,
       smartDiscardDomains,
-      mode: ['placeholder', 'smart', 'discard'].includes(el.mode.value) ? el.mode.value : 'discard',
+      mode: ['placeholder', 'smart', 'discard'].includes(el.mode.value) ? el.mode.value : 'placeholder',
     },
   }, () => {
     chrome.runtime.sendMessage({ type: 'settingsUpdated' }, () => {});

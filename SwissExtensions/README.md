@@ -1,11 +1,14 @@
 # Swiss Extensions
 
-Four tools in one extension:
+**Публикация в Chrome Web Store:** чтобы ускорить ревью, подавайте отдельные листинги из папок `PdfExtensions`, `TabHibernate`, `TabMemoryCleaner`, `SiteBlocker`, `SiteDataClear` (см. корневой `README.md` в репозитории). Этот каталог — монолит «всё в одном». **Пакет для Store:** из корня репозитория `./scripts/package-swiss-extensions-store.sh` → `dist/SwissExtensions-v*-chrome-store.zip`; чеклист — `PUBLISHING_CHECKLIST.md`; тексты для карточки и permissions — `STORE_LISTING.md`.
+
+Five tools in one extension:
 
 1. **Page Capture** — screenshot by viewport tiles, export to PNG
 2. **Tab Hibernate** — suspend inactive tabs, backup to bookmarks, Side Panel
-3. **Site Blocker** — block ads, trackers, miners + custom domain list
-4. **Site Data Clear** — clear cookies, localStorage, sessionStorage for current site
+3. **Memory Cleaner** — discard background tabs (RAM)
+4. **Site Blocker** — block ads, trackers, miners + custom domain list
+5. **Site Data Clear** — clear cookies, localStorage, sessionStorage for current site
 
 ## Installation
 
@@ -15,11 +18,17 @@ Four tools in one extension:
 
 ## Usage
 
-Click extension icon to open **Side Panel** with four tabs:
+Click extension icon to open **Side Panel** with all tools (Capture, Tabs, Blocker, Clear, Memory where present):
 - **Capture** — Scan page, opens result.html for PNG
 - **Tabs** — Tab Hibernate settings (timeout, mode, backup, suspend/restore)
 - **Blocker** — Toggle and domain blocklist
 - **Clear** — Cookies/localStorage/sessionStorage checkboxes and clear button
+
+## Заглушка (suspended.html) не появляется
+
+- Режим **Discard** не открывает заглушку — Chrome просто выгружает вкладку из памяти. Нужен режим **Placeholder** или **Smart** (часть сайтов всё равно уйдёт в Discard по правилам Smart).
+- До исправления 1.5.x при **первой установке** в storage не было `settings.mode`, а движок по умолчанию считал режим Discard, хотя в панели отображался Placeholder. Сейчас дефолт — **Placeholder**; если уже сохранён Discard — переключите вручную и сохраните настройки.
+- Если включено **Skip tabs in tab groups** — вкладки в группах не гибернируются (в т.ч. без заглушки).
 
 ## Tip — Updating without losing tabs
 

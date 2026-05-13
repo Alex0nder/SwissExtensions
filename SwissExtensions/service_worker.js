@@ -89,17 +89,19 @@ function isTabInGroup(tab) {
 }
 
 /**
- * Tab cannot be suspended: active, pinned, audible, system, incognito, in tab group, or already a placeholder.
+ * Tab cannot be suspended: active (unless allowActive), pinned (when suspendPinnedTabs is off), grouped when skipGroupedInHibernate, audible, system, incognito, or placeholder.
  * allowActive: when true, allows suspending the active tab (e.g. "Suspend current" button).
+ * Pass `settings` from callers that already called getSettings() to avoid repeated storage reads.
  * Note: Both Discard and Placeholder unload the page; unsaved forms and SPA state may be lost (Chrome API limitation).
  */
-async function isTabEligibleForSuspend(tab, { allowActive = false } = {}) {
+async function isTabEligibleForSuspend(tab, { allowActive = false, settings: settingsPreloaded } = {}) {
   if (!tab || !tab.id) return false;
+  const settings = settingsPreloaded || await getSettings();
   if (tab.active && !allowActive) return false;
-  if (tab.pinned) return false;
+  if (tab.pinned && !settings.suspendPinnedTabs) return false;
+  if (settings.skipGroupedInHibernate && isTabInGroup(tab)) return false;
   if (tab.audible) return false;
   if (tab.incognito) return false;
-  if (isTabInGroup(tab)) return false;
   const u = (tab.url || '').toLowerCase();
   if (u.startsWith('chrome://') || u.startsWith('chrome-extension://')) return false;
   if (isSuspendedPlaceholderUrl(tab.url) || isPlaceholderTabUrl(tab.url)) return false; // already a placeholder
@@ -127,7 +129,12 @@ async function getSettings() {
     smartUseHeuristicsFallback: s.smartUseHeuristicsFallback !== false,
     smartPlaceholderDomains,
     smartDiscardDomains,
-    mode: ['placeholder', 'smart', 'discard'].includes(s.mode) ? s.mode : 'discard',
+    /** Default placeholder so new installs get suspended.html, not silent chrome.discard (UI also defaults to Placeholder). */
+    mode: ['placeholder', 'smart', 'discard'].includes(s.mode) ? s.mode : 'placeholder',
+    /** When true (default), pinned tabs participate in hibernate / Suspend all / Close & save. */
+    suspendPinnedTabs: s.suspendPinnedTabs !== false,
+    /** When true, tabs in Chrome tab groups are never suspended automatically or via bulk actions. */
+    skipGroupedInHibernate: s.skipGroupedInHibernate === true,
   };
 }
 
@@ -350,13 +357,12 @@ async function suspendPlaceholder(tabId, url, title, favIconUrl) {
   }
 }
 
-/** Get all tabs eligible for backup (same rules as suspend, minus inactivity check). Skip grouped tabs. */
+/** Get all tabs eligible for backup (same rules as suspend, minus inactivity check). Includes grouped tabs. */
 async function getEligibleTabsForBackup() {
   const tabs = await chrome.tabs.query({});
   const eligible = [];
   for (const tab of tabs) {
     if (!tab.url || !tab.id) continue;
-    if (isTabInGroup(tab)) continue;
     const u = (tab.url || '').toLowerCase();
     if (u.startsWith('chrome://') || u.startsWith('chrome-extension://')) continue;
     if (tab.incognito) continue;
@@ -515,7 +521,7 @@ async function runSuspendAllNow() {
   const toBackup = [];
   let suspended = 0;
   for (const tab of tabs) {
-    if (!(await isTabEligibleForSuspend(tab))) continue;
+    if (!(await isTabEligibleForSuspend(tab, { settings }))) continue;
     if (isTabExcludedByDomain(tab, settings.excludedDomains)) continue;
     const mode = getSuspendModeForTab(settings, tab);
     if (mode === 'placeholder' && !hasRestorableUrl(tab.url)) continue;
@@ -588,19 +594,61 @@ async function getPlaceholderRestoreUrl(tab) {
 }
 
 /**     ( placeholder)   URL  closedAndSaved.    URL. */
-const CLOSED_SAVED_MAX = 2000;
+const CLOSED_SAVED_MAX = 10000;
+
+function isQuotaExceededError(error) {
+  if (!error) return false;
+  const message = String(error.message || error).toLowerCase();
+  return message.includes('quota') || message.includes('max write operations');
+}
+
+async function persistClosedAndSaved(entries) {
+  let next = Array.isArray(entries) ? entries.slice(0, CLOSED_SAVED_MAX) : [];
+  while (next.length > 0) {
+    try {
+      await chrome.storage.local.set({ closedAndSaved: next });
+      return next.length;
+    } catch (e) {
+      if (!isQuotaExceededError(e)) throw e;
+      // Keep newest entries and shrink aggressively to fit storage limits.
+      const reducedSize = Math.floor(next.length * 0.8);
+      if (reducedSize === next.length) throw e;
+      next = next.slice(0, Math.max(1, reducedSize));
+    }
+  }
+  await chrome.storage.local.set({ closedAndSaved: [] });
+  return 0;
+}
 async function runCloseAndSaveAll() {
+  const settings = await getSettings();
   const tabs = await chrome.tabs.query({});
   const toSave = [];
   const idsToClose = [];
   const seenUrls = new Set();
+  let scanned = 0;
+  const setProgress = async (extra = {}) => {
+    try {
+      await chrome.storage.local.set({
+        closeAndSaveProgress: {
+          stage: extra.stage || 'scanning',
+          scanned,
+          totalCandidates: toSave.length,
+          totalToClose: idsToClose.length,
+          closed: extra.closed || 0,
+          saved: extra.saved || 0,
+        },
+      });
+    } catch (_) {}
+  };
+  await setProgress({ stage: 'scanning' });
   for (const tab of tabs) {
+    scanned++;
     let url = '';
     let title = '';
     if (isPlaceholderTabUrl(tab.url)) {
       url = await getPlaceholderRestoreUrl(tab) || '';
       title = (tab.title || url || '').slice(0, 512);
-    } else if (await isTabEligibleForSuspend(tab)) {
+    } else if (await isTabEligibleForSuspend(tab, { settings })) {
       url = tab.url || '';
       title = (tab.title || tab.url || '').slice(0, 512);
     } else {
@@ -614,21 +662,50 @@ async function runCloseAndSaveAll() {
     seenUrls.add(url);
     toSave.push({ url, title, savedAt: Date.now() });
     idsToClose.push(tab.id);
+    if (scanned % 25 === 0) await setProgress({ stage: 'scanning' });
   }
+  await setProgress({ stage: 'scanning' });
   if (idsToClose.length === 0) return { closed: 0 };
   const { closedAndSaved = [] } = await chrome.storage.local.get('closedAndSaved');
   const mergedUrls = new Set(toSave.map((x) => x.url));
   const uniqueExisting = closedAndSaved.filter((x) => x.url && !mergedUrls.has(x.url));
-  const merged = [...toSave.reverse(), ...uniqueExisting].slice(0, CLOSED_SAVED_MAX);
-  await chrome.storage.local.set({ closedAndSaved: merged });
+  const merged = [...toSave.reverse(), ...uniqueExisting];
+  const savedCount = await persistClosedAndSaved(merged);
+  await setProgress({ stage: 'closing', saved: savedCount });
   const CLOSE_BATCH_DELAY_MS = 50;
+  let closedCount = 0;
   for (let i = 0; i < idsToClose.length; i++) {
     try { await chrome.tabs.remove(idsToClose[i]); } catch (e) { console.warn('[TabHibernate] tab remove failed', idsToClose[i], e); }
+    closedCount++;
+    if (closedCount % 20 === 0 || closedCount === idsToClose.length) {
+      await setProgress({ stage: 'closing', closed: closedCount, saved: savedCount });
+    }
     if ((i + 1) % 30 === 0 && i + 1 < idsToClose.length) {
       await new Promise((r) => setTimeout(r, CLOSE_BATCH_DELAY_MS));
     }
   }
-  return { closed: idsToClose.length };
+  return { closed: closedCount, saved: savedCount };
+}
+
+let closeAndSaveJobRunning = false;
+async function startCloseAndSaveAllJob() {
+  if (closeAndSaveJobRunning) return { started: false, reason: 'already-running' };
+  closeAndSaveJobRunning = true;
+  await chrome.storage.local.remove('closeAndSaveResult').catch(() => {});
+  runCloseAndSaveAll().then(async (res) => {
+    await chrome.storage.local.set({ closeAndSaveResult: { ok: true, ...res, finishedAt: Date.now() } });
+    await chrome.storage.local.remove('closeAndSaveProgress');
+    await updateBadge();
+  }).catch(async (e) => {
+    console.warn('[TabHibernate] closeAndSaveAll async job failed', e);
+    await chrome.storage.local.set({
+      closeAndSaveResult: { ok: false, closed: 0, saved: 0, error: String(e?.message || e), finishedAt: Date.now() },
+    });
+    await chrome.storage.local.remove('closeAndSaveProgress');
+  }).finally(() => {
+    closeAndSaveJobRunning = false;
+  });
+  return { started: true };
 }
 
 /** Delay between restores (ms) — avoid memory spike. */
@@ -683,10 +760,10 @@ async function runRestoreAllSuspended() {
 /** Discard background tabs —    TabMemoryCleaner (`tmcSettings`). */
 const DISCARD_DELAY_MS = 300;
 const TMC_DEFAULT_SETTINGS = {
-  skipPinned: true,
+  skipPinned: false,
   skipAudible: true,
   skipIncognito: true,
-  skipGrouped: true,
+  skipGrouped: false,
   excludedDomains: [],
 };
 
@@ -854,7 +931,7 @@ async function onAlarmCheck() {
     const toBackup = [];
     let suspendedThisRun = 0;
     for (const tab of tabs) {
-      if (!(await isTabEligibleForSuspend(tab))) continue;
+      if (!(await isTabEligibleForSuspend(tab, { settings }))) continue;
       if (isTabExcludedByDomain(tab, settings.excludedDomains)) continue;
       if (!isTabInactive(tab.id, settings.timeoutMinutes)) continue;
       const mode = getSuspendModeForTab(settings, tab);
@@ -1007,6 +1084,8 @@ chrome.runtime.onInstalled.addListener(async (details) => {
           smartPlaceholderDomains: [],
           smartDiscardDomains: [],
           mode: 'placeholder',
+          suspendPinnedTabs: true,
+          skipGroupedInHibernate: false,
         },
       });
     }
@@ -1108,6 +1187,35 @@ function sbNormDomain(d) {
   try { if (!s.startsWith('http')) s = 'https://' + s; return new URL(s).hostname.replace(/^www\./, '') || ''; } catch { return s.replace(/^www\./, '').split('/')[0].split('?')[0]; }
 }
 
+function sbHostMatchesDomains(hostname, domains) {
+  if (!hostname || !Array.isArray(domains) || domains.length === 0) return false;
+  const host = hostname.replace(/^www\./, '').toLowerCase();
+  return domains.some((domain) => host === domain || host.endsWith(`.${domain}`));
+}
+
+function sbUrlMatchesBlockedDomains(url, domains) {
+  try {
+    const parsed = new URL(url || '');
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return false;
+    return sbHostMatchesDomains(parsed.hostname, domains);
+  } catch (_) {
+    return false;
+  }
+}
+
+async function siteBlockerReloadBlockedOpenTabs(domains) {
+  if (!domains.length) return;
+  const tabs = await chrome.tabs.query({});
+  for (const tab of tabs) {
+    if (!tab?.id || !sbUrlMatchesBlockedDomains(tab.url, domains)) continue;
+    try {
+      await chrome.tabs.reload(tab.id, { bypassCache: true });
+    } catch (e) {
+      console.warn('[SiteBlocker] reload blocked tab failed', tab.id, e);
+    }
+  }
+}
+
 async function siteBlockerApplyAdsRulesets() {
   const { adsFiltersEnabled = true } = await chrome.storage.local.get('adsFiltersEnabled');
   const on = adsFiltersEnabled !== false;
@@ -1128,13 +1236,14 @@ async function siteBlockerApplyAdsRulesets() {
   }
 }
 
-async function siteBlockerApplyRules() {
+async function siteBlockerApplyRules({ enforceOpenTabs = false } = {}) {
   const {
     blocked = [],
     whitelist = [],
     enabled = true,
     schedule = SB_DEFAULT_SCHEDULE,
-  } = await chrome.storage.local.get(['blocked', 'whitelist', 'enabled', 'schedule']);
+    scheduleStateActive: previousScheduleStateActive,
+  } = await chrome.storage.local.get(['blocked', 'whitelist', 'enabled', 'schedule', 'scheduleStateActive']);
   const existing = await chrome.declarativeNetRequest.getDynamicRules();
   const toRemove = existing.map((r) => r.id).filter((id) => id >= SITE_BLOCKER_RULE_ID_START);
 
@@ -1179,20 +1288,31 @@ async function siteBlockerApplyRules() {
     return;
   }
 
-  const rules = domains.map((d, i) => ({
-    id: SITE_BLOCKER_RULE_ID_START + i,
-    priority: 1,
-    action: { type: 'block' },
-    condition: { urlFilter: `*://*.${d}/*`, resourceTypes: ['main_frame', 'sub_frame'] },
-  }));
+  const rules = domains.flatMap((d, i) => ([
+    {
+      id: SITE_BLOCKER_RULE_ID_START + i * 2,
+      priority: 1,
+      action: { type: 'block' },
+      condition: { urlFilter: `*://${d}/*`, resourceTypes: ['main_frame', 'sub_frame'] },
+    },
+    {
+      id: SITE_BLOCKER_RULE_ID_START + i * 2 + 1,
+      priority: 1,
+      action: { type: 'block' },
+      condition: { urlFilter: `*://*.${d}/*`, resourceTypes: ['main_frame', 'sub_frame'] },
+    },
+  ]));
   await chrome.declarativeNetRequest.updateDynamicRules({ removeRuleIds: toRemove, addRules: rules });
+  if (enforceOpenTabs || (previousScheduleStateActive === false && blockingWindowActive)) {
+    await siteBlockerReloadBlockedOpenTabs(domains);
+  }
 }
 
 chrome.storage.onChanged.addListener((changes, areaName) => {
   if (areaName !== 'local') return;
   if (changes.adsFiltersEnabled) siteBlockerApplyAdsRulesets();
   if (changes.blocked || changes.whitelist || changes.enabled || changes.schedule) {
-    siteBlockerApplyRules();
+    siteBlockerApplyRules({ enforceOpenTabs: true });
   }
 });
 
@@ -1288,12 +1408,14 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       try {
         const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
         if (!tab) return safeSend({ ok: false, reason: 'No active tab' });
-        if (!(await isTabEligibleForSuspend(tab, { allowActive: true }))) {
-          const reason = tab.pinned ? 'Tab is pinned' : tab.url?.startsWith('chrome://') || tab.url?.startsWith('chrome-extension://')
-            ? 'System page cannot be suspended' : 'Cannot suspend this tab';
+        const settings = await getSettings();
+        if (!(await isTabEligibleForSuspend(tab, { allowActive: true, settings }))) {
+          let reason = 'Cannot suspend this tab';
+          if (tab.pinned && !settings.suspendPinnedTabs) reason = 'Tab is pinned (enable «Include pinned tabs» in Tab Hibernate)';
+          else if (settings.skipGroupedInHibernate && isTabInGroup(tab)) reason = 'Tab is in a group (disable «Skip tabs in tab groups»)';
+          else if (tab.url?.startsWith('chrome://') || tab.url?.startsWith('chrome-extension://')) reason = 'System page cannot be suspended';
           return safeSend({ ok: false, reason });
         }
-        const settings = await getSettings();
         if (isTabExcludedByDomain(tab, settings.excludedDomains)) {
           return safeSend({ ok: false, reason: 'This domain is excluded in settings' });
         }
@@ -1349,11 +1471,20 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   }
   if (msg.type === 'closeAndSaveAll') {
     runCloseAndSaveAll().then(async (res) => {
+      await chrome.storage.local.remove('closeAndSaveProgress');
       await updateBadge();
       safeSend(res);
     }).catch((e) => {
       console.warn('[TabHibernate] closeAndSaveAll failed', e);
+      chrome.storage.local.remove('closeAndSaveProgress').catch(() => {});
       safeSend({ closed: 0, error: String(e.message) });
+    });
+    return true;
+  }
+  if (msg.type === 'closeAndSaveAllAsync') {
+    startCloseAndSaveAllJob().then((res) => safeSend(res)).catch((e) => {
+      console.warn('[TabHibernate] closeAndSaveAllAsync start failed', e);
+      safeSend({ started: false, reason: String(e?.message || e) });
     });
     return true;
   }
@@ -1461,8 +1592,8 @@ chrome.commands?.onCommand.addListener((command) => {
   if (command !== 'suspend-current-tab') return;
   chrome.tabs.query({ active: true, currentWindow: true }).then(async ([tab]) => {
     if (!tab || !tab.id) return;
-    if (!(await isTabEligibleForSuspend(tab, { allowActive: true }))) return;
     const settings = await getSettings();
+    if (!(await isTabEligibleForSuspend(tab, { allowActive: true, settings }))) return;
     if (isTabExcludedByDomain(tab, settings.excludedDomains)) return;
     const mode = getSuspendModeForTab(settings, tab);
     if (mode === 'placeholder' && !hasRestorableUrl(tab.url)) return;

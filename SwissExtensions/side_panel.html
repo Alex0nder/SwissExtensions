@@ -2,8 +2,10 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
+  <meta name="color-scheme" content="dark light">
   <title>Swiss Extensions</title>
   <link rel="stylesheet" href="theme.css">
+  <script src="theme_apply.js"></script>
   <style>
     * { box-sizing: border-box; }
     html, body { height: 100%; margin: 0; }
@@ -229,6 +231,59 @@
       font-family: inherit;
     }
     .sdc-preset-row button:hover { background: var(--th-bg-elevated); }
+    /* Theme: dark / light (storage key uiTheme) */
+    .theme-switcher {
+      padding: 12px 20px 20px;
+      margin-top: auto;
+      border-top: 1px solid var(--th-border);
+      flex-shrink: 0;
+    }
+    .theme-switcher-label {
+      display: block;
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--th-text-muted);
+      margin-bottom: 8px;
+    }
+    .theme-segment {
+      display: flex;
+      border: 1px solid var(--th-border);
+      border-radius: var(--th-radius);
+      overflow: hidden;
+    }
+    .theme-segment-btn {
+      flex: 1;
+      padding: 10px 12px;
+      font-size: 11px;
+      font-weight: 500;
+      font-family: inherit;
+      cursor: pointer;
+      border: none;
+      background: var(--th-bg-card);
+      color: var(--th-text-secondary);
+      transition: background 0.12s, color 0.12s;
+    }
+    .theme-segment-btn:hover {
+      background: var(--th-bg-elevated);
+      color: var(--th-text-primary);
+    }
+    .theme-segment-btn.active {
+      background: var(--th-btn-primary-bg);
+      color: var(--th-btn-primary-text);
+    }
+    .theme-segment-btn:not(:last-child) {
+      border-right: 1px solid var(--th-border);
+    }
+    #view-home {
+      min-height: 0;
+    }
+    #view-home .blocks {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+    }
   </style>
 </head>
 <body>
@@ -272,6 +327,13 @@
           <div class="block-desc">Clear cookies and site storage</div>
         </div>
       </button>
+    </div>
+    <div class="theme-switcher">
+      <span class="theme-switcher-label">Theme</span>
+      <div class="theme-segment" role="group" aria-label="Interface theme">
+        <button type="button" class="theme-segment-btn active" id="themeDark" data-theme-pick="dark">Dark</button>
+        <button type="button" class="theme-segment-btn" id="themeLight" data-theme-pick="light">Light</button>
+      </div>
     </div>
   </div>
 
@@ -334,6 +396,15 @@
         <div class="domains-label">Excluded domains (one per line)</div>
         <textarea id="thExcludedDomains" placeholder="mail.google.com&#10;web.telegram.org"></textarea>
       </div>
+      <div class="row">
+        <label for="thSuspendPinned">Include pinned tabs</label>
+        <input type="checkbox" id="thSuspendPinned" checked>
+      </div>
+      <div class="row">
+        <label for="thSkipGroupedHibernate">Skip tabs in tab groups</label>
+        <input type="checkbox" id="thSkipGroupedHibernate">
+      </div>
+      <p class="hint" style="margin-top:-4px;font-size:10px;">Pinned / grouped tabs participate in auto-hibernate, Suspend all, and Close &amp; save when allowed above. Memory Cleaner has separate skip toggles.</p>
       <div class="smart-card">
         <div class="row">
           <label for="thSmartRulesEnabled">Exact smart rules</label>
@@ -377,6 +448,9 @@
       <div class="row row-full">
         <button id="thCloseSave" class="btn-sec">Close all and save</button>
       </div>
+      <div class="restore-progress" id="thCloseSaveProgress" style="display:none;">
+        Closed <span id="thCloseSaveDone">0</span>/<span id="thCloseSaveTotal">0</span>, left <span id="thCloseSaveRemain">0</span>, saved <span id="thCloseSaveSaved">0</span>
+      </div>
       <div class="row row-full">
         <a href="#" id="thHistory">History (export / import)</a>
       </div>
@@ -399,7 +473,7 @@
       <button id="btnDiscard">Discard background tabs</button>
       <div class="row">
         <label for="memorySkipPinned">Skip pinned tabs</label>
-        <input type="checkbox" id="memorySkipPinned" checked>
+        <input type="checkbox" id="memorySkipPinned">
       </div>
       <div class="row">
         <label for="memorySkipAudible">Skip audible tabs</label>
@@ -411,7 +485,7 @@
       </div>
       <div class="row">
         <label for="memorySkipGrouped">Skip grouped tabs</label>
-        <input type="checkbox" id="memorySkipGrouped" checked>
+        <input type="checkbox" id="memorySkipGrouped">
       </div>
       <div class="row row-full" style="margin-top: 10px;">
         <label style="width:100%;margin-bottom:6px;display:block;color:var(--th-text-muted);font-size:10px;text-transform:uppercase;letter-spacing:0.06em;">Never discard (domains)</label>

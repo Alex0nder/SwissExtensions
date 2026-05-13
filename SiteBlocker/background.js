@@ -35,6 +35,39 @@ function domainToUrlFilter(domain) {
   return `*://*.${domain}/*`;
 }
 
+function domainToApexUrlFilter(domain) {
+  return `*://${domain}/*`;
+}
+
+function hostMatchesDomains(hostname, domains) {
+  if (!hostname || !Array.isArray(domains) || domains.length === 0) return false;
+  const host = hostname.replace(/^www\./, '').toLowerCase();
+  return domains.some((domain) => host === domain || host.endsWith(`.${domain}`));
+}
+
+function urlMatchesBlockedDomains(url, domains) {
+  try {
+    const parsed = new URL(url || '');
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return false;
+    return hostMatchesDomains(parsed.hostname, domains);
+  } catch (_) {
+    return false;
+  }
+}
+
+async function reloadBlockedOpenTabs(domains) {
+  if (!domains.length || !chrome.tabs?.query) return;
+  const tabs = await chrome.tabs.query({});
+  for (const tab of tabs) {
+    if (!tab?.id || !urlMatchesBlockedDomains(tab.url, domains)) continue;
+    try {
+      await chrome.tabs.reload(tab.id, { bypassCache: true });
+    } catch (e) {
+      console.warn('[SiteBlocker] reload blocked tab failed', tab.id, e);
+    }
+  }
+}
+
 function parseHHMM(value) {
   const m = /^(\d{2}):(\d{2})$/.exec(String(value || '').trim());
   if (!m) return null;
@@ -138,12 +171,19 @@ async function applyFilterRulesets() {
   }
 }
 
-async function applyUserBlockingRules() {
-  const { blocked = [], whitelist = [], enabled = true, schedule = DEFAULT_SCHEDULE } = await chrome.storage.local.get([
+async function applyUserBlockingRules({ enforceOpenTabs = false } = {}) {
+  const {
+    blocked = [],
+    whitelist = [],
+    enabled = true,
+    schedule = DEFAULT_SCHEDULE,
+    scheduleStateActive: previousScheduleStateActive,
+  } = await chrome.storage.local.get([
     'blocked',
     'whitelist',
     'enabled',
     'schedule',
+    'scheduleStateActive',
   ]);
   const existing = await chrome.declarativeNetRequest.getDynamicRules();
   const toRemoveUser = existing.filter((r) => r.id >= USER_RULE_ID_MIN && r.id <= USER_RULE_ID_MAX).map((r) => r.id);
@@ -167,7 +207,7 @@ async function applyUserBlockingRules() {
     return true;
   });
 
-  const capped = uniqueDomains.slice(0, USER_RULE_ID_MAX - USER_RULE_ID_MIN + 1);
+  const capped = uniqueDomains.slice(0, Math.floor((USER_RULE_ID_MAX - USER_RULE_ID_MIN + 1) / 2));
   if (uniqueDomains.length > capped.length) {
     console.warn('[SiteBlocker] block list truncated to', capped.length, 'domains (DNR limit)');
   }
@@ -179,20 +219,34 @@ async function applyUserBlockingRules() {
     return;
   }
 
-  const rules = capped.map((domain, i) => ({
-    id: USER_RULE_ID_MIN + i,
-    priority: 1,
-    action: { type: 'block' },
-    condition: {
-      urlFilter: domainToUrlFilter(domain),
-      resourceTypes: ['main_frame', 'sub_frame'],
+  const rules = capped.flatMap((domain, i) => ([
+    {
+      id: USER_RULE_ID_MIN + i * 2,
+      priority: 1,
+      action: { type: 'block' },
+      condition: {
+        urlFilter: domainToApexUrlFilter(domain),
+        resourceTypes: ['main_frame', 'sub_frame'],
+      },
     },
-  }));
+    {
+      id: USER_RULE_ID_MIN + i * 2 + 1,
+      priority: 1,
+      action: { type: 'block' },
+      condition: {
+        urlFilter: domainToUrlFilter(domain),
+        resourceTypes: ['main_frame', 'sub_frame'],
+      },
+    },
+  ]));
 
   await chrome.declarativeNetRequest.updateDynamicRules({
     removeRuleIds: toRemoveUser,
     addRules: rules,
   });
+  if (enforceOpenTabs || (previousScheduleStateActive === false && enabled && scheduleActive)) {
+    await reloadBlockedOpenTabs(capped);
+  }
 }
 
 function pushPairBlock(rules, idRef, domain) {
@@ -369,9 +423,9 @@ async function rescheduleFilterListAlarm() {
   await chrome.alarms.create(FILTER_LIST_ALARM_NAME, { periodInMinutes: period });
 }
 
-async function applyRules() {
+async function applyRules({ enforceOpenTabs = false } = {}) {
   await applyFilterRulesets();
-  await applyUserBlockingRules();
+  await applyUserBlockingRules({ enforceOpenTabs });
   await applySubscriptionDynamicRules();
 }
 
@@ -387,7 +441,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
     changes.filterListDomains ||
     changes.filterListAllowDomains
   ) {
-    applyRules();
+    applyRules({ enforceOpenTabs: !!(changes.blocked || changes.whitelist || changes.enabled || changes.schedule) });
   }
   if (
     changes.filterListEnabled ||

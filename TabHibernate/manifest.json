@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Tab Hibernate",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Reduces memory usage by suspending inactive tabs after a timeout, backs up tab URLs to bookmarks and local storage. Modes: Discard or Placeholder (stub page with Restore button).",
   "icons": {
     "16": "icons/icon16.png",

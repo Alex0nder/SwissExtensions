@@ -8,20 +8,23 @@
 - Добавлены `icons` (`16/32/48/128`) и `action.default_icon`.
 - Нормализованы `host_permissions` до `["<all_urls>"]` без дублей.
 - Добавлен `web_accessible_resources` для `content.js`, который инжектится через `chrome.scripting.executeScript`.
+- Для карточки Store: `minimum_chrome_version` **114** (Side Panel), `homepage_url` на репозиторий GitHub.
 
 ## 2) Подготовить пакет
 
 1. Открой `chrome://extensions` и проверь, что расширение запускается без ошибок.
-2. Запакуй только содержимое папки `SwissExtensions` в ZIP (не родительскую папку `Extensions`).
-3. Убедись, что в архив попали:
-   - `manifest.json`
-   - `service_worker.js`
-   - `side_panel.html`, `side_panel.js`
+2. Собери ZIP из корня репозитория: `./scripts/package-swiss-extensions-store.sh` → файл в `dist/SwissExtensions-v*-chrome-store.zip` (в архиве **нет** `.md`, `index.html`, `_metadata/`, пустой `lib/` — только исходники расширения).
+3. Либо вручную: запакуй **только содержимое** папки `SwissExtensions` (не родительскую `Extensions`), чтобы `manifest.json` лежал в **корне** ZIP.
+4. Обязательные файлы в пакете:
+   - `manifest.json`, `service_worker.js`
+   - `side_panel.html`, `side_panel.js`, `theme.css`, `theme_apply.js`
    - `content.js`, `content_script.js`
    - `result.html`, `result.js`, `history.html`, `history.js`, `suspended.html`, `suspended.js`
-   - папки `icons`, `blocker`, `lib`
+   - `icons/`, `blocker/*.json`
 
 ## 3) Данные для карточки в Store (подготовить заранее)
+
+Готовые черновики текстов и permission blurbs: **`STORE_LISTING.md`** в этой папке.
 
 - **Short description** (до 132 символов)
 - **Full description**
@@ -58,7 +61,7 @@
 
 - Нет ошибок в `Errors` на странице расширения.
 - Все кнопки side panel работают.
-- `Page Capture` создает PNG/PDF.
+- `Page Capture` создаёт PNG (целый скролл или плитки).
 - `Tab Hibernate` делает backup/restore.
 - `Site Blocker` включает/выключает правила.
 - `Site Data Clear` очищает данные текущего сайта.

@@ -1,6 +1,6 @@
 /**
  * Swiss design system — black/white, minimal, functional.
- * High contrast, strict grid, sharp edges, no decorative accents.
+ * Тема: :root по умолчанию тёмная; светлая — html[data-theme="light"] (см. theme_apply.js + uiTheme в storage).
  */
 :root {
   /* Backgrounds */
@@ -27,9 +27,34 @@
   --th-control-bg: var(--th-bg-input);
   --th-control-border: var(--th-border);
   --th-control-accent: var(--th-accent);
+  /* Misc (history checkboxes, suspended glow) */
+  --th-checkbox-tick: #0c0e12;
+  --th-focus-ring: rgba(107, 155, 181, 0.35);
+  --th-page-glow: rgba(107, 155, 181, 0.06);
   /* Swiss: sharp corners */
   --th-radius: 0;
   --th-radius-sm: 0;
   --th-radius-lg: 0;
   --th-shadow: none;
+}
+
+:root[data-theme="light"] {
+  --th-bg-base: #f4f4f5;
+  --th-bg-surface: #ffffff;
+  --th-bg-elevated: #ebebed;
+  --th-bg-card: #ffffff;
+  --th-bg-input: #ffffff;
+  --th-border: #d4d4d8;
+  --th-border-subtle: #e4e4e7;
+  --th-text-primary: #18181b;
+  --th-text-secondary: #52525b;
+  --th-text-muted: #71717a;
+  --th-accent: #c1121f;
+  --th-accent-cyan: #18181b;
+  --th-btn-primary-bg: #18181b;
+  --th-btn-primary-hover: #27272a;
+  --th-btn-primary-text: #fafafa;
+  --th-checkbox-tick: #fafafa;
+  --th-focus-ring: rgba(24, 24, 27, 0.22);
+  --th-page-glow: rgba(24, 24, 27, 0.05);
 }
