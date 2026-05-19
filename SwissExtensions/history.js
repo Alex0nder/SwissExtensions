@@ -6,20 +6,21 @@
 async function loadAll() {
   const raw = await chrome.storage.local.get(null);
   const closedAndSaved = Array.isArray(raw.closedAndSaved) ? raw.closedAndSaved : [];
+  const blockedTabsSaved = Array.isArray(raw.blockedTabsSaved) ? raw.blockedTabsSaved : [];
   const backups = {};
   for (const [key, value] of Object.entries(raw)) {
     if (key.startsWith('backup_') && Array.isArray(value)) backups[key.slice(7)] = value;
   }
-  return { closedAndSaved, backups };
+  return { closedAndSaved, blockedTabsSaved, backups };
 }
 
-/** Render "Closed and saved" list + show/hide "Select all" row and bind logic */
-function renderClosed(listEl, items) {
-  const selectAllRow = document.getElementById('selectAllRow');
-  const selectAllCb = document.getElementById('selectAllClosed');
+/** Render saved URL list (closed or site-blocker). */
+function renderSavedUrlList(listEl, items, { emptyText, checkboxClass, selectAllRowId, selectAllCbId }) {
+  const selectAllRow = document.getElementById(selectAllRowId);
+  const selectAllCb = document.getElementById(selectAllCbId);
   listEl.innerHTML = '';
   if (!items.length) {
-    listEl.innerHTML = '<li class="empty">No closed-and-saved tabs.</li>';
+    listEl.innerHTML = `<li class="empty">${emptyText}</li>`;
     if (selectAllRow) selectAllRow.style.display = 'none';
     return;
   }
@@ -28,26 +29,45 @@ function renderClosed(listEl, items) {
     const li = document.createElement('li');
     li.dataset.url = item.url || '';
     const date = item.savedAt ? new Date(item.savedAt).toLocaleString() : '—';
+    const sub = item.domain ? ` · ${item.domain}` : '';
     li.innerHTML = `
       <span class="checkbox-wrap">
-        <input type="checkbox" class="cb-closed" data-url="${escapeAttr(item.url)}">
+        <input type="checkbox" class="${checkboxClass}" data-url="${escapeAttr(item.url)}">
         <span class="checkbox-box" aria-hidden="true"></span>
       </span>
       <div class="item-content">
         <div class="item-title" title="${escapeAttr(item.title || item.url)}">${escapeHtml(item.title || item.url || '—')}</div>
         <div class="item-url" title="${escapeAttr(item.url)}">${escapeHtml(item.url || '')}</div>
       </div>
-      <span class="item-meta">${escapeHtml(date)}</span>
+      <span class="item-meta">${escapeHtml(date)}${escapeHtml(sub)}</span>
     `;
     listEl.appendChild(li);
   }
-  bindSelectAll(listEl, selectAllCb);
+  bindSelectAll(listEl, selectAllCb, checkboxClass);
+}
+
+function renderClosed(listEl, items) {
+  renderSavedUrlList(listEl, items, {
+    emptyText: 'No closed-and-saved tabs.',
+    checkboxClass: 'cb-closed',
+    selectAllRowId: 'selectAllRow',
+    selectAllCbId: 'selectAllClosed',
+  });
+}
+
+function renderBlockedSaved(listEl, items) {
+  renderSavedUrlList(listEl, items, {
+    emptyText: 'No saved blocked-site tabs yet.',
+    checkboxClass: 'cb-blocked-saved',
+    selectAllRowId: 'blockedSelectAllRow',
+    selectAllCbId: 'selectAllBlocked',
+  });
 }
 
 /** Wire "Select all" checkbox to row checkboxes; sync state when rows change */
-function bindSelectAll(listEl, selectAllCb) {
+function bindSelectAll(listEl, selectAllCb, checkboxClass = 'cb-closed') {
   if (!selectAllCb) return;
-  const checkboxes = () => listEl.querySelectorAll('.cb-closed');
+  const checkboxes = () => listEl.querySelectorAll(`.${checkboxClass}`);
   const updateSelectAllState = () => {
     const cbs = checkboxes();
     const n = cbs.length;
@@ -64,7 +84,7 @@ function bindSelectAll(listEl, selectAllCb) {
   };
   selectAllCb.addEventListener('change', window.__selectAllHandler);
   listEl.addEventListener('change', (e) => {
-    if (e.target.classList.contains('cb-closed')) updateSelectAllState();
+    if (e.target.classList.contains(checkboxClass)) updateSelectAllState();
   });
 }
 
@@ -123,6 +143,7 @@ async function refresh() {
   const data = await loadAll();
   window.__backupsCache = data;
   renderClosed(document.getElementById('closedList'), data.closedAndSaved);
+  renderBlockedSaved(document.getElementById('blockedSavedList'), data.blockedTabsSaved);
   renderBackups(document.getElementById('backupList'), data.backups);
   document.querySelectorAll('.cb-closed').forEach((cb) => {
     if (checkedUrls.has(cb.dataset?.url)) cb.checked = true;
@@ -163,6 +184,13 @@ function getSelectedItems() {
     const cached = (window.__backupsCache?.closedAndSaved ?? []).find((x) => x.url === url);
     items.push({ url, title: cached?.title ?? url });
   });
+  document.querySelectorAll('.cb-blocked-saved:checked').forEach((cb) => {
+    const url = cb.dataset.url;
+    if (!url || seen.has(url)) return;
+    seen.add(url);
+    const cached = (window.__backupsCache?.blockedTabsSaved ?? []).find((x) => x.url === url);
+    items.push({ url, title: cached?.title ?? url });
+  });
   document.querySelectorAll('.cb-backup:checked').forEach((cb) => {
     const date = cb.dataset.date;
     if (!date) return;
@@ -188,6 +216,12 @@ async function openSelected() {
   if (remaining.length !== closed.length) {
     await chrome.storage.local.set({ closedAndSaved: remaining });
     if (window.__backupsCache) window.__backupsCache.closedAndSaved = remaining;
+  }
+  const blocked = window.__backupsCache?.blockedTabsSaved ?? [];
+  const remainingBlocked = blocked.filter((x) => !x.url || !urlSet.has(x.url));
+  if (remainingBlocked.length !== blocked.length) {
+    await chrome.storage.local.set({ blockedTabsSaved: remainingBlocked });
+    if (window.__backupsCache) window.__backupsCache.blockedTabsSaved = remainingBlocked;
   }
   try {
     await chrome.runtime.sendMessage({ type: 'openUrlsAsPlaceholders', items });
@@ -240,6 +274,7 @@ async function removeSelected() {
 function exportData() {
   const data = {
     closedAndSaved: window.__backupsCache?.closedAndSaved ?? [],
+    blockedTabsSaved: window.__backupsCache?.blockedTabsSaved ?? [],
     backups: window.__backupsCache?.backups ?? {},
     exportedAt: new Date().toISOString(),
   };
@@ -268,6 +303,7 @@ async function importData(file) {
   const existing = await loadAll();
   const maxClosed = window.__closedSavedMax ?? 2000;
   const closedAndSaved = [...(Array.isArray(data.closedAndSaved) ? data.closedAndSaved : []), ...existing.closedAndSaved].slice(0, maxClosed);
+  const blockedTabsSaved = [...(Array.isArray(data.blockedTabsSaved) ? data.blockedTabsSaved : []), ...existing.blockedTabsSaved].slice(0, maxClosed);
   const backups = { ...existing.backups };
   if (data.backups && typeof data.backups === 'object') {
     for (const [date, list] of Object.entries(data.backups)) {
@@ -284,10 +320,10 @@ async function importData(file) {
       backups[date] = current;
     }
   }
-  const toSet = { closedAndSaved };
+  const toSet = { closedAndSaved, blockedTabsSaved };
   for (const [date, list] of Object.entries(backups)) toSet[`backup_${date}`] = list;
   await chrome.storage.local.set(toSet);
-  window.__backupsCache = { closedAndSaved, backups };
+  window.__backupsCache = { closedAndSaved, blockedTabsSaved, backups };
   await refresh();
   alert('Import done.');
 }
@@ -331,8 +367,134 @@ function initHistoryThemeSwitcher() {
   });
 }
 
+let __histRecoverItems = [];
+
+function formatHistRecoverTime(ts) {
+  if (!ts) return '—';
+  try {
+    return new Date(ts).toLocaleString();
+  } catch (_) {
+    return '—';
+  }
+}
+
+function renderHistRecoverList(items) {
+  const listEl = document.getElementById('histRecoverList');
+  const selectRow = document.getElementById('histRecoverSelectAllRow');
+  const countEl = document.getElementById('histRecoverCount');
+  const openSel = document.getElementById('histRecoverOpenSelected');
+  const openAll = document.getElementById('histRecoverOpenAll');
+  if (!listEl) return;
+  listEl.innerHTML = '';
+  if (!items.length) {
+    listEl.innerHTML = '<li class="empty">Scan history to see recoverable URLs.</li>';
+    if (selectRow) selectRow.style.display = 'none';
+    if (countEl) countEl.textContent = '';
+    if (openSel) openSel.disabled = true;
+    if (openAll) openAll.disabled = true;
+    return;
+  }
+  if (selectRow) selectRow.style.display = 'flex';
+  if (countEl) countEl.textContent = `${items.length} URL(s)`;
+  if (openSel) openSel.disabled = false;
+  if (openAll) openAll.disabled = false;
+  for (const item of items) {
+    const li = document.createElement('li');
+    li.dataset.url = item.url || '';
+    const when = formatHistRecoverTime(item.lastVisitTime);
+    li.innerHTML = `
+      <span class="checkbox-wrap">
+        <input type="checkbox" class="cb-hist-recover" data-url="${escapeAttr(item.url)}">
+        <span class="checkbox-box" aria-hidden="true"></span>
+      </span>
+      <div class="item-content">
+        <div class="item-title" title="${escapeAttr(item.title || item.url)}">${escapeHtml(item.title || item.url || '—')}</div>
+        <div class="item-url" title="${escapeAttr(item.url)}">${escapeHtml(item.url || '')}</div>
+      </div>
+      <span class="item-meta">${escapeHtml(when)}</span>
+    `;
+    listEl.appendChild(li);
+  }
+  const selectAllCb = document.getElementById('histRecoverSelectAll');
+  if (selectAllCb) {
+    selectAllCb.checked = false;
+    selectAllCb.indeterminate = false;
+    selectAllCb.onchange = () => {
+      const checked = selectAllCb.checked;
+      listEl.querySelectorAll('.cb-hist-recover').forEach((cb) => { cb.checked = checked; });
+    };
+  }
+}
+
+function getSelectedHistRecoverItems() {
+  const seen = new Set();
+  const items = [];
+  document.querySelectorAll('.cb-hist-recover:checked').forEach((cb) => {
+    const url = cb.dataset.url;
+    if (!url || seen.has(url)) return;
+    seen.add(url);
+    const found = __histRecoverItems.find((x) => x.url === url);
+    items.push({ url, title: found?.title ?? url });
+  });
+  return items;
+}
+
+async function scanHistRecover() {
+  const btn = document.getElementById('histRecoverScan');
+  const hours = Number(document.getElementById('histRecoverHours')?.value) || 24;
+  const onlyMissing = document.getElementById('histRecoverOnlyMissing')?.checked !== false;
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Scanning…';
+  }
+  try {
+    const res = await chrome.runtime.sendMessage({
+      type: 'searchLostTabsFromHistory',
+      hoursBack: hours,
+      onlyMissing,
+    });
+    if (res?.error) {
+      alert('Scan failed: ' + res.error);
+      __histRecoverItems = [];
+    } else {
+      __histRecoverItems = Array.isArray(res?.items) ? res.items : [];
+    }
+    renderHistRecoverList(__histRecoverItems);
+  } catch (e) {
+    alert('Scan failed: ' + (e?.message || e));
+    __histRecoverItems = [];
+    renderHistRecoverList([]);
+  }
+  if (btn) {
+    btn.disabled = false;
+    btn.textContent = 'Scan history';
+  }
+}
+
+async function openHistRecoverItems(items) {
+  if (!items.length) return alert('Select at least one URL.');
+  try {
+    await chrome.runtime.sendMessage({ type: 'openUrlsAsPlaceholders', items });
+  } catch (e) {
+    alert('Open failed: ' + (e?.message || e));
+  }
+}
+
+function initHistRecoverUi() {
+  document.getElementById('histRecoverScan')?.addEventListener('click', scanHistRecover);
+  document.getElementById('histRecoverOpenSelected')?.addEventListener('click', async () => {
+    await openHistRecoverItems(getSelectedHistRecoverItems());
+  });
+  document.getElementById('histRecoverOpenAll')?.addEventListener('click', async () => {
+    if (!__histRecoverItems.length) return alert('Scan history first.');
+    await openHistRecoverItems(__histRecoverItems.map(({ url, title }) => ({ url, title: title || url })));
+  });
+  renderHistRecoverList([]);
+}
+
 async function init() {
   initHistoryThemeSwitcher();
+  initHistRecoverUi();
   try {
     const res = await new Promise((resolve) => {
       chrome.runtime.sendMessage({ type: 'getConstants' }, resolve);

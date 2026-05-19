@@ -457,7 +457,30 @@
       <div class="row row-full">
         <button id="thRecoverLost" class="btn-sec">Recover lost tabs</button>
       </div>
-      <p class="hint" style="margin-top: 4px;">Restores as placeholders — pages load only when you click «Restore". Saves RAM.</p>
+      <div class="row row-full">
+        <button id="thEmergencyBackup" class="btn-sec">Backup all tabs now</button>
+      </div>
+      <div class="smart-card" style="margin-top: 10px;">
+        <div class="domains-label">Recover from Chrome history</div>
+        <div class="row">
+          <label for="thHistoryRecoverHours">Period</label>
+          <select id="thHistoryRecoverHours">
+            <option value="6">Last 6 hours</option>
+            <option value="24" selected>Last 24 hours</option>
+            <option value="72">Last 3 days</option>
+            <option value="168">Last 7 days</option>
+          </select>
+        </div>
+        <div class="row">
+          <label for="thHistoryOnlyMissing">Only not open now</label>
+          <input type="checkbox" id="thHistoryOnlyMissing" checked>
+        </div>
+        <div class="row row-full">
+          <button id="thRecoverFromHistory" class="btn-sec">Find &amp; restore from history</button>
+        </div>
+        <p class="hint" style="margin-top: 6px; font-size: 10px;">Scans history for visited URLs not open as tabs. Opens placeholders. Preview on History page.</p>
+      </div>
+      <p class="hint" style="margin-top: 4px;">Recover lost tabs: storage + bookmarks. Before extension update — Backup all tabs now.</p>
       <div class="stats">Suspended / saved: <span id="thStats">—</span></div>
     </div>
   </div>
@@ -507,6 +530,14 @@
         <label for="blockerToggle">Blocking</label>
         <input type="checkbox" id="blockerToggle" checked>
       </div>
+      <div class="row">
+        <label for="blockerAutoSaveTabs">Auto-save tabs on blocked sites</label>
+        <input type="checkbox" id="blockerAutoSaveTabs" checked>
+      </div>
+      <div class="row row-full">
+        <button type="button" id="blockerSaveTabsNow" class="btn-sec">Save blocked tabs now</button>
+      </div>
+      <p class="hint" style="margin-top:4px;font-size:10px;">Saved in plugin History (Site blocker saved) and Chrome bookmarks → Site Blocker / Saved tabs. Open via Tab Hibernate → History.</p>
       <div class="blocker-section" style="margin-top:8px;padding-top:10px;">
         <p class="blocker-section-title">Ads and trackers</p>
         <div class="row">

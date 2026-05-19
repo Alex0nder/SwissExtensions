@@ -321,12 +321,75 @@ if (recoverBtn) {
     try {
       const r = await send({ type: 'recoverLostSuspended' });
       const n = r?.recovered ?? 0;
-      recoverBtn.textContent = n > 0 ? `Recovered: ${n} (placeholders)` : 'No lost tabs';
+      if (n > 0) {
+        recoverBtn.textContent = `Recovered: ${n} placeholder(s)`;
+      } else if (r?.sourcesHint) {
+        recoverBtn.textContent = 'Nothing in storage — see bookmarks';
+        console.info('[TabHibernate]', r.sourcesHint);
+      } else {
+        recoverBtn.textContent = 'No lost tabs found';
+      }
       refreshThStats();
     } catch {
       recoverBtn.textContent = 'Error';
     }
-    setTimeout(() => { recoverBtn.textContent = 'Recover lost tabs'; recoverBtn.disabled = false; }, 2000);
+    setTimeout(() => { recoverBtn.textContent = 'Recover lost tabs'; recoverBtn.disabled = false; }, 4000);
+  });
+}
+
+function historyRecoverOptions() {
+  const hoursEl = document.getElementById('thHistoryRecoverHours');
+  const onlyEl = document.getElementById('thHistoryOnlyMissing');
+  return {
+    hoursBack: Number(hoursEl?.value) || 24,
+    onlyMissing: onlyEl?.checked !== false,
+  };
+}
+
+const recoverFromHistoryBtn = document.getElementById('thRecoverFromHistory');
+if (recoverFromHistoryBtn) {
+  recoverFromHistoryBtn.addEventListener('click', async () => {
+    recoverFromHistoryBtn.disabled = true;
+    recoverFromHistoryBtn.textContent = 'Scanning history…';
+    try {
+      const opts = historyRecoverOptions();
+      const r = await send({ type: 'recoverFromBrowserHistory', ...opts });
+      const n = r?.recovered ?? 0;
+      if (n > 0) {
+        recoverFromHistoryBtn.textContent = `Opened: ${n} placeholder(s)`;
+      } else if (r?.message) {
+        recoverFromHistoryBtn.textContent = 'Nothing to restore';
+        console.info('[TabHibernate]', r.message);
+      } else {
+        recoverFromHistoryBtn.textContent = r?.error ? 'Error' : 'No matches';
+      }
+      refreshThStats();
+    } catch {
+      recoverFromHistoryBtn.textContent = 'Error';
+    }
+    setTimeout(() => {
+      recoverFromHistoryBtn.textContent = 'Find & restore from history';
+      recoverFromHistoryBtn.disabled = false;
+    }, 4000);
+  });
+}
+
+const emergencyBackupBtn = document.getElementById('thEmergencyBackup');
+if (emergencyBackupBtn) {
+  emergencyBackupBtn.addEventListener('click', async () => {
+    emergencyBackupBtn.disabled = true;
+    emergencyBackupBtn.textContent = 'Backing up…';
+    try {
+      const r = await send({ type: 'emergencyBackupNow' });
+      const n = r?.count ?? 0;
+      emergencyBackupBtn.textContent = n > 0 ? `Saved: ${n} tab(s)` : (r?.error ? 'Error' : 'No tabs to save');
+    } catch {
+      emergencyBackupBtn.textContent = 'Error';
+    }
+    setTimeout(() => {
+      emergencyBackupBtn.textContent = 'Backup all tabs now';
+      emergencyBackupBtn.disabled = false;
+    }, 3000);
   });
 }
 
@@ -371,7 +434,7 @@ function normalizeBlockerSchedule(raw) {
   };
 }
 
-function renderBlocker(blocked, whitelist, enabled, schedule, scheduleActive, adsFiltersEnabled) {
+function renderBlocker(blocked, whitelist, enabled, schedule, scheduleActive, adsFiltersEnabled, blockerAutoSaveTabs) {
   const list = document.getElementById('blockerList');
   const empty = document.getElementById('blockerEmpty');
   const toggle = document.getElementById('blockerToggle');
@@ -381,6 +444,8 @@ function renderBlocker(blocked, whitelist, enabled, schedule, scheduleActive, ad
   const wlEmpty = document.getElementById('blockerWhitelistEmpty');
   const sch = normalizeBlockerSchedule(schedule);
   toggle.checked = enabled;
+  const autoSaveEl = document.getElementById('blockerAutoSaveTabs');
+  if (autoSaveEl) autoSaveEl.checked = blockerAutoSaveTabs !== false;
   list.innerHTML = '';
   if (!blocked.length) empty.style.display = 'block';
   else {
@@ -422,14 +487,15 @@ function renderBlocker(blocked, whitelist, enabled, schedule, scheduleActive, ad
 }
 
 function refreshBlockerFromStorage() {
-  chrome.storage.local.get(['blocked', 'whitelist', 'enabled', 'schedule', 'scheduleStateActive', 'adsFiltersEnabled'], (data) => {
+  chrome.storage.local.get(['blocked', 'whitelist', 'enabled', 'schedule', 'scheduleStateActive', 'adsFiltersEnabled', 'blockerAutoSaveTabs'], (data) => {
     renderBlocker(
       data.blocked || [],
       data.whitelist || [],
       data.enabled !== false,
       data.schedule || SB_DEFAULT_SCHEDULE,
       data.scheduleStateActive !== false,
-      data.adsFiltersEnabled
+      data.adsFiltersEnabled,
+      data.blockerAutoSaveTabs
     );
     if (blockerStatusOverride) {
       document.getElementById('blockerStatus').textContent = blockerStatusOverride;
@@ -490,6 +556,34 @@ function saveBlockerScheduleFromUi() {
 document.getElementById('blockerToggle').addEventListener('change', () => {
   const enabled = document.getElementById('blockerToggle').checked;
   chrome.storage.local.set({ enabled }, refreshBlockerFromStorage);
+});
+
+document.getElementById('blockerAutoSaveTabs')?.addEventListener('change', () => {
+  const blockerAutoSaveTabs = document.getElementById('blockerAutoSaveTabs').checked;
+  chrome.storage.local.set({ blockerAutoSaveTabs });
+});
+
+document.getElementById('blockerSaveTabsNow')?.addEventListener('click', async () => {
+  const btn = document.getElementById('blockerSaveTabsNow');
+  const statusEl = document.getElementById('blockerStatus');
+  if (!btn) return;
+  btn.disabled = true;
+  btn.textContent = 'Saving…';
+  try {
+    const r = await send({ type: 'saveBlockedTabsNow' });
+    const n = r?.added ?? 0;
+    const msg = n > 0 ? `Saved ${n} tab(s)` : 'No open tabs on blocked sites';
+    if (statusEl) statusEl.textContent = msg;
+    btn.textContent = msg;
+  } catch (e) {
+    if (statusEl) statusEl.textContent = 'Save failed';
+    btn.textContent = 'Error';
+  }
+  setTimeout(() => {
+    btn.textContent = 'Save blocked tabs now';
+    btn.disabled = false;
+    refreshBlockerFromStorage();
+  }, 2500);
 });
 
 document.getElementById('blockerAdsFilters').addEventListener('change', () => {

@@ -1,77 +1,142 @@
-# Swiss Extensions — тексты и ответы для Chrome Web Store
+# Swiss Extensions — тексты для Chrome Web Store
 
-Используй при заполнении [Developer Dashboard](https://chrome.google.com/webstore/devconsole). Privacy Policy URL: `https://github.com/Alex0nder/SwissExtensions/blob/main/PRIVACY_POLICY.md` (или зеркало на своём домене, если вынесешь политику туда).
+Версия пакета: **1.5.8** · [Developer Dashboard](https://chrome.google.com/webstore/devconsole)
+
+Privacy Policy: `https://github.com/Alex0nder/SwissExtensions/blob/main/PRIVACY_POLICY.md`
+
+---
 
 ## Short description (≤132 символов)
 
-**EN:** All-in-one: full-page capture, tab hibernate with restore, RAM discard, site blocker, clear site data — runs locally.
+**EN (131 символ):**
+```
+Capture, tab hibernate, RAM cleaner, site blocker with tab backup, history recovery — all local in one side panel.
+```
 
-**RU:** Всё в одном: скан страницы, сон вкладок с восстановлением, очистка RAM, блокировка сайтов, сброс данных сайта — локально в браузере.
+**RU:**
+```
+Скрин, сон вкладок, RAM, блокировка сайтов с сохранением вкладок и восстановлением из истории — локально, одна панель.
+```
 
-## Full description (карточка)
+---
 
-**EN (черновик):**
+## Full description (Detailed description)
 
-Swiss Extensions bundles five productivity tools in one side panel:
+**EN — вставить в карточку Store:**
 
-1. **Page Capture** — Scrolls the active page and stitches viewport screenshots; export PNG (tiles or whole). Uses your Downloads folder or a picked directory.
-2. **Tab Hibernate** — After a timeout, suspends inactive background tabs (Placeholder stub with Restore, or Discard). Backs up URLs to bookmarks and local storage; History for closed-and-saved lists.
-3. **Memory Cleaner** — One-click discard of background tabs with optional skips (pinned, audible, incognito, tab groups).
-4. **Site Blocker** — Schedule + blocklist/whitelist; built-in declarative rulesets plus optional ad ruleset toggle.
-5. **Site Data Clear** — On your action only: clear cookies, localStorage, sessionStorage (and related) for the current site.
+Your browser shouldn’t feel like a second job. Swiss Extensions packs five practical tools into one minimal side panel — so you move faster, use less RAM, and stay on task.
 
-No accounts required. No data sold to third parties — see Privacy Policy. Keyboard shortcuts: suspend current tab (Alt+Shift+H), discard background tabs (Alt+Shift+K).
+What’s inside
 
-**RU (черновик):**
+1. **Page Capture** — Long pages, clean exports: tiled PNG capture (full scroll stitched in the browser).
 
-Пять инструментов в боковой панели: захват длинной страницы в PNG; гибернация неактивных вкладок с заглушкой и восстановлением или режимом Discard; сброс фоновых вкладок для экономии RAM; блокировка сайтов по расписанию и спискам; очистка данных текущего сайта по кнопке. Учётные записи не нужны; данные не продаются — см. Privacy Policy.
+2. **Tab Hibernate** — Suspend inactive tabs as lightweight placeholders or discard; restore when you’re back. Backup to bookmarks and local history. **Recover lost tabs** after crashes or extension updates.
+
+3. **Memory Cleaner** — Discard background tabs to free memory without closing your active tab.
+
+4. **Site Blocker** — Block distracting domains with built-in filter lists plus your own blocklist, whitelist, and focus schedule. **Auto-save open tabs** on blocked sites to plugin History and Chrome bookmarks so you can restore them later.
+
+5. **Site Data Clear** — Clear cookies, localStorage, and sessionStorage for the current site — only when you confirm.
+
+**Tab recovery (local, on your device)**
+
+- **Backup all tabs now** before updating the extension.
+- **Recover lost tabs** from extension storage and backup bookmarks.
+- **Recover from Chrome history** — find visited URLs that are not open and restore as placeholders.
+- **History page** — closed tabs, site-blocker saves, dated backups; export/import JSON.
+- **Site Blocker → Saved tabs** — auto-saved when blocking turns on or you add a domain.
+
+No accounts. No cloud upload of your browsing data. Keyboard shortcuts: suspend current tab (Alt+Shift+H), discard background tabs (Alt+Shift+K).
+
+No bloat. No noise. Built for people who live in many tabs and want performance and focus through the day.
+
+---
+
+**RU (опционально, отдельная локаль):**
+
+Браузер не должен ощущаться второй работой. Swiss Extensions — пять инструментов в одной боковой панели: быстрее, меньше RAM, больше фокуса.
+
+**Внутри:** захват длинных страниц (PNG); гибернация вкладок с восстановлением; очистка RAM; блокировка сайтов по списку и расписанию; очистка данных текущего сайта по кнопке.
+
+**Восстановление вкладок (только на устройстве):** резервная копия перед обновлением; восстановление из storage и закладок; поиск потерянных URL в истории Chrome; отдельный раздел History; автосохранение вкладок на заблокированных сайтах.
+
+Без аккаунта. Данные не отправляются на сервер. Горячие клавиши: Alt+Shift+H (усыпить вкладку), Alt+Shift+K (сбросить фоновые).
+
+---
+
+## What’s new (Release notes) — версия 1.5.8
+
+**EN (полный):**
+```
+Tab recovery: backup all tabs before extension update; recover from storage, bookmarks, and Chrome browsing history.
+
+Site Blocker: auto-save open tabs on blocked domains to History and local bookmarks; manual “Save blocked tabs now”.
+
+Site Blocker: improved reliability after Chrome updates (schedule alarms and block rules).
+
+History page: new section for site-blocker saved tabs; export/import includes all recovery lists.
+```
+
+**EN (короткий, если лимит символов):**
+```
+Tab recovery from history and backups; Site Blocker auto-saves blocked-site tabs; stability fixes after browser updates.
+```
+
+**RU:**
+```
+Восстановление вкладок: backup, история Chrome, закладки. Site Blocker сохраняет вкладки на заблокированных сайтах. Стабильность блокировки после обновления Chrome.
+```
+
+---
 
 ## Single purpose
 
-Расширение имеет **несколько** явных целей (multi-tool). В поле Single purpose / justification укажи: *«Productivity suite: capture, tab lifecycle, network blocking, and site data tools sharing one side panel and one service worker for a unified UX.»*
+**EN:**
+```
+Productivity suite: page capture, tab lifecycle (hibernate, backup, recovery), memory discard, site blocking with local tab archives, and per-site data clearing — unified side panel and on-device storage only.
+```
 
-## Permission justifications (вставка в форму review)
+---
 
-Скопируй по полям или одним блоком, если Store даёт одно поле:
+## Permission justifications
 
-- **tabs** — Read/update tab URLs and indices for capture scroll, hibernate/suspend/restore, memory discard, and opening result/history pages in the correct window.
-- **activeTab** — Temporary access to the active tab when the user invokes capture or site-data clear, without persistent broad access until action.
-- **host_permissions (`<all_urls>`)** — Page capture and content helpers run on user-visited pages; tab hibernate and blocker apply to navigable URLs the user chooses to load.
-- **scripting** — Inject the scroll/capture helper (`content.js`) and optional flows only when the user starts capture or clear actions.
-- **downloads** — Save PNG exports from Page Capture to the user’s Downloads path or chosen folder.
-- **storage** — Persist settings, blocklists, capture export folder preference, and hibernate backup metadata locally.
-- **bookmarks** — Tab Hibernate writes dated backup folders and suspended-tab recovery bookmarks only as part of user-requested backup/restore.
-- **alarms** — Periodic inactivity checks for Tab Hibernate and schedule checks for Site Blocker.
-- **history** — Optional Site Blocker helper to pick domains from recent history when the user uses that flow (no bulk upload).
-- **browsingData** — Site Data Clear removes cookies/storage/cache for the **current** site only when the user confirms the action.
-- **sidePanel** — Hosts the unified settings and actions UI.
-- **declarativeNetRequest** — Applies static filter rulesets and user-defined block rules in the browser’s network stack; no remote rule fetching in this package.
+- **tabs** — Tab URLs for capture, hibernate, suspend/restore, memory discard, recovery flows, and opening result/history pages.
+- **activeTab** — Active tab when the user starts capture or site-data clear.
+- **host_permissions (`<all_urls>`)** — Capture and helpers on visited pages; hibernate and blocking on URLs the user loads or lists.
+- **scripting** — Inject capture scroll helper when the user starts Page Capture.
+- **downloads** — Save PNG exports to Downloads or a chosen folder.
+- **storage** — Settings, blocklists, tab recovery archives (`closedAndSaved`, `blockedTabsSaved`, backups) — all local.
+- **bookmarks** — Optional backups: Tab Hibernate, Site Blocker saved tabs, emergency recovery folders (user-triggered or auto-save on block).
+- **alarms** — Tab inactivity checks and Site Blocker schedule.
+- **history** — Recover lost tabs from Chrome browsing history; optional helper to pick blocked domains from past visits.
+- **browsingData** — Clear data for the current site only after user confirmation.
+- **sidePanel** — Main UI.
+- **declarativeNetRequest** — Built-in filter rulesets and user block rules; no remote rule downloads.
 
-## Data safety (Data usage / Privacy practices)
+---
 
-Отметь в консоли Store (по факту кода):
+## Data safety
 
-- **Does not handle user data** — неверно; лучше честно: handling limited to on-device.
-- Или используй формулировки: данные **не продаются**, **не передаются** на ваши серверы (если нет телеметрии — укажи «No remote servers»).
-- **Local only:** settings in `chrome.storage.local`, capture tiles briefly in IndexedDB for handoff to `result.html`, bookmarks created only by user-triggered backup.
+- Обработка данных **только на устройстве** (chrome.storage.local, IndexedDB для capture, локальные закладки).
+- **Не продаётся** и **не передаётся** на серверы разработчика.
+- History permission: чтение истории **только** для функций восстановления по действию пользователя.
 
-## Скриншоты (сделай вручную перед submit)
+---
 
-1. Боковая панель — главный экран с блоками инструментов.
-2. Вкладка Capture / результат с плитками.
-3. Tabs — режим Placeholder, таймаут.
-4. Blocker — список доменов.
-5. Clear — чекбоксы очистки.
+## Скриншоты (рекомендации)
 
-Размеры по требованиям Store (1280×800 или как актуально в [документации](https://developer.chrome.com/docs/webstore/images)).
+1. Главная боковая панель (5 инструментов).
+2. Tab Hibernate — recovery / History.
+3. Site Blocker — список + auto-save.
+4. History — Site blocker saved tabs + Chrome history recover.
+5. Page Capture — результат.
 
-## Сборка ZIP
+---
 
-Из корня репозитория:
+## Сборка
 
 ```bash
-chmod +x scripts/package-swiss-extensions-store.sh
 ./scripts/package-swiss-extensions-store.sh
 ```
 
-Архив: `dist/SwissExtensions-v<version>-chrome-store.zip` — загрузи его в **Package** в консоли.
+Архив: `dist/SwissExtensions-v1.5.8-chrome-store.zip`

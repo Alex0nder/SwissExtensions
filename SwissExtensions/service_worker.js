@@ -9,8 +9,11 @@ const INACTIVITY_MINUTES = 5;
 const CHECK_PERIOD_OPTIONS = [1, 2, 5];
 /** Keep backup-by-date keys only for the last N days; remove older ones. */
 const BACKUP_RETENTION_DAYS = 30;
-/** Alarm:     Site Blocker  . */
+/** Alarm: периодическая проверка расписания Site Blocker (Chrome может сбросить alarm после обновления браузера). */
 const SITE_BLOCKER_SCHEDULE_ALARM = 'swissSiteBlockerSchedule';
+const SITE_BLOCKER_SCHEDULE_PERIOD_MINUTES = 0.5;
+/** Сериализация applyRules — параллельные вызовы после wake SW ломали dynamic rules в новых Chrome. */
+let siteBlockerApplyChain = Promise.resolve();
 
 // Last activity per tabId (in memory + synced on messages). After SW sleep, memory is empty — restore from storage at start of onAlarmCheck.
 let lastActivityByTab = new Map();
@@ -491,23 +494,215 @@ async function pruneStaleTabIds() {
   }
 }
 
-async function pruneStaleSuspendedEntries() {
+const ORPHANED_SUSPENDED_ARCHIVE_MAX = 10000;
+const EMERGENCY_SESSION_BACKUPS_MAX = 3;
+
+/** Перед удалением suspended_* с мёртвых tabId — архив URL (иначе после Reload расширения recover пустой). */
+async function archiveOrphanedSuspendedStorage() {
   try {
     const [all, tabs] = await Promise.all([
       chrome.storage.local.get(null),
       chrome.tabs.query({}),
     ]);
     const aliveIds = new Set(tabs.map((t) => t.id));
+    const archive = [];
     const keysToRemove = [];
-    for (const key of Object.keys(all)) {
-      if (!key.startsWith('suspended_')) continue;
+    for (const [key, val] of Object.entries(all)) {
+      if (!key.startsWith('suspended_') || key === 'suspendedToday' || key === 'suspendedTodayDate') continue;
       const id = Number(key.slice('suspended_'.length));
-      if (!Number.isInteger(id) || !aliveIds.has(id)) keysToRemove.push(key);
+      if (!Number.isInteger(id) || aliveIds.has(id)) continue;
+      const item = val && typeof val === 'object' ? val : null;
+      const url = item?.url;
+      if (url && (url.startsWith('http') || url.startsWith('file'))) {
+        archive.push({
+          url,
+          title: item.title || '',
+          favIconUrl: item.favIconUrl || '',
+          archivedAt: Date.now(),
+          fromKey: key,
+        });
+      }
+      keysToRemove.push(key);
     }
-    if (keysToRemove.length > 0) await chrome.storage.local.remove(keysToRemove);
+    if (archive.length) {
+      const { orphanedSuspendedArchive = [] } = await chrome.storage.local.get('orphanedSuspendedArchive');
+      const seen = new Set(orphanedSuspendedArchive.map((x) => x.url));
+      const merged = orphanedSuspendedArchive.slice();
+      for (const entry of archive) {
+        if (seen.has(entry.url)) continue;
+        seen.add(entry.url);
+        merged.push(entry);
+      }
+      await chrome.storage.local.set({
+        orphanedSuspendedArchive: merged.slice(-ORPHANED_SUSPENDED_ARCHIVE_MAX),
+      });
+      try {
+        const folderId = await getOrCreateEmergencyRecoveryFolder();
+        for (const entry of archive) {
+          await chrome.bookmarks.create({
+            parentId: folderId,
+            title: (entry.title || entry.url).slice(0, 255),
+            url: entry.url,
+          });
+        }
+      } catch (e) {
+        console.warn('[TabHibernate] emergency bookmark archive failed', e);
+      }
+    }
+    if (keysToRemove.length) await chrome.storage.local.remove(keysToRemove);
   } catch (e) {
-    console.warn('[TabHibernate] pruneStaleSuspendedEntries failed', e);
+    console.warn('[TabHibernate] archiveOrphanedSuspendedStorage failed', e);
   }
+}
+
+async function pruneStaleSuspendedEntries() {
+  await archiveOrphanedSuspendedStorage();
+}
+
+async function getOrCreateEmergencyRecoveryFolder() {
+  const tree = await chrome.bookmarks.getTree();
+  const root = tree[0];
+  const findFolder = (nodes, title) => {
+    if (!nodes) return null;
+    for (const n of nodes) {
+      if (n.title === title) return n;
+      const inChild = findFolder(n.children || [], title);
+      if (inChild) return inChild;
+    }
+    return null;
+  };
+  let parent = findFolder(root.children, 'Tab Hibernate');
+  if (!parent) {
+    const created = await chrome.bookmarks.create({ parentId: root.id, title: 'Tab Hibernate' });
+    parent = { id: created.id };
+  }
+  let folder = findFolder([parent], 'Emergency Recovery');
+  if (folder?.id) return folder.id;
+  const created = await chrome.bookmarks.create({ parentId: parent.id, title: 'Emergency Recovery' });
+  return created.id;
+}
+
+/** Снимок всех восстанавливаемых вкладок перед обновлением расширения. */
+async function runEmergencySessionBackup(reason = 'manual') {
+  try {
+    const tabs = await chrome.tabs.query({});
+    const seen = new Set();
+    const items = [];
+    for (const tab of tabs) {
+      if (!tab?.id) continue;
+      let url = tab.pendingUrl || tab.url || '';
+      if (isPlaceholderTabUrl(url) || isSuspendedPlaceholderUrl(url)) {
+        url = (await getPlaceholderRestoreUrl(tab)) || '';
+        if (!url) {
+          try {
+            const u = new URL(tab.url || '');
+            url = u.searchParams.get('u') || '';
+          } catch (_) {}
+        }
+      }
+      if (!hasRestorableUrl(url) || seen.has(url)) continue;
+      seen.add(url);
+      items.push({
+        url,
+        title: tab.title || url,
+        groupId: tab.groupId != null && tab.groupId !== -1 ? tab.groupId : undefined,
+        windowId: tab.windowId,
+      });
+    }
+    if (!items.length) return { count: 0 };
+
+    const snapshot = { savedAt: Date.now(), reason, items };
+    const { emergencySessionBackups = [] } = await chrome.storage.local.get('emergencySessionBackups');
+    const nextBackups = [...emergencySessionBackups, snapshot].slice(-EMERGENCY_SESSION_BACKUPS_MAX);
+    await chrome.storage.local.set({ emergencySessionBackups: nextBackups, lastEmergencyBackupAt: snapshot.savedAt });
+
+    try {
+      const folderId = await getOrCreateEmergencyRecoveryFolder();
+      const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+      const batchFolder = await chrome.bookmarks.create({
+        parentId: folderId,
+        title: `${stamp} (${reason})`,
+      });
+      for (const item of items) {
+        await chrome.bookmarks.create({
+          parentId: batchFolder.id,
+          title: (item.title || item.url).slice(0, 255),
+          url: item.url,
+        });
+      }
+    } catch (e) {
+      console.warn('[TabHibernate] emergency session bookmarks failed', e);
+    }
+
+    const dateStr = new Date().toISOString().slice(0, 10);
+    await runBackup('emergency');
+    return { count: items.length, dateStr };
+  } catch (e) {
+    console.warn('[TabHibernate] runEmergencySessionBackup failed', e);
+    return { count: 0, error: String(e?.message || e) };
+  }
+}
+
+/** Все URL для Recover: storage, архивы, закладки (не только suspended_*). */
+async function collectRecoverableTabItems() {
+  const seen = new Set();
+  const items = [];
+  const add = (url, title = '') => {
+    if (!url || !(url.startsWith('http') || url.startsWith('file')) || seen.has(url)) return;
+    seen.add(url);
+    items.push({ url, title: title || '' });
+  };
+
+  const all = await chrome.storage.local.get(null);
+  for (const [key, val] of Object.entries(all)) {
+    if (key.startsWith('suspended_') && key !== 'suspendedToday' && key !== 'suspendedTodayDate') {
+      const item = val && typeof val === 'object' ? val : null;
+      if (item?.url) add(item.url, item.title);
+      continue;
+    }
+    if (key === 'orphanedSuspendedArchive' && Array.isArray(val)) {
+      for (const entry of val) add(entry.url, entry.title);
+      continue;
+    }
+    if (key === 'closedAndSaved' && Array.isArray(val)) {
+      for (const entry of val) add(entry.url, entry.title);
+      continue;
+    }
+    if (key === 'blockedTabsSaved' && Array.isArray(val)) {
+      for (const entry of val) add(entry.url, entry.title);
+      continue;
+    }
+    if (key.startsWith('backup_') && Array.isArray(val)) {
+      for (const entry of val) add(entry.url, entry.title);
+      continue;
+    }
+    if (key === 'emergencySessionBackups' && Array.isArray(val)) {
+      for (const snap of val) {
+        for (const entry of snap.items || []) add(entry.url, entry.title);
+      }
+    }
+  }
+
+  const bookmarkRoots = new Set(['Tab Hibernate', 'Tab Backup', 'Suspended Recovery', 'Emergency Recovery', 'Site Blocker']);
+  try {
+    const tree = await chrome.bookmarks.getTree();
+    const walk = (nodes, insideBackupTree) => {
+      if (!nodes) return;
+      for (const n of nodes) {
+        if (n.url) add(n.url, n.title);
+        const enter = insideBackupTree
+          || bookmarkRoots.has(n.title)
+          || (n.title && /^\d{4}-\d{2}-\d{2}/.test(n.title))
+          || (n.title && /^\d{4}-\d{2}-\d{2}T/.test(n.title));
+        if (enter) walk(n.children, true);
+      }
+    };
+    walk(tree[0]?.children, false);
+  } catch (e) {
+    console.warn('[TabHibernate] collectRecoverable bookmark walk failed', e);
+  }
+
+  return items;
 }
 
 /**      suspend —    . */
@@ -845,33 +1040,12 @@ async function runDiscardBackgroundTabs() {
 const RECOVER_DELAY_MS = 60;
 
 async function runRecoverLostSuspended() {
-  const seen = new Set();
-  const items = []; // { url, title }
-  const keysToRemove = [];
-
-  const all = await chrome.storage.local.get(null);
-  for (const [key, val] of Object.entries(all)) {
-    if (!key.startsWith('suspended_') || key === 'suspendedToday' || key === 'suspendedTodayDate') continue;
-    const item = val && typeof val === 'object' ? val : null;
-    const url = item && item.url && (item.url.startsWith('http') || item.url.startsWith('file'));
-    if (url && !seen.has(item.url)) {
-      seen.add(item.url);
-      items.push({ url: item.url, title: item.title || '' });
-      keysToRemove.push(key);
-    }
+  const items = await collectRecoverableTabItems();
+  if (!items.length) {
+    return { recovered: 0, sourcesHint: 'Check Chrome bookmarks: Tab Hibernate → Emergency Recovery / Suspended Recovery, or Tab Backup. Open History in the panel for closed-and-saved lists.' };
   }
 
-  try {
-    const folderId = await getOrCreateSuspendedRecoveryFolder();
-    const children = await chrome.bookmarks.getChildren(folderId);
-    for (const bm of children) {
-      if (bm.url && !seen.has(bm.url)) {
-        seen.add(bm.url);
-        items.push({ url: bm.url, title: bm.title || '' });
-      }
-    }
-  } catch (_) {}
-
+  let opened = 0;
   for (const { url, title } of items) {
     const tab = await chrome.tabs.create({ url: 'about:blank', active: false });
     const params = new URLSearchParams({ tabId: String(tab.id) });
@@ -879,12 +1053,12 @@ async function runRecoverLostSuspended() {
     const suspendedUrl = chrome.runtime.getURL('suspended.html') + '?' + params.toString();
     await chrome.storage.local.set({ [`suspended_${tab.id}`]: { url, title, favIconUrl: '', tabId: tab.id } });
     await chrome.tabs.update(tab.id, { url: suspendedUrl });
-    if (items.length > 10) await new Promise((r) => setTimeout(r, RECOVER_DELAY_MS));
+    opened++;
+    if (opened > 10 && opened % 10 === 0) await new Promise((r) => setTimeout(r, RECOVER_DELAY_MS));
   }
 
-  await chrome.storage.local.remove(keysToRemove);
   await updateBadge();
-  return { recovered: items.length };
+  return { recovered: opened, totalCandidates: items.length };
 }
 
 /**  URL  placeholder- (). items: [{url, title}]. */
@@ -904,6 +1078,115 @@ async function runOpenUrlsAsPlaceholders(items) {
   return { opened: valid.length };
 }
 
+/** Ключ URL для сравнения «уже открыта / нет» (без hash, без www). */
+function urlKeyForHistory(url) {
+  try {
+    const u = new URL(url);
+    if (u.protocol !== 'http:' && u.protocol !== 'https:') return '';
+    const host = u.hostname.replace(/^www\./i, '').toLowerCase();
+    let path = u.pathname;
+    if (path.length > 1 && path.endsWith('/')) path = path.slice(0, -1);
+    return `${host}${path}${u.search}`;
+  } catch (_) {
+    return '';
+  }
+}
+
+function shouldSkipHistoryRecoverUrl(url) {
+  const lower = (url || '').toLowerCase();
+  if (
+    lower.startsWith('chrome://')
+    || lower.startsWith('chrome-extension://')
+    || lower.startsWith('edge://')
+    || lower.startsWith('about:')
+    || lower.startsWith('devtools://')
+  ) return true;
+  try {
+    const host = new URL(url).hostname.toLowerCase();
+    if (host === 'chromewebstore.google.com' || host === 'chrome.google.com') return true;
+  } catch (_) {
+    return true;
+  }
+  return false;
+}
+
+async function getOpenTabUrlKeys() {
+  const tabs = await chrome.tabs.query({});
+  const keys = new Set();
+  for (const tab of tabs) {
+    let url = tab.pendingUrl || tab.url || '';
+    if (isPlaceholderTabUrl(url) || isSuspendedPlaceholderUrl(url)) {
+      const restored = await getPlaceholderRestoreUrl(tab);
+      if (restored) url = restored;
+    }
+    const key = urlKeyForHistory(url);
+    if (key) keys.add(key);
+  }
+  return keys;
+}
+
+/**
+ * Поиск в chrome.history URL, которых нет среди открытых вкладок (типичные «потерянные» после сбоя).
+ */
+async function searchLostTabsFromHistory({
+  hoursBack = 24,
+  onlyMissing = true,
+  maxResults = 1000,
+  text = '',
+} = {}) {
+  const hours = Math.min(Math.max(Number(hoursBack) || 24, 1), 24 * 30);
+  const startTime = Date.now() - hours * 60 * 60 * 1000;
+  const openKeys = onlyMissing ? await getOpenTabUrlKeys() : new Set();
+  const query = {
+    text: typeof text === 'string' ? text.trim() : '',
+    startTime,
+    maxResults: Math.min(Math.max(Number(maxResults) || 1000, 50), 1000),
+  };
+  const raw = await chrome.history.search(query);
+  const seen = new Set();
+  const items = [];
+  for (const visit of raw) {
+    const url = visit.url;
+    if (!hasRestorableUrl(url) || shouldSkipHistoryRecoverUrl(url)) continue;
+    const key = urlKeyForHistory(url);
+    if (!key || seen.has(key)) continue;
+    if (onlyMissing && openKeys.has(key)) continue;
+    seen.add(key);
+    items.push({
+      url,
+      title: visit.title || url,
+      lastVisitTime: visit.lastVisitTime || 0,
+      visitCount: visit.visitCount || 1,
+    });
+  }
+  items.sort((a, b) => b.lastVisitTime - a.lastVisitTime);
+  return {
+    items: items.slice(0, 500),
+    scanned: raw.length,
+    hoursBack: hours,
+    onlyMissing: !!onlyMissing,
+  };
+}
+
+/** Восстановление из истории браузера — заглушки suspended.html. */
+async function runRecoverFromBrowserHistory(options) {
+  const { items, scanned } = await searchLostTabsFromHistory(options);
+  if (!items.length) {
+    return {
+      recovered: 0,
+      candidates: 0,
+      scanned,
+      message: 'За выбранный период в истории нет подходящих URL (или все уже открыты).',
+    };
+  }
+  const res = await runOpenUrlsAsPlaceholders(items.map(({ url, title }) => ({ url, title })));
+  return {
+    recovered: res.opened,
+    candidates: items.length,
+    scanned,
+  };
+}
+
 /** Main alarm check: suspend inactive tabs and backup if needed. */
 async function onAlarmCheck() {
   try {
@@ -915,6 +1198,7 @@ async function onAlarmCheck() {
 
     const settings = await getSettings();
     await ensureAlarm(settings.checkPeriodMinutes);
+    await ensureSiteBlockerAlarm();
     if (!settings.enabled) return;
 
     const tabs = await chrome.tabs.query({});
@@ -1007,12 +1291,22 @@ async function migrateOrphanedSuspendedTabs() {
         const u = new URL(tab.url);
         if (u.protocol !== 'chrome-extension:') continue;
         if (!u.pathname.endsWith('suspended.html')) continue;
-        const tabId = u.searchParams.get('tabId');
-        const fallback = u.searchParams.get('u');
-        if (!tabId || !fallback) continue;
         if (u.origin === ourOrigin) continue;
-        const newUrl = chrome.runtime.getURL('suspended.html') + '?tabId=' + tab.id + '&u=' + encodeURIComponent(fallback);
-        await chrome.storage.local.set({ [`suspended_${tab.id}`]: { url: fallback, title: '', favIconUrl: '', tabId: tab.id } });
+        const oldTabIdParam = u.searchParams.get('tabId');
+        let fallback = u.searchParams.get('u');
+        if (!fallback && oldTabIdParam) {
+          const stored = await chrome.storage.local.get(`suspended_${oldTabIdParam}`);
+          fallback = stored[`suspended_${oldTabIdParam}`]?.url || '';
+        }
+        if (!fallback || !hasRestorableUrl(fallback)) continue;
+        const storedNow = await chrome.storage.local.get(`suspended_${tab.id}`);
+        const title = storedNow[`suspended_${tab.id}`]?.title
+          || (oldTabIdParam && (await chrome.storage.local.get(`suspended_${oldTabIdParam}`)))[`suspended_${oldTabIdParam}`]?.title
+          || '';
+        const params = new URLSearchParams({ tabId: String(tab.id) });
+        if (encodeURIComponent(fallback).length <= PLACEHOLDER_URL_PARAM_MAX) params.set('u', fallback);
+        const newUrl = chrome.runtime.getURL('suspended.html') + '?' + params.toString();
+        await chrome.storage.local.set({ [`suspended_${tab.id}`]: { url: fallback, title, favIconUrl: '', tabId: tab.id } });
         await chrome.tabs.update(tab.id, { url: newUrl });
       } catch (e) {
         console.warn('[TabHibernate] migrate tab failed', tab.id, e);
@@ -1043,7 +1337,7 @@ async function initOnStartup() {
     }
     await persistLastActivity();
     await updateBadge();
-    await chrome.alarms.create(SITE_BLOCKER_SCHEDULE_ALARM, { periodInMinutes: 1 }).catch(() => {});
+    await ensureSiteBlockerAlarm();
   } catch (e) {
     console.warn('[TabHibernate] initOnStartup failed', e);
   }
@@ -1069,6 +1363,14 @@ chrome.runtime.onStartup.addListener(async () => {
     console.error('[SwissExtensions] onStartup failed', e);
   }
 });
+if (chrome.runtime.onUpdateAvailable) {
+  chrome.runtime.onUpdateAvailable.addListener(() => {
+    runEmergencySessionBackup('update-available').catch((e) => {
+      console.warn('[TabHibernate] pre-update backup failed', e);
+    });
+  });
+}
+
 chrome.runtime.onInstalled.addListener(async (details) => {
   try {
     if (details.reason === 'install') {
@@ -1090,12 +1392,13 @@ chrome.runtime.onInstalled.addListener(async (details) => {
       });
     }
     await setSidePanelBehavior();
+    if (details.reason === 'update') {
+      await runEmergencySessionBackup('extension-update');
+      await migrateOrphanedSuspendedTabs();
+    }
     await initOnStartup();
     await siteBlockerApplyRules();
     await siteBlockerApplyAdsRulesets();
-    if (details.reason === 'update') {
-      setTimeout(() => migrateOrphanedSuspendedTabs().catch((e) => console.warn('[TabHibernate] delayed migrate failed', e)), 800);
-    }
   } catch (e) {
     console.error('[SwissExtensions] onInstalled failed', e);
   }
@@ -1103,7 +1406,7 @@ chrome.runtime.onInstalled.addListener(async (details) => {
 
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === ALARM_CHECK_NAME) onAlarmCheck();
-  if (alarm.name === SITE_BLOCKER_SCHEDULE_ALARM) siteBlockerApplyRules();
+  if (alarm.name === SITE_BLOCKER_SCHEDULE_ALARM) runSiteBlockerApplyRules();
 });
 
 chrome.tabs.onActivated.addListener((activeInfo) => {
@@ -1203,6 +1506,107 @@ function sbUrlMatchesBlockedDomains(url, domains) {
   }
 }
 
+const BLOCKED_TABS_SAVED_MAX = 5000;
+
+async function getOrCreateSiteBlockerSavedFolder() {
+  const tree = await chrome.bookmarks.getTree();
+  const root = tree[0];
+  const findFolder = (nodes, title) => {
+    if (!nodes) return null;
+    for (const n of nodes) {
+      if (n.title === title) return n;
+      const inChild = findFolder(n.children || [], title);
+      if (inChild) return inChild;
+    }
+    return null;
+  };
+  let parent = findFolder(root.children, 'Site Blocker');
+  if (!parent) {
+    const created = await chrome.bookmarks.create({ parentId: root.id, title: 'Site Blocker' });
+    parent = { id: created.id };
+  }
+  let folder = findFolder([parent], 'Saved tabs');
+  if (folder?.id) return folder.id;
+  const created = await chrome.bookmarks.create({ parentId: parent.id, title: 'Saved tabs' });
+  return created.id;
+}
+
+/** Локальная «история» Site Blocker + закладки у пользователя (chrome.storage + bookmarks). */
+async function appendBlockedTabsSaved(entries, { reason = 'block', writeBookmarks = true } = {}) {
+  if (!entries?.length) return { added: 0 };
+  const { blockedTabsSaved = [] } = await chrome.storage.local.get('blockedTabsSaved');
+  const seen = new Set(blockedTabsSaved.map((x) => x.url).filter(Boolean));
+  const merged = blockedTabsSaved.slice();
+  const newlyAdded = [];
+  for (const entry of entries) {
+    if (!entry?.url || seen.has(entry.url)) continue;
+    seen.add(entry.url);
+    merged.push({
+      url: entry.url,
+      title: entry.title || entry.url,
+      domain: entry.domain || '',
+      savedAt: Date.now(),
+      reason: reason || 'block',
+    });
+    newlyAdded.push(entry);
+  }
+  if (!newlyAdded.length) return { added: 0 };
+  await chrome.storage.local.set({ blockedTabsSaved: merged.slice(-BLOCKED_TABS_SAVED_MAX) });
+  if (writeBookmarks) {
+    try {
+      const folderId = await getOrCreateSiteBlockerSavedFolder();
+      for (const entry of newlyAdded) {
+        try {
+          await chrome.bookmarks.create({
+            parentId: folderId,
+            title: (entry.title || entry.url).slice(0, 255),
+            url: entry.url,
+          });
+        } catch (e) {
+          console.warn('[SiteBlocker] bookmark save failed', entry.url, e);
+        }
+      }
+    } catch (e) {
+      console.warn('[SiteBlocker] saved tabs folder failed', e);
+    }
+  }
+  return { added: newlyAdded.length };
+}
+
+async function collectOpenTabsOnBlockedDomains(domains) {
+  if (!domains?.length) return [];
+  const tabs = await chrome.tabs.query({});
+  const entries = [];
+  const seen = new Set();
+  for (const tab of tabs) {
+    let url = tab.pendingUrl || tab.url || '';
+    if (isPlaceholderTabUrl(url) || isSuspendedPlaceholderUrl(url)) {
+      const restored = await getPlaceholderRestoreUrl(tab);
+      if (restored) url = restored;
+    }
+    if (!hasRestorableUrl(url) || !sbUrlMatchesBlockedDomains(url, domains)) continue;
+    if (seen.has(url)) continue;
+    seen.add(url);
+    let domain = '';
+    try {
+      domain = sbNormDomain(new URL(url).hostname);
+    } catch (_) {}
+    entries.push({ url, title: tab.title || url, domain });
+  }
+  return entries;
+}
+
+async function saveOpenTabsMatchingBlockedDomains(domains, reason) {
+  const entries = await collectOpenTabsOnBlockedDomains(domains);
+  return appendBlockedTabsSaved(entries, { reason, writeBookmarks: true });
+}
+
+async function maybeAutoSaveBlockedTabs(domains, reason) {
+  const { blockerAutoSaveTabs = true } = await chrome.storage.local.get('blockerAutoSaveTabs');
+  if (blockerAutoSaveTabs === false || !domains?.length) return { added: 0 };
+  return saveOpenTabsMatchingBlockedDomains(domains, reason);
+}
+
 async function siteBlockerReloadBlockedOpenTabs(domains) {
   if (!domains.length) return;
   const tabs = await chrome.tabs.query({});
@@ -1214,6 +1618,24 @@ async function siteBlockerReloadBlockedOpenTabs(domains) {
       console.warn('[SiteBlocker] reload blocked tab failed', tab.id, e);
     }
   }
+}
+
+/** Пересоздаёт alarm расписания, если Chrome его сбросил (рестарт / обновление). */
+async function ensureSiteBlockerAlarm() {
+  try {
+    const existing = await chrome.alarms.get(SITE_BLOCKER_SCHEDULE_ALARM);
+    if (existing) return;
+    await chrome.alarms.create(SITE_BLOCKER_SCHEDULE_ALARM, { periodInMinutes: SITE_BLOCKER_SCHEDULE_PERIOD_MINUTES });
+  } catch (e) {
+    console.warn('[SiteBlocker] ensureSiteBlockerAlarm failed', e);
+  }
+}
+
+function runSiteBlockerApplyRules(options) {
+  siteBlockerApplyChain = siteBlockerApplyChain
+    .then(() => siteBlockerApplyRulesImpl(options))
+    .catch((e) => console.warn('[SiteBlocker] applyRules failed', e));
+  return siteBlockerApplyChain;
 }
 
 async function siteBlockerApplyAdsRulesets() {
@@ -1236,7 +1658,11 @@ async function siteBlockerApplyAdsRulesets() {
   }
 }
 
-async function siteBlockerApplyRules({ enforceOpenTabs = false } = {}) {
+async function siteBlockerApplyRules(options) {
+  return runSiteBlockerApplyRules(options);
+}
+
+async function siteBlockerApplyRulesImpl({ enforceOpenTabs = false } = {}) {
   const {
     blocked = [],
     whitelist = [],
@@ -1244,15 +1670,20 @@ async function siteBlockerApplyRules({ enforceOpenTabs = false } = {}) {
     schedule = SB_DEFAULT_SCHEDULE,
     scheduleStateActive: previousScheduleStateActive,
   } = await chrome.storage.local.get(['blocked', 'whitelist', 'enabled', 'schedule', 'scheduleStateActive']);
-  const existing = await chrome.declarativeNetRequest.getDynamicRules();
+  let existing;
+  try {
+    existing = await chrome.declarativeNetRequest.getDynamicRules();
+  } catch (e) {
+    console.warn('[SiteBlocker] getDynamicRules failed', e);
+    return;
+  }
   const toRemove = existing.map((r) => r.id).filter((id) => id >= SITE_BLOCKER_RULE_ID_START);
 
   const normalizedSchedule = sbNormalizeSchedule(schedule);
   const scheduleActive = sbIsInSchedule(normalizedSchedule);
   await chrome.storage.local.set({ scheduleStateActive: scheduleActive, schedule: normalizedSchedule });
 
-  /**  «"   master-switch  (  .)   —   ,  NetFilter. */
-  const blockingWindowActive = enabled && scheduleActive;
+  const blockingWindowActive = enabled !== false && scheduleActive;
 
   if (!blockingWindowActive) {
     try {
@@ -1260,7 +1691,14 @@ async function siteBlockerApplyRules({ enforceOpenTabs = false } = {}) {
     } catch (e) {
       console.warn('[SiteBlocker] disable NetFilter rulesets failed', e);
     }
-    if (toRemove.length) await chrome.declarativeNetRequest.updateDynamicRules({ removeRuleIds: toRemove });
+    if (toRemove.length) {
+      try {
+        await chrome.declarativeNetRequest.updateDynamicRules({ removeRuleIds: toRemove });
+      } catch (e) {
+        console.warn('[SiteBlocker] remove dynamic rules failed', e);
+      }
+    }
+    await chrome.storage.local.set({ lastBlockerApplyAt: Date.now(), lastBlockerApplyOk: true, blockerRuleCount: 0 });
     return;
   }
 
@@ -1271,7 +1709,14 @@ async function siteBlockerApplyRules({ enforceOpenTabs = false } = {}) {
   }
 
   if (!blocked.length) {
-    if (toRemove.length) await chrome.declarativeNetRequest.updateDynamicRules({ removeRuleIds: toRemove });
+    if (toRemove.length) {
+      try {
+        await chrome.declarativeNetRequest.updateDynamicRules({ removeRuleIds: toRemove });
+      } catch (e) {
+        console.warn('[SiteBlocker] clear dynamic rules failed', e);
+      }
+    }
+    await chrome.storage.local.set({ lastBlockerApplyAt: Date.now(), lastBlockerApplyOk: true, blockerRuleCount: 0 });
     return;
   }
 
@@ -1284,26 +1729,52 @@ async function siteBlockerApplyRules({ enforceOpenTabs = false } = {}) {
   });
 
   if (!domains.length) {
-    if (toRemove.length) await chrome.declarativeNetRequest.updateDynamicRules({ removeRuleIds: toRemove });
+    if (toRemove.length) {
+      try {
+        await chrome.declarativeNetRequest.updateDynamicRules({ removeRuleIds: toRemove });
+      } catch (e) {
+        console.warn('[SiteBlocker] clear dynamic rules (empty domains) failed', e);
+      }
+    }
+    await chrome.storage.local.set({ lastBlockerApplyAt: Date.now(), lastBlockerApplyOk: true, blockerRuleCount: 0 });
     return;
   }
 
-  const rules = domains.flatMap((d, i) => ([
-    {
-      id: SITE_BLOCKER_RULE_ID_START + i * 2,
-      priority: 1,
-      action: { type: 'block' },
-      condition: { urlFilter: `*://${d}/*`, resourceTypes: ['main_frame', 'sub_frame'] },
+  const rules = domains.map((d, i) => ({
+    id: SITE_BLOCKER_RULE_ID_START + i,
+    priority: 1,
+    action: { type: 'block' },
+    condition: {
+      requestDomains: [d],
+      resourceTypes: ['main_frame', 'sub_frame'],
     },
-    {
-      id: SITE_BLOCKER_RULE_ID_START + i * 2 + 1,
-      priority: 1,
-      action: { type: 'block' },
-      condition: { urlFilter: `*://*.${d}/*`, resourceTypes: ['main_frame', 'sub_frame'] },
-    },
-  ]));
-  await chrome.declarativeNetRequest.updateDynamicRules({ removeRuleIds: toRemove, addRules: rules });
+  }));
+
+  try {
+    await chrome.declarativeNetRequest.updateDynamicRules({ removeRuleIds: toRemove, addRules: rules });
+    await chrome.storage.local.set({
+      lastBlockerApplyAt: Date.now(),
+      lastBlockerApplyOk: true,
+      blockerRuleCount: rules.length,
+    });
+  } catch (e) {
+    console.warn('[SiteBlocker] updateDynamicRules failed', e);
+    await chrome.storage.local.set({
+      lastBlockerApplyAt: Date.now(),
+      lastBlockerApplyOk: false,
+      lastBlockerApplyError: (e && e.message) || String(e),
+    });
+    return;
+  }
+
+  const shouldSaveBlockedTabs = enforceOpenTabs
+    || (previousScheduleStateActive === false && scheduleActive);
+  if (shouldSaveBlockedTabs) {
+    await maybeAutoSaveBlockedTabs(domains, enforceOpenTabs ? 'block-list-change' : 'schedule-on');
+  }
+
   if (enforceOpenTabs || (previousScheduleStateActive === false && blockingWindowActive)) {
+    await maybeAutoSaveBlockedTabs(domains, 'before-reload');
     await siteBlockerReloadBlockedOpenTabs(domains);
   }
 }
@@ -1312,7 +1783,7 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
   if (areaName !== 'local') return;
   if (changes.adsFiltersEnabled) siteBlockerApplyAdsRulesets();
   if (changes.blocked || changes.whitelist || changes.enabled || changes.schedule) {
-    siteBlockerApplyRules({ enforceOpenTabs: true });
+    runSiteBlockerApplyRules({ enforceOpenTabs: true });
   }
 });
 
@@ -1452,6 +1923,50 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     runRecoverLostSuspended().then((res) => safeSend(res)).catch((e) => {
       console.warn('[TabHibernate] recoverLostSuspended failed', e);
       safeSend({ recovered: 0, error: String(e.message) });
+    });
+    return true;
+  }
+  if (msg.type === 'searchLostTabsFromHistory') {
+    searchLostTabsFromHistory({
+      hoursBack: msg.hoursBack,
+      onlyMissing: msg.onlyMissing !== false,
+      maxResults: msg.maxResults,
+      text: msg.text,
+    }).then((res) => safeSend(res)).catch((e) => {
+      console.warn('[TabHibernate] searchLostTabsFromHistory failed', e);
+      safeSend({ items: [], error: String(e?.message || e) });
+    });
+    return true;
+  }
+  if (msg.type === 'recoverFromBrowserHistory') {
+    runRecoverFromBrowserHistory({
+      hoursBack: msg.hoursBack,
+      onlyMissing: msg.onlyMissing !== false,
+      maxResults: msg.maxResults,
+      text: msg.text,
+    }).then((res) => safeSend(res)).catch((e) => {
+      console.warn('[TabHibernate] recoverFromBrowserHistory failed', e);
+      safeSend({ recovered: 0, error: String(e?.message || e) });
+    });
+    return true;
+  }
+  if (msg.type === 'emergencyBackupNow') {
+    runEmergencySessionBackup('manual').then((res) => safeSend(res)).catch((e) => {
+      console.warn('[TabHibernate] emergencyBackupNow failed', e);
+      safeSend({ count: 0, error: String(e?.message || e) });
+    });
+    return true;
+  }
+  if (msg.type === 'saveBlockedTabsNow') {
+    (async () => {
+      const { blocked = [], whitelist = [] } = await chrome.storage.local.get(['blocked', 'whitelist']);
+      const wl = new Set((whitelist || []).map(sbNormDomain).filter(Boolean));
+      const domains = (blocked || []).map(sbNormDomain).filter(Boolean).filter((d) => !wl.has(d));
+      const res = await saveOpenTabsMatchingBlockedDomains(domains, 'manual');
+      safeSend(res);
+    })().catch((e) => {
+      console.warn('[SiteBlocker] saveBlockedTabsNow failed', e);
+      safeSend({ added: 0, error: String(e?.message || e) });
     });
     return true;
   }
@@ -1604,7 +2119,13 @@ chrome.commands?.onCommand.addListener((command) => {
   });
 });
 
-// Init on first SW run (after sleep)
-initOnStartup();
-siteBlockerApplyRules().catch((e) => console.warn('[SiteBlocker] apply on SW wake failed', e));
-siteBlockerApplyAdsRulesets().catch((e) => console.warn('[SiteBlocker] ads rulesets on SW wake failed', e));
+// Init on first SW run (after sleep) — последовательно, чтобы не гонять DNR
+(async () => {
+  try {
+    await initOnStartup();
+    await runSiteBlockerApplyRules();
+    await siteBlockerApplyAdsRulesets();
+  } catch (e) {
+    console.warn('[SwissExtensions] SW init failed', e);
+  }
+})();

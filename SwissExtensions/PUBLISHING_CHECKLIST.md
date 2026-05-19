@@ -13,7 +13,7 @@
 ## 2) Подготовить пакет
 
 1. Открой `chrome://extensions` и проверь, что расширение запускается без ошибок.
-2. Собери ZIP из корня репозитория: `./scripts/package-swiss-extensions-store.sh` → файл в `dist/SwissExtensions-v*-chrome-store.zip` (в архиве **нет** `.md`, `index.html`, `_metadata/`, пустой `lib/` — только исходники расширения).
+2. Собери ZIP: `./scripts/package-swiss-extensions-store.sh` → `dist/SwissExtensions-v*-chrome-store.zip` (без `.md`, `scripts/`, `_metadata/`, `.gitignore`).
 3. Либо вручную: запакуй **только содержимое** папки `SwissExtensions` (не родительскую `Extensions`), чтобы `manifest.json` лежал в **корне** ZIP.
 4. Обязательные файлы в пакете:
    - `manifest.json`, `service_worker.js`
