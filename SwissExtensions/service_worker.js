@@ -19,22 +19,36 @@ let siteBlockerApplyChain = Promise.resolve();
 let lastActivityByTab = new Map();
 let lastPersistTime = 0;
 const PERSIST_THROTTLE_MS = 4000;
+/** Лёгкий init SW один раз за жизненный цикл — не сбрасывать таймеры при каждом wake. */
+let swReadyPromise = null;
 
 async function getStoredState() {
   const raw = await chrome.storage.local.get(['lastActivityByTab', 'settings', 'suspendedToday', 'suspendedTodayDate']);
   if (raw.lastActivityByTab && typeof raw.lastActivityByTab === 'object') {
     const now = Date.now();
-    lastActivityByTab = new Map(
-      Object.entries(raw.lastActivityByTab)
-        .map(([k, v]) => {
-          const id = Number(k);
-          const ts = typeof v === 'number' && !Number.isNaN(v) && v > 0 ? v : now;
-          return [id, ts];
-        })
-        .filter(([id]) => !Number.isNaN(id))
-    );
+    for (const [k, v] of Object.entries(raw.lastActivityByTab)) {
+      const id = Number(k);
+      if (Number.isNaN(id)) continue;
+      const ts = typeof v === 'number' && !Number.isNaN(v) && v > 0 ? v : now;
+      const prev = lastActivityByTab.get(id);
+      lastActivityByTab.set(id, prev == null ? ts : Math.max(prev, ts));
+    }
   }
   return raw;
+}
+
+/** Новые вкладки без записи — grace period; только в onAlarmCheck, не при каждом wake SW. */
+function seedActivityForUnknownTabs(tabs) {
+  const now = Date.now();
+  let needPersist = false;
+  for (const tab of tabs) {
+    if (!tab.id || lastActivityByTab.has(tab.id)) continue;
+    const u = tab.url || '';
+    if (u.startsWith('chrome://') || u.startsWith('chrome-extension://')) continue;
+    lastActivityByTab.set(tab.id, now);
+    needPersist = true;
+  }
+  return needPersist;
 }
 
 async function persistLastActivity(force = false) {
@@ -357,6 +371,13 @@ async function suspendPlaceholder(tabId, url, title, favIconUrl, meta = {}) {
   const suspendedUrl = chrome.runtime.getURL('suspended.html') + '?' + params.toString();
   try {
     await chrome.tabs.update(tabId, { url: suspendedUrl });
+    if (meta.groupId != null && meta.groupId !== -1) {
+      try {
+        await chrome.tabs.group({ tabIds: [tabId], groupId: meta.groupId });
+      } catch (e) {
+        console.warn('[TabHibernate] re-group after suspend failed', tabId, e);
+      }
+    }
     await incrementSuspendedToday();
     return true;
   } catch (e) {
@@ -1231,15 +1252,7 @@ async function onAlarmCheck() {
     if (!settings.enabled) return;
 
     const tabs = await chrome.tabs.query({});
-    const now = Date.now();
-    let needPersist = false;
-    for (const tab of tabs) {
-      if (tab.id && !lastActivityByTab.has(tab.id)) {
-        lastActivityByTab.set(tab.id, now);
-        needPersist = true;
-      }
-    }
-    if (needPersist) await persistLastActivity(true);
+    if (seedActivityForUnknownTabs(tabs)) await persistLastActivity(true);
 
     const toBackup = [];
     let suspendedThisRun = 0;
@@ -1406,34 +1419,37 @@ async function migrateOrphanedSuspendedTabs() {
   }
 }
 
-async function initOnStartup() {
+async function runPlaceholderMaintenance() {
   try {
     await migrateOrphanedSuspendedTabs();
     await rebindPlaceholderStorageKeys();
   } catch (e) {
     console.warn('[TabHibernate] migrate/rebind placeholders failed', e);
   }
-  try {
-    const settings = await getSettings();
-    await ensureAlarm(settings.checkPeriodMinutes);
-    await getStoredState();
-    // pruneStaleSuspendedEntries — только в onAlarmCheck, не при wake SW (иначе теряются suspended_* до restore сессии)
-    const tabs = await chrome.tabs.query({});
-    const now = Date.now();
-    let needPersist = false;
-    for (const tab of tabs) {
-      if (!tab.id || lastActivityByTab.has(tab.id)) continue;
-      const u = tab.url || '';
-      if (u.startsWith('chrome://') || u.startsWith('chrome-extension://')) continue;
-      lastActivityByTab.set(tab.id, now);
-      needPersist = true;
-    }
-    if (needPersist) await persistLastActivity(true);
-    await updateBadge();
-    await ensureSiteBlockerAlarm();
-  } catch (e) {
-    console.warn('[TabHibernate] initOnStartup failed', e);
+}
+
+/** Лёгкий init при wake SW: alarm + restore activity map. Без migrate/rebind и без сброса таймеров. */
+function ensureServiceWorkerReady() {
+  if (!swReadyPromise) {
+    swReadyPromise = (async () => {
+      const settings = await getSettings();
+      await ensureAlarm(settings.checkPeriodMinutes);
+      await getStoredState();
+      await updateBadge();
+      await ensureSiteBlockerAlarm();
+    })().catch((e) => {
+      swReadyPromise = null;
+      throw e;
+    });
   }
+  return swReadyPromise;
+}
+
+/** Только lifecycle браузера / расширения — не при каждом пробуждении SW. */
+async function initOnStartup() {
+  await runPlaceholderMaintenance();
+  swReadyPromise = null;
+  await ensureServiceWorkerReady();
 }
 
 /** Extension icon click opens the side panel instead of popup. */
@@ -1506,10 +1522,11 @@ chrome.tabs.onActivated.addListener((activeInfo) => {
   markTabActive(activeInfo.tabId);
 });
 
-chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-  if (changeInfo.audible !== undefined || changeInfo.pinned !== undefined) {
-    lastActivityByTab.set(tabId, Date.now());
-    persistLastActivity();
+chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
+  // Только старт воспроизведения — активность. audible:false не сбрасывает таймер (часто на закреплённых: почта, чаты).
+  // pin/unpin — не активность на странице.
+  if (changeInfo.audible === true) {
+    markTabActive(tabId);
   }
 });
 
@@ -1962,7 +1979,6 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg.type === 'settingsUpdated') {
     getSettings()
       .then((s) => ensureAlarm(s.checkPeriodMinutes))
-      .then(() => onAlarmCheck())
       .then(() => safeSend({ ok: true }))
       .catch(() => safeSend({ ok: false }));
     return true;
@@ -2222,10 +2238,10 @@ chrome.commands?.onCommand.addListener((command) => {
   });
 });
 
-// Init on first SW run (after sleep) — последовательно, чтобы не гонять DNR
+// Wake SW: только alarm + restore activity. Migrate/rebind — в onStartup/onInstalled.
 (async () => {
   try {
-    await initOnStartup();
+    await ensureServiceWorkerReady();
     await runSiteBlockerApplyRules();
     await siteBlockerApplyAdsRulesets();
   } catch (e) {

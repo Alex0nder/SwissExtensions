@@ -1,6 +1,6 @@
 # Swiss Extensions — тексты для Chrome Web Store
 
-Версия пакета: **1.5.9** · [Developer Dashboard](https://chrome.google.com/webstore/devconsole)
+Версия пакета: **1.5.11** · [Developer Dashboard](https://chrome.google.com/webstore/devconsole)
 
 Privacy Policy: `https://github.com/Alex0nder/SwissExtensions/blob/main/PRIVACY_POLICY.md`
 
@@ -64,25 +64,27 @@ No bloat. No noise. Built for people who live in many tabs and want performance 
 
 ---
 
-## What’s new (Release notes) — версия 1.5.9
+## What’s new (Release notes) — версия 1.5.11
 
 **EN (полный):**
 ```
-Tab Hibernate: fixed auto-suspend timer resetting on every service worker wake (tabs stayed active indefinitely).
+Tab Hibernate: fixed inactivity timer resetting on every service worker wake — background tabs now auto-suspend again.
 
-Tab Hibernate: fixed empty placeholder tabs in groups after browser restart — storage keys now rebind to current tab IDs.
+Tab Hibernate: pinned tabs no longer stay “always active” after notification sounds (audible:false no longer resets the timer).
 
-History: fixed "Open all/selected" clearing saved tabs before tabs were actually opened.
+Tab Hibernate: suspended placeholders stay in their tab group; clearer “Auto-suspend pinned tabs” setting.
 ```
 
 **EN (короткий, если лимит символов):**
 ```
-Hibernate timer fix; placeholder tabs survive browser restart; safer History open/restore.
+Auto-hibernate timer fix; pinned-tab activity reset fix; placeholders keep tab groups.
 ```
 
 **RU:**
 ```
-Tab Hibernate: исправлен таймер авто-усыпления (сбрасывался при каждом пробуждении SW). Placeholder-вкладки в группах сохраняются после перезапуска браузера. History: безопасное открытие сохранённых вкладок.
+Tab Hibernate: таймер неактивности больше не сбрасывается при каждом пробуждении SW — фоновые вкладки снова усыпляются.
+
+Закреплённые вкладки: audible:false не обнуляет таймер после уведомлений. Placeholder остаётся в группе; понятнее настройка auto-suspend для pinned.
 ```
 
 ---
@@ -137,4 +139,4 @@ Productivity suite: page capture, tab lifecycle (hibernate, backup, recovery), m
 ./scripts/package-swiss-extensions-store.sh
 ```
 
-Архив: `dist/SwissExtensions-v1.5.9-chrome-store.zip`
+Архив: `dist/SwissExtensions-v1.5.11-chrome-store.zip`
