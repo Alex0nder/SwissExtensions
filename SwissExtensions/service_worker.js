@@ -37,9 +37,9 @@ async function getStoredState() {
   return raw;
 }
 
-async function persistLastActivity() {
+async function persistLastActivity(force = false) {
   const now = Date.now();
-  if (now - lastPersistTime < PERSIST_THROTTLE_MS) return;
+  if (!force && now - lastPersistTime < PERSIST_THROTTLE_MS) return;
   lastPersistTime = now;
   try {
     const obj = Object.fromEntries(
@@ -322,7 +322,7 @@ async function toDataUrlFromImageUrl(url) {
   }
 }
 
-async function suspendPlaceholder(tabId, url, title, favIconUrl) {
+async function suspendPlaceholder(tabId, url, title, favIconUrl, meta = {}) {
   try {
     await chrome.tabs.get(tabId);
   } catch (e) {
@@ -331,9 +331,15 @@ async function suspendPlaceholder(tabId, url, title, favIconUrl) {
   const safeUrl = url || '';
   const favIconDataUrl = await toDataUrlFromImageUrl(favIconUrl || '');
   const restoreKey = `suspended_${tabId}`;
-  await chrome.storage.local.set({
-    [restoreKey]: { url: safeUrl, title: title || '', favIconUrl: favIconDataUrl || favIconUrl || '', tabId },
-  });
+  const payload = {
+    url: safeUrl,
+    title: title || '',
+    favIconUrl: favIconDataUrl || favIconUrl || '',
+    tabId,
+  };
+  if (meta.groupId != null && meta.groupId !== -1) payload.groupId = meta.groupId;
+  if (meta.windowId != null) payload.windowId = meta.windowId;
+  await chrome.storage.local.set({ [restoreKey]: payload });
   try {
     const folderId = await getOrCreateSuspendedRecoveryFolder();
     await chrome.bookmarks.create({
@@ -497,6 +503,25 @@ async function pruneStaleTabIds() {
 const ORPHANED_SUSPENDED_ARCHIVE_MAX = 10000;
 const EMERGENCY_SESSION_BACKUPS_MAX = 3;
 
+/** tabId из URL placeholder-вкладок — не архивировать, даже если id не совпадает с живой вкладкой. */
+function collectPlaceholderReferencedTabIds(tabs) {
+  const referenced = new Set();
+  for (const tab of tabs) {
+    if (!tab?.url) continue;
+    if (!isPlaceholderTabUrl(tab.url) && !isSuspendedPlaceholderUrl(tab.url)) continue;
+    if (tab.id) referenced.add(tab.id);
+    try {
+      const u = new URL(tab.url);
+      const tid = u.searchParams.get('tabId');
+      if (tid) {
+        const parsed = Number(tid);
+        if (Number.isInteger(parsed)) referenced.add(parsed);
+      }
+    } catch (_) {}
+  }
+  return referenced;
+}
+
 /** Перед удалением suspended_* с мёртвых tabId — архив URL (иначе после Reload расширения recover пустой). */
 async function archiveOrphanedSuspendedStorage() {
   try {
@@ -505,12 +530,13 @@ async function archiveOrphanedSuspendedStorage() {
       chrome.tabs.query({}),
     ]);
     const aliveIds = new Set(tabs.map((t) => t.id));
+    const referencedIds = collectPlaceholderReferencedTabIds(tabs);
     const archive = [];
     const keysToRemove = [];
     for (const [key, val] of Object.entries(all)) {
       if (!key.startsWith('suspended_') || key === 'suspendedToday' || key === 'suspendedTodayDate') continue;
       const id = Number(key.slice('suspended_'.length));
-      if (!Number.isInteger(id) || aliveIds.has(id)) continue;
+      if (!Number.isInteger(id) || aliveIds.has(id) || referencedIds.has(id)) continue;
       const item = val && typeof val === 'object' ? val : null;
       const url = item?.url;
       if (url && (url.startsWith('http') || url.startsWith('file'))) {
@@ -727,7 +753,10 @@ async function runSuspendAllNow() {
         suspended++;
       }
     } else {
-      const ok = await suspendPlaceholder(tab.id, tab.url, tab.title, tab.favIconUrl);
+      const ok = await suspendPlaceholder(tab.id, tab.url, tab.title, tab.favIconUrl, {
+        groupId: tab.groupId,
+        windowId: tab.windowId,
+      });
       if (ok) {
         toBackup.push({ url: tab.url, title: tab.title });
         suspended++;
@@ -1210,7 +1239,7 @@ async function onAlarmCheck() {
         needPersist = true;
       }
     }
-    if (needPersist) await persistLastActivity();
+    if (needPersist) await persistLastActivity(true);
 
     const toBackup = [];
     let suspendedThisRun = 0;
@@ -1225,7 +1254,10 @@ async function onAlarmCheck() {
         const ok = await suspendDiscard(tab.id);
         if (ok) { toBackup.push({ url: tab.url, title: tab.title }); suspendedThisRun++; }
       } else {
-        const ok = await suspendPlaceholder(tab.id, tab.url, tab.title, tab.favIconUrl);
+        const ok = await suspendPlaceholder(tab.id, tab.url, tab.title, tab.favIconUrl, {
+          groupId: tab.groupId,
+          windowId: tab.windowId,
+        });
         if (ok) { toBackup.push({ url: tab.url, title: tab.title }); suspendedThisRun++; }
       }
       if (suspendedThisRun > 0 && suspendedThisRun % 15 === 0) {
@@ -1279,6 +1311,63 @@ async function ensureAlarm(periodMinutes = ALARM_CHECK_PERIOD_MINUTES) {
   }
 }
 
+/**
+ * После перезапуска браузера tab.id меняется, а suspended.html?tabId= остаётся старым.
+ * Перепривязываем storage и URL к актуальному tab.id, чтобы группы не выглядели «пустыми».
+ */
+async function rebindPlaceholderStorageKeys() {
+  try {
+    const tabs = await chrome.tabs.query({});
+    for (const tab of tabs) {
+      if (!tab?.id || !tab.url) continue;
+      if (!isPlaceholderTabUrl(tab.url) && !isSuspendedPlaceholderUrl(tab.url)) continue;
+
+      let urlTabId = null;
+      let fallbackUrl = '';
+      try {
+        const u = new URL(tab.url);
+        const raw = u.searchParams.get('tabId');
+        urlTabId = raw ? parseInt(raw, 10) : null;
+        fallbackUrl = u.searchParams.get('u') || '';
+      } catch (_) {
+        continue;
+      }
+
+      const currentKey = `suspended_${tab.id}`;
+      const urlKey = urlTabId != null && !Number.isNaN(urlTabId) ? `suspended_${urlTabId}` : null;
+      const keysToRead = [...new Set([currentKey, urlKey].filter(Boolean))];
+      const data = keysToRead.length ? await chrome.storage.local.get(keysToRead) : {};
+      let item = data[currentKey] || (urlKey && data[urlKey]) || null;
+
+      if (!item?.url && fallbackUrl && hasRestorableUrl(fallbackUrl)) {
+        item = { url: fallbackUrl, title: tab.title || '', favIconUrl: '', tabId: tab.id };
+      }
+      if (!item?.url) continue;
+
+      const needsRebind = urlTabId !== tab.id || !data[currentKey];
+      if (!needsRebind) continue;
+
+      await chrome.storage.local.set({
+        [currentKey]: { ...item, tabId: tab.id },
+      });
+
+      const params = new URLSearchParams({ tabId: String(tab.id) });
+      if (item.url && encodeURIComponent(item.url).length <= PLACEHOLDER_URL_PARAM_MAX) {
+        params.set('u', item.url);
+      }
+      const newUrl = chrome.runtime.getURL('suspended.html') + '?' + params.toString();
+      if (newUrl !== tab.url) {
+        await chrome.tabs.update(tab.id, { url: newUrl });
+      }
+      if (urlKey && urlKey !== currentKey) {
+        await chrome.storage.local.remove(urlKey);
+      }
+    }
+  } catch (e) {
+    console.warn('[TabHibernate] rebindPlaceholderStorageKeys failed', e);
+  }
+}
+
 /**  /:   suspended   extension ID —   . */
 async function migrateOrphanedSuspendedTabs() {
   try {
@@ -1320,22 +1409,26 @@ async function migrateOrphanedSuspendedTabs() {
 async function initOnStartup() {
   try {
     await migrateOrphanedSuspendedTabs();
+    await rebindPlaceholderStorageKeys();
   } catch (e) {
-    console.warn('[TabHibernate] migrateOrphanedSuspendedTabs failed', e);
+    console.warn('[TabHibernate] migrate/rebind placeholders failed', e);
   }
   try {
     const settings = await getSettings();
     await ensureAlarm(settings.checkPeriodMinutes);
     await getStoredState();
-    await pruneStaleSuspendedEntries();
+    // pruneStaleSuspendedEntries — только в onAlarmCheck, не при wake SW (иначе теряются suspended_* до restore сессии)
     const tabs = await chrome.tabs.query({});
     const now = Date.now();
+    let needPersist = false;
     for (const tab of tabs) {
-      if (tab.id && tab.url && !tab.url.startsWith('chrome://') && !tab.url.startsWith('chrome-extension://')) {
-        lastActivityByTab.set(tab.id, now);
-      }
+      if (!tab.id || lastActivityByTab.has(tab.id)) continue;
+      const u = tab.url || '';
+      if (u.startsWith('chrome://') || u.startsWith('chrome-extension://')) continue;
+      lastActivityByTab.set(tab.id, now);
+      needPersist = true;
     }
-    await persistLastActivity();
+    if (needPersist) await persistLastActivity(true);
     await updateBadge();
     await ensureSiteBlockerAlarm();
   } catch (e) {
@@ -1867,7 +1960,11 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     return true;
   }
   if (msg.type === 'settingsUpdated') {
-    getSettings().then((s) => ensureAlarm(s.checkPeriodMinutes)).then(() => safeSend({ ok: true })).catch(() => safeSend({ ok: false }));
+    getSettings()
+      .then((s) => ensureAlarm(s.checkPeriodMinutes))
+      .then(() => onAlarmCheck())
+      .then(() => safeSend({ ok: true }))
+      .catch(() => safeSend({ ok: false }));
     return true;
   }
   if (msg.type === 'removeSuspendedBookmark') {
@@ -1896,7 +1993,10 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         }
         const ok = mode === 'discard'
           ? await suspendDiscard(tab.id)
-          : await suspendPlaceholder(tab.id, tab.url, tab.title, tab.favIconUrl);
+          : await suspendPlaceholder(tab.id, tab.url, tab.title, tab.favIconUrl, {
+            groupId: tab.groupId,
+            windowId: tab.windowId,
+          });
         safeSend({ ok });
       } catch (e) {
         console.warn('[TabHibernate] suspendCurrentTab failed', e);
@@ -2113,7 +2213,10 @@ chrome.commands?.onCommand.addListener((command) => {
     const mode = getSuspendModeForTab(settings, tab);
     if (mode === 'placeholder' && !hasRestorableUrl(tab.url)) return;
     if (mode === 'discard') await suspendDiscard(tab.id);
-    else await suspendPlaceholder(tab.id, tab.url, tab.title, tab.favIconUrl);
+    else await suspendPlaceholder(tab.id, tab.url, tab.title, tab.favIconUrl, {
+      groupId: tab.groupId,
+      windowId: tab.windowId,
+    });
   }).catch((e) => {
     console.warn('[TabHibernate] command suspend-current-tab failed', e);
   });

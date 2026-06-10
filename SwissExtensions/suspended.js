@@ -208,11 +208,12 @@ function showUrlAndRestore(url, title, favIconUrl) {
 function restore(url) {
   if (!url || !isRestorableUrl(url)) return;
   if (btn) btn.disabled = true;
-  const key = `suspended_${tabId}`;
-  chrome.storage.local.remove(key);
   chrome.runtime.sendMessage({ type: 'removeSuspendedBookmark', url }).catch(() => {});
   chrome.tabs.getCurrent((tab) => {
-    const targetId = tab ? tab.id : tabId;
+    const targetId = tab?.id ?? tabId;
+    const keys = [`suspended_${targetId}`];
+    if (tabId && tabId !== targetId) keys.push(`suspended_${tabId}`);
+    chrome.storage.local.remove(keys);
     chrome.tabs.update(targetId, { url }).then(() => {}).catch((e) => {
       console.warn('[TabHibernate] restore failed', e);
       if (btn) btn.disabled = false;
@@ -228,26 +229,40 @@ document.body.addEventListener('click', (e) => {
   restore(currentRestoreUrl);
 });
 
-if (!tabId) {
-  showError('Unknown tab');
-} else {
-  const key = `suspended_${tabId}`;
-  chrome.storage.local.get(key, (data) => {
-    if (chrome.runtime.lastError) {
-      if (isRestorableUrl(fallbackUrl)) {
-        showUrlAndRestore(fallbackUrl, '', '');
-      } else {
-        showError('Could not load restore data');
-      }
+/** Загрузка restore-данных: сначала реальный tab.id (после reload браузера), затем tabId из URL. */
+function loadRestoreData() {
+  chrome.tabs.getCurrent((tab) => {
+    const actualTabId = tab?.id ?? null;
+    const keys = [];
+    if (actualTabId) keys.push(`suspended_${actualTabId}`);
+    if (tabId && tabId !== actualTabId) keys.push(`suspended_${tabId}`);
+    if (!keys.length) {
+      if (isRestorableUrl(fallbackUrl)) showUrlAndRestore(fallbackUrl, '', '');
+      else showError('Unknown tab');
       return;
     }
-    const item = data[key];
-    if (item && item.url && isRestorableUrl(item.url)) {
-      showUrlAndRestore(item.url, item.title, item.favIconUrl || '');
-    } else if (isRestorableUrl(fallbackUrl)) {
-      showUrlAndRestore(fallbackUrl, '', '');
-    } else {
-      showError('Restore data unavailable');
-    }
+    chrome.storage.local.get(keys, (data) => {
+      if (chrome.runtime.lastError) {
+        if (isRestorableUrl(fallbackUrl)) showUrlAndRestore(fallbackUrl, '', '');
+        else showError('Could not load restore data');
+        return;
+      }
+      let item = null;
+      for (const k of keys) {
+        if (data[k]?.url && isRestorableUrl(data[k].url)) {
+          item = data[k];
+          break;
+        }
+      }
+      if (item) {
+        showUrlAndRestore(item.url, item.title, item.favIconUrl || '');
+      } else if (isRestorableUrl(fallbackUrl)) {
+        showUrlAndRestore(fallbackUrl, '', '');
+      } else {
+        showError('Restore data unavailable');
+      }
+    });
   });
 }
+
+loadRestoreData();

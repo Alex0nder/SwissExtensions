@@ -206,25 +206,26 @@ function getSelectedItems() {
   return items;
 }
 
-/**     placeholder (). Remove of closedAndSaved. */
+/**     placeholder (). Remove of closedAndSaved только после успешного открытия. */
 async function openSelected() {
   const items = getSelectedItems();
   if (!items.length) return alert('Select at least one item.');
   const urlSet = new Set(items.map((x) => x.url));
-  const closed = window.__backupsCache?.closedAndSaved ?? [];
-  const remaining = closed.filter((x) => !x.url || !urlSet.has(x.url));
-  if (remaining.length !== closed.length) {
-    await chrome.storage.local.set({ closedAndSaved: remaining });
-    if (window.__backupsCache) window.__backupsCache.closedAndSaved = remaining;
-  }
-  const blocked = window.__backupsCache?.blockedTabsSaved ?? [];
-  const remainingBlocked = blocked.filter((x) => !x.url || !urlSet.has(x.url));
-  if (remainingBlocked.length !== blocked.length) {
-    await chrome.storage.local.set({ blockedTabsSaved: remainingBlocked });
-    if (window.__backupsCache) window.__backupsCache.blockedTabsSaved = remainingBlocked;
-  }
   try {
-    await chrome.runtime.sendMessage({ type: 'openUrlsAsPlaceholders', items });
+    const res = await chrome.runtime.sendMessage({ type: 'openUrlsAsPlaceholders', items });
+    if (res?.error) throw new Error(res.error);
+    const closed = window.__backupsCache?.closedAndSaved ?? [];
+    const remaining = closed.filter((x) => !x.url || !urlSet.has(x.url));
+    if (remaining.length !== closed.length) {
+      await chrome.storage.local.set({ closedAndSaved: remaining });
+      if (window.__backupsCache) window.__backupsCache.closedAndSaved = remaining;
+    }
+    const blocked = window.__backupsCache?.blockedTabsSaved ?? [];
+    const remainingBlocked = blocked.filter((x) => !x.url || !urlSet.has(x.url));
+    if (remainingBlocked.length !== blocked.length) {
+      await chrome.storage.local.set({ blockedTabsSaved: remainingBlocked });
+      if (window.__backupsCache) window.__backupsCache.blockedTabsSaved = remainingBlocked;
+    }
   } catch (e) {
     console.warn(e);
     alert('Error: ' + (e?.message || e));
@@ -232,17 +233,18 @@ async function openSelected() {
   await refresh();
 }
 
-/**   of Closed and saved  placeholder (). From  . */
+/**   of Closed and saved  placeholder (). Очистка списка только после успешного открытия. */
 async function openAll() {
   const items = window.__backupsCache?.closedAndSaved;
   if (!Array.isArray(items) || !items.length) return alert('No closed-and-saved tabs.');
   const toOpen = items.map((x) => ({ url: x.url, title: x.title ?? x.url })).filter((x) => x.url);
   if (!toOpen.length) return alert('No URLs to open.');
-  await chrome.storage.local.set({ closedAndSaved: [] });
-  if (window.__backupsCache) window.__backupsCache.closedAndSaved = [];
-  await refresh();
   try {
-    await chrome.runtime.sendMessage({ type: 'openUrlsAsPlaceholders', items: toOpen });
+    const res = await chrome.runtime.sendMessage({ type: 'openUrlsAsPlaceholders', items: toOpen });
+    if (res?.error) throw new Error(res.error);
+    await chrome.storage.local.set({ closedAndSaved: [] });
+    if (window.__backupsCache) window.__backupsCache.closedAndSaved = [];
+    await refresh();
   } catch (e) {
     console.warn(e);
     alert('Error: ' + (e?.message || e));

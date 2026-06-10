@@ -1,6 +1,6 @@
 # Swiss Extensions — тексты для Chrome Web Store
 
-Версия пакета: **1.5.8** · [Developer Dashboard](https://chrome.google.com/webstore/devconsole)
+Версия пакета: **1.5.9** · [Developer Dashboard](https://chrome.google.com/webstore/devconsole)
 
 Privacy Policy: `https://github.com/Alex0nder/SwissExtensions/blob/main/PRIVACY_POLICY.md`
 
@@ -64,27 +64,25 @@ No bloat. No noise. Built for people who live in many tabs and want performance 
 
 ---
 
-## What’s new (Release notes) — версия 1.5.8
+## What’s new (Release notes) — версия 1.5.9
 
 **EN (полный):**
 ```
-Tab recovery: backup all tabs before extension update; recover from storage, bookmarks, and Chrome browsing history.
+Tab Hibernate: fixed auto-suspend timer resetting on every service worker wake (tabs stayed active indefinitely).
 
-Site Blocker: auto-save open tabs on blocked domains to History and local bookmarks; manual “Save blocked tabs now”.
+Tab Hibernate: fixed empty placeholder tabs in groups after browser restart — storage keys now rebind to current tab IDs.
 
-Site Blocker: improved reliability after Chrome updates (schedule alarms and block rules).
-
-History page: new section for site-blocker saved tabs; export/import includes all recovery lists.
+History: fixed "Open all/selected" clearing saved tabs before tabs were actually opened.
 ```
 
 **EN (короткий, если лимит символов):**
 ```
-Tab recovery from history and backups; Site Blocker auto-saves blocked-site tabs; stability fixes after browser updates.
+Hibernate timer fix; placeholder tabs survive browser restart; safer History open/restore.
 ```
 
 **RU:**
 ```
-Восстановление вкладок: backup, история Chrome, закладки. Site Blocker сохраняет вкладки на заблокированных сайтах. Стабильность блокировки после обновления Chrome.
+Tab Hibernate: исправлен таймер авто-усыпления (сбрасывался при каждом пробуждении SW). Placeholder-вкладки в группах сохраняются после перезапуска браузера. History: безопасное открытие сохранённых вкладок.
 ```
 
 ---
@@ -139,4 +137,4 @@ Productivity suite: page capture, tab lifecycle (hibernate, backup, recovery), m
 ./scripts/package-swiss-extensions-store.sh
 ```
 
-Архив: `dist/SwissExtensions-v1.5.8-chrome-store.zip`
+Архив: `dist/SwissExtensions-v1.5.9-chrome-store.zip`
