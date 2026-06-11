@@ -229,8 +229,42 @@ document.body.addEventListener('click', (e) => {
   restore(currentRestoreUrl);
 });
 
-/** Загрузка restore-данных: сначала реальный tab.id (после reload браузера), затем tabId из URL. */
-function loadRestoreData() {
+let rebindAttempt = 0;
+const REBIND_RETRY_MS = [0, 400, 1200, 2800];
+
+function requestPlaceholderRebind() {
+  if (rebindAttempt >= REBIND_RETRY_MS.length) return;
+  const delay = REBIND_RETRY_MS[rebindAttempt];
+  rebindAttempt += 1;
+  setTimeout(() => {
+    chrome.runtime.sendMessage({ type: 'rebindPlaceholderTab' }, () => {
+      loadRestoreDataFromServiceWorker();
+    });
+  }, delay);
+}
+
+chrome.runtime.onMessage.addListener((msg) => {
+  if (msg?.type === 'placeholderRefresh') loadRestoreData();
+});
+
+function applyRestoreItem(item) {
+  if (item?.url && isRestorableUrl(item.url)) {
+    showUrlAndRestore(item.url, item.title, item.favIconUrl || '');
+    return true;
+  }
+  return false;
+}
+
+/** SW ищет suspended_* по всем ключам (после смены tab.id при restart). */
+function loadRestoreDataFromServiceWorker() {
+  chrome.runtime.sendMessage({ type: 'resolvePlaceholderData' }, (item) => {
+    if (applyRestoreItem(item)) return;
+    loadRestoreDataLocal();
+  });
+}
+
+/** Локальный fallback: tab.id и tabId из URL. */
+function loadRestoreDataLocal() {
   chrome.tabs.getCurrent((tab) => {
     const actualTabId = tab?.id ?? null;
     const keys = [];
@@ -238,13 +272,19 @@ function loadRestoreData() {
     if (tabId && tabId !== actualTabId) keys.push(`suspended_${tabId}`);
     if (!keys.length) {
       if (isRestorableUrl(fallbackUrl)) showUrlAndRestore(fallbackUrl, '', '');
-      else showError('Unknown tab');
+      else {
+        showError('Unknown tab');
+        requestPlaceholderRebind();
+      }
       return;
     }
     chrome.storage.local.get(keys, (data) => {
       if (chrome.runtime.lastError) {
         if (isRestorableUrl(fallbackUrl)) showUrlAndRestore(fallbackUrl, '', '');
-        else showError('Could not load restore data');
+        else {
+          showError('Could not load restore data');
+          requestPlaceholderRebind();
+        }
         return;
       }
       let item = null;
@@ -254,15 +294,19 @@ function loadRestoreData() {
           break;
         }
       }
-      if (item) {
-        showUrlAndRestore(item.url, item.title, item.favIconUrl || '');
-      } else if (isRestorableUrl(fallbackUrl)) {
+      if (applyRestoreItem(item)) return;
+      if (isRestorableUrl(fallbackUrl)) {
         showUrlAndRestore(fallbackUrl, '', '');
       } else {
         showError('Restore data unavailable');
+        requestPlaceholderRebind();
       }
     });
   });
+}
+
+function loadRestoreData() {
+  loadRestoreDataFromServiceWorker();
 }
 
 loadRestoreData();

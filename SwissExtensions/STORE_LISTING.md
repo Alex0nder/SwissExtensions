@@ -1,6 +1,6 @@
 # Swiss Extensions — тексты для Chrome Web Store
 
-Версия пакета: **1.5.11** · [Developer Dashboard](https://chrome.google.com/webstore/devconsole)
+Версия пакета: **1.5.14** · [Developer Dashboard](https://chrome.google.com/webstore/devconsole)
 
 Privacy Policy: `https://github.com/Alex0nder/SwissExtensions/blob/main/PRIVACY_POLICY.md`
 
@@ -64,7 +64,34 @@ No bloat. No noise. Built for people who live in many tabs and want performance 
 
 ---
 
-## What’s new (Release notes) — версия 1.5.11
+## What’s new (Release notes) — версия 1.5.14
+
+**EN (полный):**
+```
+Tab Hibernate: save and restore whole tab groups (title, color, order) — Close all and save, History, Save tab group.
+
+Tab Hibernate: after browser restart or force quit, suspended placeholders rebind faster; alarm no longer deletes live restore data before rebind.
+
+Site Blocker: stronger domain blocking rules; periodic reload of open tabs on blocked sites.
+```
+
+**EN (короткий, если лимит символов):**
+```
+Tab groups save/restore; crash-restart placeholder fix; Site Blocker blocking improvements.
+```
+
+**RU:**
+```
+Tab Hibernate: сохранение и восстановление групп вкладок (название, цвет, порядок) — Close all and save, History, Save tab group.
+
+После перезапуска/force quit placeholder быстрее перепривязывается; alarm больше не удаляет живые suspended_* до rebind.
+
+Site Blocker: усиленные правила блокировки; периодическая перезагрузка открытых вкладок на заблокированных доменах.
+```
+
+---
+
+## What’s new (Release notes) — версия 1.5.11 (archive)
 
 **EN (полный):**
 ```
@@ -98,9 +125,31 @@ Productivity suite: page capture, tab lifecycle (hibernate, backup, recovery), m
 
 ---
 
+## Privacy tab — обоснование разрешения tabGroups
+
+Вставить на вкладке **«Меры по обеспечению конфиденциальности»** → поле обоснования для **tabGroups**:
+
+**EN (для Store):**
+```
+The tabGroups permission is used only for Tab Hibernate features that the user triggers: saving a tab group to local History (title, color, tab order), keeping suspended placeholder tabs in their group, and restoring saved tabs back into a group when opened from History. Group metadata is read from Chrome Tab Groups API and stored locally in chrome.storage.local on the device. It is not transmitted to any server, not sold, and not used for advertising or profiling.
+```
+
+**RU (если форма на русском):**
+```
+Разрешение tabGroups нужно только для Tab Hibernate по действию пользователя: сохранить группу вкладок в локальную History (название, цвет, порядок), оставить suspended-заглушки в группе и восстановить сохранённые вкладки в группу при открытии из History. Метаданные группы читаются через Chrome Tab Groups API и хранятся локально в chrome.storage.local. Данные не отправляются на сервер, не продаются и не используются для рекламы или профилирования.
+```
+
+**Короткий EN (если лимит символов):**
+```
+Read/update tab group title, color, and membership when the user saves or restores tab groups in Tab Hibernate. Stored locally only; never sent off-device.
+```
+
+---
+
 ## Permission justifications
 
 - **tabs** — Tab URLs for capture, hibernate, suspend/restore, memory discard, recovery flows, and opening result/history pages.
+- **tabGroups** — Save and restore tab group metadata (title, color, collapsed) when hibernating or closing tabs.
 - **activeTab** — Active tab when the user starts capture or site-data clear.
 - **host_permissions (`<all_urls>`)** — Capture and helpers on visited pages; hibernate and blocking on URLs the user loads or lists.
 - **scripting** — Inject capture scroll helper when the user starts Page Capture.
@@ -139,4 +188,4 @@ Productivity suite: page capture, tab lifecycle (hibernate, backup, recovery), m
 ./scripts/package-swiss-extensions-store.sh
 ```
 
-Архив: `dist/SwissExtensions-v1.5.11-chrome-store.zip`
+Архив: `dist/SwissExtensions-v1.5.14-chrome-store.zip`

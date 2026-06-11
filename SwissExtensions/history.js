@@ -29,7 +29,10 @@ function renderSavedUrlList(listEl, items, { emptyText, checkboxClass, selectAll
     const li = document.createElement('li');
     li.dataset.url = item.url || '';
     const date = item.savedAt ? new Date(item.savedAt).toLocaleString() : '—';
-    const sub = item.domain ? ` · ${item.domain}` : '';
+    const groupSub = item.groupTitle
+      ? ` · группа: ${item.groupTitle}`
+      : (item.groupKey ? ' · в группе' : '');
+    const sub = `${item.domain ? ` · ${item.domain}` : ''}${groupSub}`;
     li.innerHTML = `
       <span class="checkbox-wrap">
         <input type="checkbox" class="${checkboxClass}" data-url="${escapeAttr(item.url)}">
@@ -173,35 +176,48 @@ function getSelectedUrls() {
   return [...new Set(urls)];
 }
 
-/**   {url, title} — of Closed and saved  Backups. */
+function pickGroupFieldsFromCached(cached) {
+  if (!cached?.groupKey) return {};
+  return {
+    groupKey: cached.groupKey,
+    groupTitle: cached.groupTitle,
+    groupColor: cached.groupColor,
+    groupCollapsed: cached.groupCollapsed,
+    tabIndexInGroup: cached.tabIndexInGroup,
+  };
+}
+
+/** {url, title, groupKey?, ...} — из Closed and saved, blocked, backups. */
 function getSelectedItems() {
   const seen = new Set();
   const items = [];
+  const pushItem = (item) => {
+    if (!item?.url || seen.has(item.url)) return;
+    seen.add(item.url);
+    items.push({
+      url: item.url,
+      title: item.title ?? item.url,
+      ...pickGroupFieldsFromCached(item),
+    });
+  };
   document.querySelectorAll('.cb-closed:checked').forEach((cb) => {
     const url = cb.dataset.url;
-    if (!url || seen.has(url)) return;
-    seen.add(url);
+    if (!url) return;
     const cached = (window.__backupsCache?.closedAndSaved ?? []).find((x) => x.url === url);
-    items.push({ url, title: cached?.title ?? url });
+    pushItem(cached || { url, title: url });
   });
   document.querySelectorAll('.cb-blocked-saved:checked').forEach((cb) => {
     const url = cb.dataset.url;
-    if (!url || seen.has(url)) return;
-    seen.add(url);
+    if (!url) return;
     const cached = (window.__backupsCache?.blockedTabsSaved ?? []).find((x) => x.url === url);
-    items.push({ url, title: cached?.title ?? url });
+    pushItem(cached || { url, title: url });
   });
   document.querySelectorAll('.cb-backup:checked').forEach((cb) => {
     const date = cb.dataset.date;
     if (!date) return;
     const backupData = window.__backupsCache?.backups?.[date];
     if (!Array.isArray(backupData)) return;
-    backupData.forEach((item) => {
-      if (item?.url && !seen.has(item.url)) {
-        seen.add(item.url);
-        items.push({ url: item.url, title: item.title ?? item.url });
-      }
-    });
+    backupData.forEach((item) => pushItem(item));
   });
   return items;
 }
@@ -237,7 +253,13 @@ async function openSelected() {
 async function openAll() {
   const items = window.__backupsCache?.closedAndSaved;
   if (!Array.isArray(items) || !items.length) return alert('No closed-and-saved tabs.');
-  const toOpen = items.map((x) => ({ url: x.url, title: x.title ?? x.url })).filter((x) => x.url);
+  const toOpen = items
+    .map((x) => ({
+      url: x.url,
+      title: x.title ?? x.url,
+      ...pickGroupFieldsFromCached(x),
+    }))
+    .filter((x) => x.url);
   if (!toOpen.length) return alert('No URLs to open.');
   try {
     const res = await chrome.runtime.sendMessage({ type: 'openUrlsAsPlaceholders', items: toOpen });
@@ -315,7 +337,15 @@ async function importData(file) {
       const seen = new Set(current.map((x) => x.url));
       for (const item of list) {
         if (item && item.url && !seen.has(item.url)) {
-          current.push({ url: item.url, title: item.title || item.url, ts: item.ts || Date.now() });
+          const entry = { url: item.url, title: item.title || item.url, ts: item.ts || Date.now() };
+          if (item.groupKey) {
+            entry.groupKey = item.groupKey;
+            entry.groupTitle = item.groupTitle;
+            entry.groupColor = item.groupColor;
+            entry.groupCollapsed = item.groupCollapsed;
+            entry.tabIndexInGroup = item.tabIndexInGroup;
+          }
+          current.push(entry);
           seen.add(item.url);
         }
       }

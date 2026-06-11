@@ -76,6 +76,8 @@ const el = {
   suspendCurrent: document.getElementById('thSuspendCurrent'),
   suspendAll: document.getElementById('thSuspendAll'),
   restoreAll: document.getElementById('thRestoreAll'),
+  saveTabGroup: document.getElementById('thSaveTabGroup'),
+  closeTabGroupSave: document.getElementById('thCloseTabGroupSave'),
   closeSave: document.getElementById('thCloseSave'),
   history: document.getElementById('thHistory'),
   stats: document.getElementById('thStats'),
@@ -196,6 +198,53 @@ el.suspendAll.addEventListener('click', async () => {
   } catch { el.suspendAll.textContent = 'Error'; }
   setTimeout(() => { el.suspendAll.textContent = 'Suspend all'; el.suspendAll.disabled = false; }, 2000);
 });
+
+if (el.saveTabGroup) {
+  el.saveTabGroup.addEventListener('click', async () => {
+    el.saveTabGroup.disabled = true;
+    try {
+      const r = await send({ type: 'saveTabGroup' });
+      if (r?.error === 'no-group') {
+        el.saveTabGroup.textContent = 'Not in a group';
+      } else if (r?.error) {
+        el.saveTabGroup.textContent = 'Error';
+      } else {
+        el.saveTabGroup.textContent = (r?.saved || 0) > 0 ? `Saved: ${r.saved}` : 'Nothing to save';
+      }
+    } catch {
+      el.saveTabGroup.textContent = 'Error';
+    }
+    setTimeout(() => {
+      el.saveTabGroup.textContent = 'Save tab group';
+      el.saveTabGroup.disabled = false;
+    }, 2000);
+  });
+}
+
+if (el.closeTabGroupSave) {
+  el.closeTabGroupSave.addEventListener('click', async () => {
+    el.closeTabGroupSave.disabled = true;
+    try {
+      const r = await send({ type: 'closeTabGroupAndSave' });
+      if (r?.error === 'no-group') {
+        el.closeTabGroupSave.textContent = 'Not in a group';
+      } else if (r?.error) {
+        el.closeTabGroupSave.textContent = 'Error';
+      } else {
+        const saved = r?.saved || 0;
+        const closed = r?.closed || 0;
+        el.closeTabGroupSave.textContent = saved > 0 ? `Closed: ${closed}, saved: ${saved}` : 'Done';
+      }
+      refreshThStats();
+    } catch {
+      el.closeTabGroupSave.textContent = 'Error';
+    }
+    setTimeout(() => {
+      el.closeTabGroupSave.textContent = 'Close tab group and save';
+      el.closeTabGroupSave.disabled = false;
+    }, 2500);
+  });
+}
 
 el.restoreAll.addEventListener('click', async () => {
   el.restoreAll.disabled = true;
