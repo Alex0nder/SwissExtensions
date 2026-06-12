@@ -255,6 +255,7 @@ async function thGroupTabsByDomain(allWindows) {
 
   let groupsCreated = 0;
   let tabsGrouped = 0;
+  const groupedTabIds = [];
 
   for (const { urlKey, tabs: urlTabs } of buckets.values()) {
     if (urlTabs.length < 2) continue;
@@ -270,6 +271,7 @@ async function thGroupTabsByDomain(allWindows) {
       });
       groupsCreated += 1;
       tabsGrouped += tabIds.length;
+      groupedTabIds.push(...tabIds);
     };
 
     try {
@@ -294,7 +296,7 @@ async function thGroupTabsByDomain(allWindows) {
     }
   }
 
-  return { groupsCreated, tabsGrouped, pairs: buckets.size };
+  return { groupsCreated, tabsGrouped, pairs: buckets.size, groupedTabIds };
 }
 
 async function loadThSettings() {
@@ -430,6 +432,9 @@ if (el.groupByDomain) {
       const r = await thGroupTabsByDomain(allWindows);
       if ((r?.groupsCreated || 0) > 0) {
         el.groupByDomain.textContent = `Groups: ${r.groupsCreated} (${r.tabsGrouped} tabs)`;
+        if (r.groupedTabIds?.length) {
+          await send({ type: 'syncPlaceholderGroupMeta', tabIds: r.groupedTabIds }).catch(() => {});
+        }
       } else {
         el.groupByDomain.textContent = 'No pairs found';
       }

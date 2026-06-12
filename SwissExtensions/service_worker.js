@@ -241,8 +241,8 @@ async function openPlaceholderTabForItem(item) {
   return tab;
 }
 
-/** Re-group restored tabs by groupKey; never create a group with a single tab. */
-async function applySavedTabGroups(pairs) {
+/** Re-group tabs by saved groupKey. forceRegroup=true only for History/open restore; maintenance must not override user edits. */
+async function applySavedTabGroups(pairs, { forceRegroup = false } = {}) {
   const byKey = new Map();
   for (const { tabId, item } of pairs) {
     const key = normalizeGroupKey(item?.groupKey);
@@ -269,7 +269,7 @@ async function applySavedTabGroups(pairs) {
     const uniqueGroupIds = new Set(groupedIds);
 
     if (tabInfos.length === 1) {
-      if (uniqueGroupIds.size === 1 && Object.keys(update).length) {
+      if (forceRegroup && uniqueGroupIds.size === 1 && Object.keys(update).length) {
         try {
           await chrome.tabGroups.update([...uniqueGroupIds][0], update);
         } catch (_) {}
@@ -278,10 +278,26 @@ async function applySavedTabGroups(pairs) {
     }
 
     if (uniqueGroupIds.size === 1 && tabInfos.every((t) => t.groupId === groupedIds[0])) {
-      if (Object.keys(update).length) {
+      if (forceRegroup && Object.keys(update).length) {
         try {
           await chrome.tabGroups.update(groupedIds[0], update);
         } catch (_) {}
+      }
+      continue;
+    }
+
+    if (!forceRegroup) {
+      const inGroup = tabInfos.filter((t) => isTabInGroup(t));
+      const ungrouped = tabInfos.filter((t) => !isTabInGroup(t));
+      if (inGroup.length && ungrouped.length) {
+        const targetGroupId = inGroup[0].groupId;
+        if (inGroup.every((t) => t.groupId === targetGroupId)) {
+          for (const t of ungrouped) {
+            try {
+              await chrome.tabs.group({ tabIds: [t.id], groupId: targetGroupId });
+            } catch (_) {}
+          }
+        }
       }
       continue;
     }
@@ -1303,9 +1319,49 @@ async function applyPlaceholderGroupMeta(tab, item) {
   const groupId = item.groupId;
   if (groupId == null || groupId === -1) return;
   try {
+    await chrome.tabGroups.get(groupId);
     await chrome.tabs.group({ tabIds: [tab.id], groupId });
   } catch (_) {
-    /* groupId from prior session is invalid — regroup via applySavedTabGroups by groupKey */
+    /* stale groupId after user ungrouped or Chrome recycled the group */
+  }
+}
+
+/** Write live Chrome group fields into suspended_* so maintenance does not restore stale titles. */
+async function syncSuspendedStorageGroupMetaForTab(tab) {
+  if (!tab?.id) return;
+  if (!isPlaceholderTabUrl(tab.url) && !isSuspendedPlaceholderUrl(tab.url)) return;
+  const storageKey = `suspended_${tab.id}`;
+  const data = await chrome.storage.local.get(storageKey);
+  const item = data[storageKey];
+  if (!item?.url) return;
+
+  if (isTabInGroup(tab)) {
+    const gm = await buildGroupMetaMapForTabs([tab]);
+    const meta = gm.get(tab.id);
+    if (meta) {
+      await chrome.storage.local.set({
+        [storageKey]: { ...item, ...pickSavedGroupFields(meta), groupId: tab.groupId },
+      });
+    }
+    return;
+  }
+
+  const cleared = { ...item };
+  delete cleared.groupKey;
+  delete cleared.groupTitle;
+  delete cleared.groupColor;
+  delete cleared.groupCollapsed;
+  delete cleared.tabIndexInGroup;
+  delete cleared.groupId;
+  await chrome.storage.local.set({ [storageKey]: cleared });
+}
+
+async function syncSuspendedStorageGroupMetaForTabIds(tabIds) {
+  for (const tabId of tabIds || []) {
+    try {
+      const tab = await chrome.tabs.get(tabId);
+      await syncSuspendedStorageGroupMetaForTab(tab);
+    } catch (_) {}
   }
 }
 
@@ -1382,11 +1438,13 @@ async function rebindSinglePlaceholderTab(tab) {
     chrome.tabs.sendMessage(tab.id, { type: 'placeholderRefresh' }).catch(() => {});
   }
 
-  try {
-    const updated = await chrome.tabs.get(tab.id);
-    await applyPlaceholderGroupMeta(updated, item);
-  } catch (_) {
-    await applyPlaceholderGroupMeta(tab, item);
+  if (needsStorage || needsUrlUpdate) {
+    try {
+      const updated = await chrome.tabs.get(tab.id);
+      await applyPlaceholderGroupMeta(updated, item);
+    } catch (_) {
+      await applyPlaceholderGroupMeta(tab, item);
+    }
   }
   return true;
 }
@@ -1796,7 +1854,7 @@ async function runOpenUrlsAsPlaceholders(items) {
       await new Promise((r) => setTimeout(r, RECOVER_DELAY_MS));
     }
   }
-  await applySavedTabGroups(created);
+  await applySavedTabGroups(created, { forceRegroup: true });
   await updateBadge();
   return { opened };
 }
@@ -2020,7 +2078,7 @@ async function rebindPlaceholderStorageKeys() {
         console.warn('[TabHibernate] collect placeholder group data failed', tab.id, e);
       }
     }
-    if (forGrouping.length) await applySavedTabGroups(forGrouping);
+    if (forGrouping.length) await applySavedTabGroups(forGrouping, { forceRegroup: false });
     await pruneChromeGroupKeyRegistry();
   } catch (e) {
     console.warn('[TabHibernate] rebindPlaceholderStorageKeys failed', e);
@@ -2210,7 +2268,19 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
   if (changeInfo.url || changeInfo.status === 'complete') {
     chrome.tabs.get(tabId).then(scheduleSiteBlockerNavEnforce).catch(() => {});
   }
+  if (changeInfo.groupId !== undefined) {
+    chrome.tabs.get(tabId).then(syncSuspendedStorageGroupMetaForTab).catch(() => {});
+  }
 });
+
+if (chrome.tabGroups?.onUpdated) {
+  chrome.tabGroups.onUpdated.addListener((group) => {
+    if (!group?.id) return;
+    chrome.tabs.query({ groupId: group.id }).then((tabs) => {
+      for (const tab of tabs) syncSuspendedStorageGroupMetaForTab(tab).catch(() => {});
+    }).catch(() => {});
+  });
+}
 
 chrome.tabs.onCreated.addListener((tab) => {
   if (tab.id) markTabActive(tab.id);
@@ -3104,6 +3174,12 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       console.warn('[TabHibernate] prepareTabsForGrouping failed', e);
       safeSend({ ok: false, error: String(e?.message || e) });
     });
+    return true;
+  }
+  if (msg.type === 'syncPlaceholderGroupMeta') {
+    syncSuspendedStorageGroupMetaForTabIds(msg.tabIds || [])
+      .then(() => safeSend({ ok: true }))
+      .catch((e) => safeSend({ ok: false, error: String(e?.message || e) }));
     return true;
   }
   if (msg.type === 'groupTabsByDomain') {

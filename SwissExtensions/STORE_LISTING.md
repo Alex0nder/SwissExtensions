@@ -1,6 +1,6 @@
 # Swiss Extensions — тексты для Chrome Web Store
 
-Версия пакета: **1.5.25** · [Developer Dashboard](https://chrome.google.com/webstore/devconsole)
+Версия пакета: **1.5.26** · [Developer Dashboard](https://chrome.google.com/webstore/devconsole)
 
 Privacy Policy: `https://github.com/Alex0nder/SwissExtensions/blob/main/PRIVACY_POLICY.md`
 
@@ -66,7 +66,30 @@ No bloat. No noise. Built for people who live in many tabs and want performance 
 
 ---
 
-## What's new (Release notes) — version 1.5.25
+## What's new (Release notes) — version 1.5.26
+
+**EN (full):**
+```
+Tab Hibernate: fix tab groups being renamed or split by background maintenance — your Chrome group titles and membership stay as you set them.
+
+Tab Hibernate: sync placeholder group metadata when you rename or move tabs; Group same URLs updates storage after grouping.
+```
+
+**EN (short, if character limit):**
+```
+Fix tab group rename/split overridden by background sync; placeholder group metadata stays in sync with Chrome.
+```
+
+**RU:**
+```
+Tab Hibernate: исправлено — фоновое обслуживание больше не сбрасывает переименование групп и не сливает разделённые вручную.
+
+Tab Hibernate: синхронизация метаданных группы при rename/move; после Group same URLs storage обновляется.
+```
+
+---
+
+## What's new (Release notes) — version 1.5.25 (archive)
 
 **EN (full):**
 ```
@@ -152,6 +175,31 @@ Productivity suite: page capture, tab lifecycle (hibernate, backup, recovery), m
 
 ---
 
+## Privacy tab — обоснование разрешения webNavigation
+
+Вставить на вкладке **«Меры по обеспечению конфиденциальности»** → поле обоснования для **webNavigation**:
+
+**EN (для Store):**
+```
+The webNavigation permission is used only to read the target http(s) URL of the main frame in onBeforeNavigate before Site Blocker declarativeNetRequest rules replace the page with a chrome-error page. Chrome tabs.onUpdated often no longer exposes the original URL after a block, so without this hook the extension cannot recover which page the user was opening.
+
+That remembered URL is stored locally (chrome.storage.local and in-memory maps on the device) to: auto-save tabs on blocked domains to History and bookmarks; convert blocked tabs to Tab Hibernate placeholders when blocking is disabled or the extension is turned off; resolve URLs for “Group same URLs” and tab recovery. No navigation history is uploaded, sold, or used for advertising or profiling.
+```
+
+**RU (если форма на русском):**
+```
+Разрешение webNavigation нужно только чтобы в onBeforeNavigate (основной фрейм) прочитать целевой http(s) URL до того, как Site Blocker через declarativeNetRequest заменит страницу на chrome-error. После блокировки tabs.onUpdated часто уже не содержит исходный адрес — без этого хука расширение не может восстановить, какую страницу открывал пользователь.
+
+Запомненный URL хранится локально (chrome.storage.local и оперативные структуры на устройстве) для: автосохранения вкладок на заблокированных доменах в History и закладки; перевода заблокированных вкладок в placeholder Tab Hibernate при выключении блокировки или расширения; определения URL для «Group same URLs» и восстановления вкладок. История навигации не отправляется на сервер, не продаётся и не используется для рекламы или профилирования.
+```
+
+**Короткий EN (если лимит символов):**
+```
+Capture the http(s) URL in onBeforeNavigate before Site Blocker DNR replaces the tab with chrome-error, so blocked tabs can be saved/restored locally. Stored on-device only; never sent off-device.
+```
+
+---
+
 ## Privacy tab — обоснование разрешения tabGroups
 
 Вставить на вкладке **«Меры по обеспечению конфиденциальности»** → поле обоснования для **tabGroups**:
@@ -188,6 +236,7 @@ Read/update tab group title, color, and membership when the user saves or restor
 - **browsingData** — Clear data for the current site only after user confirmation.
 - **sidePanel** — Main UI.
 - **declarativeNetRequest** — Built-in filter rulesets and user block rules; no remote rule downloads.
+- **webNavigation** — Read main-frame http(s) URL in onBeforeNavigate before Site Blocker DNR blocks the navigation, so the original page URL can be saved locally for tab recovery, History, placeholders, and “Group same URLs”.
 
 ---
 
@@ -215,5 +264,5 @@ Read/update tab group title, color, and membership when the user saves or restor
 ./scripts/package-swiss-extensions-store.sh
 ```
 
-Архив Store: `dist/SwissExtensions-v1.5.25-chrome-store.zip`  
-Сайт (Load unpacked): `downloads/SwissExtensions-v1.5.25.zip`
+Архив Store: `dist/SwissExtensions-v1.5.26-chrome-store.zip`  
+Сайт (Load unpacked): `downloads/SwissExtensions-v1.5.26.zip`

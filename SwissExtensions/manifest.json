@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Swiss Extensions",
-  "version": "1.5.25",
+  "version": "1.5.26",
   "description": "Page Capture, Tab Hibernate, Memory Cleaner, Site Blocker, Site Data Clear — all in one",
   "minimum_chrome_version": "114",
   "homepage_url": "https://github.com/Alex0nder/SwissExtensions",
