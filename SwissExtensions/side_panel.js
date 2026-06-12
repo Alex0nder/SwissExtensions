@@ -77,6 +77,8 @@ const el = {
   suspendAll: document.getElementById('thSuspendAll'),
   restoreAll: document.getElementById('thRestoreAll'),
   saveTabGroup: document.getElementById('thSaveTabGroup'),
+  groupByDomain: document.getElementById('thGroupByDomain'),
+  groupByDomainAllWindows: document.getElementById('thGroupByDomainAllWindows'),
   closeTabGroupSave: document.getElementById('thCloseTabGroupSave'),
   closeSave: document.getElementById('thCloseSave'),
   history: document.getElementById('thHistory'),
@@ -95,6 +97,204 @@ function send(msg, retries = 3) {
     };
     trySend(0);
   });
+}
+
+/**
+ * Group tabs that share the same page URL in the current window.
+ * URL key matches History/save dedupe: host + path + query; hash (#) ignored.
+ */
+const TH_GROUP_COLORS = ['grey', 'blue', 'red', 'yellow', 'green', 'pink', 'purple', 'cyan', 'orange'];
+const TH_BLOCKER_TAB_URL_KEY = 'blockerTabUrlByTabId';
+
+/** Normalize URL to a stable grouping/dedupe key (same rules as service_worker urlKeyForHistory). */
+function thUrlKey(url) {
+  if (!url) return '';
+  try {
+    const u = new URL(url);
+    u.hash = '';
+    if (u.protocol === 'file:') return `file:${u.pathname}`;
+    if (u.protocol !== 'http:' && u.protocol !== 'https:') return '';
+    const host = u.hostname.replace(/^www\./i, '').toLowerCase();
+    let path = u.pathname;
+    if (path.length > 1 && path.endsWith('/')) path = path.slice(0, -1);
+    return `${host}${path}${u.search}`;
+  } catch (_) {
+    return '';
+  }
+}
+
+/** Chrome tab group title derived from URL key (truncated). */
+function thGroupTitleFromUrlKey(urlKey) {
+  if (!urlKey) return '';
+  if (urlKey.startsWith('file:')) return 'local files';
+  return urlKey.slice(0, 256);
+}
+
+/** True for Site Blocker / network error pages (need URL resolution before grouping). */
+function thIsChromeErrorUrl(url) {
+  return Boolean(url && (url.startsWith('chrome-error://') || url.startsWith('chrome://network-error/')));
+}
+
+/** True for Tab Hibernate suspended.html placeholder tabs. */
+function thIsSuspendedPlaceholder(url) {
+  if (!url) return false;
+  try {
+    return new URL(url).pathname.endsWith('suspended.html');
+  } catch (_) {
+    return false;
+  }
+}
+
+/** Normalize blocked-domain string from settings. */
+function thNormBlockedDomain(d) {
+  let s = String(d || '').trim().toLowerCase();
+  if (!s) return '';
+  s = s.replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0].split('?')[0];
+  return s;
+}
+
+/** Deterministic tab group color from URL key seed. */
+function thPickGroupColor(seed) {
+  let h = 0;
+  for (let i = 0; i < seed.length; i++) h = (Math.imul(31, h) + seed.charCodeAt(i)) >>> 0;
+  return TH_GROUP_COLORS[h % TH_GROUP_COLORS.length];
+}
+
+/** Ungrouped tabs we can bucket: placeholders, chrome-error, normal http(s); skip chrome:// etc. */
+function thIsEligibleForGrouping(tab) {
+  if (!tab?.id || (tab.groupId != null && tab.groupId !== -1)) return false;
+  const lower = (tab.url || '').toLowerCase();
+  if (thIsSuspendedPlaceholder(tab.url) || thIsChromeErrorUrl(tab.url)) return true;
+  if (
+    lower.startsWith('chrome://')
+    || lower.startsWith('chrome-extension://')
+    || lower.startsWith('edge://')
+    || lower.startsWith('about:')
+    || lower.startsWith('devtools://')
+  ) return false;
+  return true;
+}
+
+/** One storage read: blocker URL map, blocked domains, suspended_* payloads for open tabs. */
+async function thBuildGroupingContext(tabs) {
+  const stored = await chrome.storage.local.get([TH_BLOCKER_TAB_URL_KEY, 'blocked']);
+  const blockerMap = stored[TH_BLOCKER_TAB_URL_KEY] || {};
+  const blockedList = [...new Set((stored.blocked || []).map(thNormBlockedDomain).filter(Boolean))];
+  const suspendKeys = new Set();
+  for (const tab of tabs) {
+    if (!tab?.id || !thIsSuspendedPlaceholder(tab.url)) continue;
+    suspendKeys.add(`suspended_${tab.id}`);
+    try {
+      const tid = new URL(tab.url).searchParams.get('tabId');
+      if (tid) suspendKeys.add(`suspended_${tid}`);
+    } catch (_) {}
+  }
+  const suspendedData = suspendKeys.size
+    ? await chrome.storage.local.get([...suspendKeys])
+    : {};
+  return { blockerMap, suspendedData, blockedList };
+}
+
+/** Real page URL for grouping: live tab URL, suspended payload, or pre-block URL from storage. */
+function thResolvePageUrl(tab, ctx) {
+  if (!tab?.id) return '';
+  let url = tab.pendingUrl || tab.url || '';
+  if (thIsSuspendedPlaceholder(url)) {
+    try {
+      const byId = ctx.suspendedData[`suspended_${tab.id}`];
+      if (byId?.url) url = byId.url;
+      else {
+        const u = new URL(tab.url);
+        const tid = u.searchParams.get('tabId');
+        const byTid = tid ? ctx.suspendedData[`suspended_${tid}`] : null;
+        if (byTid?.url) url = byTid.url;
+        else {
+          const fallback = u.searchParams.get('u');
+          if (fallback && (fallback.startsWith('http') || fallback.startsWith('file'))) url = fallback;
+        }
+      }
+    } catch (_) {}
+  }
+  if (url.startsWith('http://') || url.startsWith('https://')) return url;
+  const remembered = ctx.blockerMap[String(tab.id)];
+  if (remembered?.url?.startsWith('http')) return remembered.url;
+  return '';
+}
+
+/** URL key for one tab; chrome-error falls back to single blocked domain or title match. */
+function thUrlKeyForTab(tab, ctx) {
+  const resolved = thResolvePageUrl(tab, ctx);
+  const live = tab.pendingUrl || tab.url || '';
+  for (const candidate of [resolved, live]) {
+    if (!candidate || thIsChromeErrorUrl(candidate) || thIsSuspendedPlaceholder(candidate)) continue;
+    const key = thUrlKey(candidate);
+    if (key) return key;
+  }
+  if (!thIsChromeErrorUrl(tab.url || '')) return '';
+  if (ctx.blockedList.length === 1) return thUrlKey(`https://${ctx.blockedList[0]}/`);
+  const title = (tab.title || '').toLowerCase();
+  const hits = ctx.blockedList.filter((d) => title.includes(d));
+  if (hits.length === 1) return thUrlKey(`https://${hits[0]}/`);
+  return '';
+}
+
+/** Bucket ungrouped tabs by window + URL key, create Chrome groups; retry after SW converts chrome-error tabs. */
+async function thGroupTabsByDomain(allWindows) {
+  const tabs = await chrome.tabs.query(allWindows ? {} : { currentWindow: true });
+  const ctx = await thBuildGroupingContext(tabs);
+  const buckets = new Map();
+
+  for (const tab of tabs) {
+    if (!thIsEligibleForGrouping(tab)) continue;
+    const urlKey = thUrlKeyForTab(tab, ctx);
+    if (!urlKey) continue;
+    const key = `${tab.windowId}:${urlKey}`;
+    if (!buckets.has(key)) buckets.set(key, { urlKey, tabs: [] });
+    buckets.get(key).tabs.push(tab);
+  }
+
+  let groupsCreated = 0;
+  let tabsGrouped = 0;
+
+  for (const { urlKey, tabs: urlTabs } of buckets.values()) {
+    if (urlTabs.length < 2) continue;
+    urlTabs.sort((a, b) => a.index - b.index);
+    const tabIds = urlTabs.map((t) => t.id);
+    const title = thGroupTitleFromUrlKey(urlKey);
+
+    const applyGroup = async () => {
+      const groupId = await chrome.tabs.group({ tabIds });
+      await chrome.tabGroups.update(groupId, {
+        title,
+        color: thPickGroupColor(urlKey),
+      });
+      groupsCreated += 1;
+      tabsGrouped += tabIds.length;
+    };
+
+    try {
+      await applyGroup();
+    } catch (_) {
+      const errTabs = urlTabs.filter((t) => thIsChromeErrorUrl(t.url || ''));
+      if (!errTabs.length) continue;
+      await send({
+        type: 'prepareTabsForGrouping',
+        items: errTabs.map((t) => ({
+          tabId: t.id,
+          url: thResolvePageUrl(t, ctx) || `https://${urlKey.split('/')[0]}/`,
+          title: t.title || title,
+          windowId: t.windowId,
+        })),
+      });
+      try {
+        await applyGroup();
+      } catch (e2) {
+        console.warn('[TabHibernate] group by url failed', urlKey, e2);
+      }
+    }
+  }
+
+  return { groupsCreated, tabsGrouped, pairs: buckets.size };
 }
 
 async function loadThSettings() {
@@ -218,6 +418,29 @@ if (el.saveTabGroup) {
       el.saveTabGroup.textContent = 'Save tab group';
       el.saveTabGroup.disabled = false;
     }, 2000);
+  });
+}
+
+if (el.groupByDomain) {
+  el.groupByDomain.addEventListener('click', async () => {
+    el.groupByDomain.disabled = true;
+    el.groupByDomain.textContent = 'Grouping…';
+    const allWindows = el.groupByDomainAllWindows?.checked === true;
+    try {
+      const r = await thGroupTabsByDomain(allWindows);
+      if ((r?.groupsCreated || 0) > 0) {
+        el.groupByDomain.textContent = `Groups: ${r.groupsCreated} (${r.tabsGrouped} tabs)`;
+      } else {
+        el.groupByDomain.textContent = 'No pairs found';
+      }
+    } catch (e) {
+      console.warn('[TabHibernate] groupByDomain UI failed', e);
+      el.groupByDomain.textContent = 'Error';
+    }
+    setTimeout(() => {
+      el.groupByDomain.textContent = 'Group same URLs';
+      el.groupByDomain.disabled = false;
+    }, 2500);
   });
 }
 
@@ -448,9 +671,9 @@ chrome.storage.onChanged.addListener((changes, area) => {
 
 loadThSettings().then(refreshThStats);
 
-// Site Blocker —   standalone SiteBlocker (whitelist, , JSON).
+// Site Blocker UI (whitelist, schedule, JSON import) — same model as standalone SiteBlocker.
 const SB_DEFAULT_SCHEDULE = { enabled: false, from: '09:00', to: '18:00', days: [1, 2, 3, 4, 5] };
-/**    ,     refresh of storage. */
+/** Temporary status text until next storage refresh. */
 let blockerStatusOverride = null;
 
 function normDomain(input) {
@@ -945,7 +1168,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
   }
 });
 
-/** Тёмная/светлая тема: ключ chrome.storage.local uiTheme — общий для side panel, History, suspended. */
+/** uiTheme in chrome.storage.local — shared by side panel, History, and suspended pages. */
 const UI_THEME_KEY = 'uiTheme';
 
 function applyUiThemePanel(mode) {

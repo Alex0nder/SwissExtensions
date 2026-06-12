@@ -1,6 +1,6 @@
 # Swiss Extensions — тексты для Chrome Web Store
 
-Версия пакета: **1.5.14** · [Developer Dashboard](https://chrome.google.com/webstore/devconsole)
+Версия пакета: **1.5.25** · [Developer Dashboard](https://chrome.google.com/webstore/devconsole)
 
 Privacy Policy: `https://github.com/Alex0nder/SwissExtensions/blob/main/PRIVACY_POLICY.md`
 
@@ -64,7 +64,34 @@ No bloat. No noise. Built for people who live in many tabs and want performance 
 
 ---
 
-## What’s new (Release notes) — версия 1.5.14
+---
+
+## What's new (Release notes) — version 1.5.25
+
+**EN (full):**
+```
+Tab Hibernate: Group same URLs — Chrome tab groups for matching pages in the current window (hash ignored; different paths stay separate). Works on hibernate placeholders and Site Blocker error pages.
+
+Tab Hibernate: dedupe by URL when saving — Close all and save, Save tab group, History import/load keep one entry per page URL.
+
+Site Blocker: remember page URL before block (webNavigation); blocked tabs convert to hibernate placeholders when blocking is off or the extension is disabled.
+```
+
+**EN (short, if character limit):**
+```
+Group same URLs; save/History URL dedupe; Site Blocker URL memory and placeholder fallback.
+```
+
+**RU:**
+```
+Tab Hibernate: «Group same URLs» — группы вкладок с одинаковым URL (# игнорируется; разные path/query — отдельно). Работает на placeholder и заблокированных вкладках.
+
+Tab Hibernate: дедуп по URL при сохранении — Close all and save, Save tab group, History.
+
+Site Blocker: запоминание URL до блокировки; при выключении блокировки/расширения вкладки остаются placeholder с URL.
+```
+
+## What’s new (Release notes) — version 1.5.14 (archive)
 
 **EN (полный):**
 ```
@@ -91,7 +118,7 @@ Site Blocker: усиленные правила блокировки; перио
 
 ---
 
-## What’s new (Release notes) — версия 1.5.11 (archive)
+## What’s new (Release notes) — version 1.5.11 (archive)
 
 **EN (полный):**
 ```
@@ -188,4 +215,5 @@ Read/update tab group title, color, and membership when the user saves or restor
 ./scripts/package-swiss-extensions-store.sh
 ```
 
-Архив: `dist/SwissExtensions-v1.5.14-chrome-store.zip`
+Архив Store: `dist/SwissExtensions-v1.5.25-chrome-store.zip`  
+Сайт (Load unpacked): `downloads/SwissExtensions-v1.5.25.zip`

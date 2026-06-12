@@ -1,5 +1,5 @@
 /**
- * Применяет сохранённую тему интерфейса (dark | light) к <html> до отрисовки контента.
+ * Apply stored UI theme (dark | light) on <html> before content paints.
  */
 (function applyStoredUiTheme() {
   const apply = (mode) => {

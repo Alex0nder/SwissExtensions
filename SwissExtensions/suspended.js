@@ -37,7 +37,7 @@ function getFallbackFaviconUrl(pageUrl) {
   }
 }
 
-/**  URL  :  →  Chrome → origin → DDG → Google ( favicon2/ ). */
+/** Favicon candidates: saved icon → Chrome API → origin → DDG → Google. */
 function faviconCandidateUrls(pageUrl, savedIcon) {
   const out = [];
   const add = (u) => {
@@ -255,7 +255,7 @@ function applyRestoreItem(item) {
   return false;
 }
 
-/** SW ищет suspended_* по всем ключам (после смены tab.id при restart). */
+/** Service worker scans all suspended_* keys (tab.id changes after session restore). */
 function loadRestoreDataFromServiceWorker() {
   chrome.runtime.sendMessage({ type: 'resolvePlaceholderData' }, (item) => {
     if (applyRestoreItem(item)) return;
@@ -263,7 +263,7 @@ function loadRestoreDataFromServiceWorker() {
   });
 }
 
-/** Локальный fallback: tab.id и tabId из URL. */
+/** Local fallback: current tab.id and tabId from suspended.html URL. */
 function loadRestoreDataLocal() {
   chrome.tabs.getCurrent((tab) => {
     const actualTabId = tab?.id ?? null;

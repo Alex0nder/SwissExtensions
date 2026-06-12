@@ -58,7 +58,7 @@
     return t || 'capture';
   }
 
-  /**   :  , , , .  ..  . */
+  /** Strip unsafe path segments for export subfolder names. */
   function sanitizeFolderName(raw) {
     if (!raw || typeof raw !== 'string') return '';
     return raw
@@ -135,7 +135,7 @@
     });
   }
 
-  /**   : text — , state — 'loading' | 'done' | '' */
+  /** Download status line: text + optional state 'loading' | 'done' | ''. */
   function setDownloadStatus(text, state = '') {
     if (downloadStatusEl) {
       downloadStatusEl.textContent = text;
@@ -143,7 +143,7 @@
     }
   }
 
-  /**  -: current/total,    total=0 */
+  /** Progress bar: current/total; hidden when total=0. */
   function setDownloadProgress(current, total) {
     if (!downloadProgressEl || !downloadProgressFillEl) return;
     if (!total) {
@@ -187,7 +187,7 @@
     if (tiles.length > 0) subEl.textContent = `Captured: ${tiles.length} frames. PNG — ${getExportDestText()}.`;
   }
 
-  /**  :  +   ( URL) +  +  — ,     */
+  /** PNG filename base: host + path slug + timestamp. */
   function getFileBase(pageInfo) {
     let host = 'page-capture';
     let pathPart = '';

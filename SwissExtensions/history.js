@@ -3,10 +3,38 @@
  * closedSavedMax limit is requested from the service worker (single source: service_worker.js).
  */
 
+/** URL dedupe key for History lists (hash ignored; same rules as side panel / service worker). */
+function urlKeyForHistory(url) {
+  try {
+    const u = new URL(url);
+    u.hash = '';
+    if (u.protocol === 'file:') return `file:${u.pathname}`;
+    if (u.protocol !== 'http:' && u.protocol !== 'https:') return '';
+    const host = u.hostname.replace(/^www\./i, '').toLowerCase();
+    let path = u.pathname;
+    if (path.length > 1 && path.endsWith('/')) path = path.slice(0, -1);
+    return `${host}${path}${u.search}`;
+  } catch (_) {
+    return '';
+  }
+}
+
+/** Keep first row per URL key (lists are newest-first). */
+function dedupeSavedListByUrl(entries) {
+  const seen = new Set();
+  return (entries || []).filter((entry) => {
+    if (!entry?.url) return false;
+    const key = urlKeyForHistory(entry.url);
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 async function loadAll() {
   const raw = await chrome.storage.local.get(null);
-  const closedAndSaved = Array.isArray(raw.closedAndSaved) ? raw.closedAndSaved : [];
-  const blockedTabsSaved = Array.isArray(raw.blockedTabsSaved) ? raw.blockedTabsSaved : [];
+  const closedAndSaved = dedupeSavedListByUrl(Array.isArray(raw.closedAndSaved) ? raw.closedAndSaved : []);
+  const blockedTabsSaved = dedupeSavedListByUrl(Array.isArray(raw.blockedTabsSaved) ? raw.blockedTabsSaved : []);
   const backups = {};
   for (const [key, value] of Object.entries(raw)) {
     if (key.startsWith('backup_') && Array.isArray(value)) backups[key.slice(7)] = value;
@@ -30,8 +58,8 @@ function renderSavedUrlList(listEl, items, { emptyText, checkboxClass, selectAll
     li.dataset.url = item.url || '';
     const date = item.savedAt ? new Date(item.savedAt).toLocaleString() : '—';
     const groupSub = item.groupTitle
-      ? ` · группа: ${item.groupTitle}`
-      : (item.groupKey ? ' · в группе' : '');
+      ? ` · group: ${item.groupTitle}`
+      : (item.groupKey ? ' · in group' : '');
     const sub = `${item.domain ? ` · ${item.domain}` : ''}${groupSub}`;
     li.innerHTML = `
       <span class="checkbox-wrap">
@@ -131,7 +159,7 @@ function escapeAttr(s) {
     .replace(/>/g, '&gt;');
 }
 
-/** From  URL  ,  . */
+/** Collect checked Closed and saved URLs from the list. */
 function getCheckedClosedUrls() {
   const urls = new Set();
   document.querySelectorAll('.cb-closed:checked').forEach((cb) => {
@@ -187,13 +215,15 @@ function pickGroupFieldsFromCached(cached) {
   };
 }
 
-/** {url, title, groupKey?, ...} — из Closed and saved, blocked, backups. */
+/** Build {url, title, groupKey?, ...} from checked Closed, blocked, and backup rows (deduped by URL key). */
 function getSelectedItems() {
   const seen = new Set();
   const items = [];
   const pushItem = (item) => {
-    if (!item?.url || seen.has(item.url)) return;
-    seen.add(item.url);
+    if (!item?.url) return;
+    const key = urlKeyForHistory(item.url);
+    if (!key || seen.has(key)) return;
+    seen.add(key);
     items.push({
       url: item.url,
       title: item.title ?? item.url,
@@ -222,7 +252,7 @@ function getSelectedItems() {
   return items;
 }
 
-/**     placeholder (). Remove of closedAndSaved только после успешного открытия. */
+/** Open checked items as placeholders; remove from closedAndSaved/blocked only after success. */
 async function openSelected() {
   const items = getSelectedItems();
   if (!items.length) return alert('Select at least one item.');
@@ -249,7 +279,7 @@ async function openSelected() {
   await refresh();
 }
 
-/**   of Closed and saved  placeholder (). Очистка списка только после успешного открытия. */
+/** Open all Closed and saved as placeholders; clear list only after success. */
 async function openAll() {
   const items = window.__backupsCache?.closedAndSaved;
   if (!Array.isArray(items) || !items.length) return alert('No closed-and-saved tabs.');
@@ -273,7 +303,7 @@ async function openAll() {
   }
 }
 
-/** Remove   ( ).  Closed and saved —  URL; of Backups —  . */
+/** Remove checked rows: Closed and saved by URL; Backups by date key. */
 async function removeSelected() {
   const urlSet = new Set();
   const backupDatesToRemove = new Set();
@@ -326,28 +356,33 @@ async function importData(file) {
   }
   const existing = await loadAll();
   const maxClosed = window.__closedSavedMax ?? 2000;
-  const closedAndSaved = [...(Array.isArray(data.closedAndSaved) ? data.closedAndSaved : []), ...existing.closedAndSaved].slice(0, maxClosed);
-  const blockedTabsSaved = [...(Array.isArray(data.blockedTabsSaved) ? data.blockedTabsSaved : []), ...existing.blockedTabsSaved].slice(0, maxClosed);
+  const closedAndSaved = dedupeSavedListByUrl([
+    ...(Array.isArray(data.closedAndSaved) ? data.closedAndSaved : []),
+    ...existing.closedAndSaved,
+  ]).slice(0, maxClosed);
+  const blockedTabsSaved = dedupeSavedListByUrl([
+    ...(Array.isArray(data.blockedTabsSaved) ? data.blockedTabsSaved : []),
+    ...existing.blockedTabsSaved,
+  ]).slice(0, maxClosed);
   const backups = { ...existing.backups };
   if (data.backups && typeof data.backups === 'object') {
     for (const [date, list] of Object.entries(data.backups)) {
       if (!Array.isArray(list)) continue;
-      const key = `backup_${date}`;
       const current = backups[date] || [];
-      const seen = new Set(current.map((x) => x.url));
+      const seen = new Set(current.map((x) => urlKeyForHistory(x.url)).filter(Boolean));
       for (const item of list) {
-        if (item && item.url && !seen.has(item.url)) {
-          const entry = { url: item.url, title: item.title || item.url, ts: item.ts || Date.now() };
-          if (item.groupKey) {
-            entry.groupKey = item.groupKey;
-            entry.groupTitle = item.groupTitle;
-            entry.groupColor = item.groupColor;
-            entry.groupCollapsed = item.groupCollapsed;
-            entry.tabIndexInGroup = item.tabIndexInGroup;
-          }
-          current.push(entry);
-          seen.add(item.url);
+        const key = item?.url ? urlKeyForHistory(item.url) : '';
+        if (!key || seen.has(key)) continue;
+        const entry = { url: item.url, title: item.title || item.url, ts: item.ts || Date.now() };
+        if (item.groupKey) {
+          entry.groupKey = item.groupKey;
+          entry.groupTitle = item.groupTitle;
+          entry.groupColor = item.groupColor;
+          entry.groupCollapsed = item.groupCollapsed;
+          entry.tabIndexInGroup = item.tabIndexInGroup;
         }
+        current.push(entry);
+        seen.add(key);
       }
       backups[date] = current;
     }
@@ -360,7 +395,7 @@ async function importData(file) {
   alert('Import done.');
 }
 
-/** Синхронизация переключателя темы с uiTheme (как в side panel). */
+/** Keep theme toggle in sync with uiTheme (same as side panel). */
 const HISTORY_UI_THEME_KEY = 'uiTheme';
 
 function initHistoryThemeSwitcher() {

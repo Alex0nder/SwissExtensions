@@ -446,6 +446,14 @@
         Restored <span id="thRestoreDone">0</span>Open from history<span id="thRestoreTotal">0</span>, left <span id="thRestoreRemain">0</span>
       </div>
       <div class="row row-full">
+        <button id="thGroupByDomain" class="btn-sec">Group same URLs</button>
+      </div>
+      <div class="row">
+        <label for="thGroupByDomainAllWindows">All windows</label>
+        <input type="checkbox" id="thGroupByDomainAllWindows">
+      </div>
+      <p class="hint" style="margin-top:4px;font-size:10px;">Same page = same path and query; <code>#anchor</code> is ignored (<code>/a#1</code> = <code>/a#2</code>). Different paths stay separate. Needs 2+ matching tabs.</p>
+      <div class="row row-full">
         <button id="thSaveTabGroup" class="btn-sec">Save tab group</button>
       </div>
       <div class="row row-full">
@@ -543,7 +551,7 @@
       <div class="row row-full">
         <button type="button" id="blockerSaveTabsNow" class="btn-sec">Save blocked tabs now</button>
       </div>
-      <p class="hint" style="margin-top:4px;font-size:10px;">Saved in plugin History (Site blocker saved) and Chrome bookmarks → Site Blocker / Saved tabs. Open via Tab Hibernate → History.</p>
+      <p class="hint" style="margin-top:4px;font-size:10px;">Saved in plugin History (Site blocker saved) and Chrome bookmarks → Site Blocker / Saved tabs. When blocking is off or the extension is disabled, open tabs on blocked sites are kept as hibernate placeholders so URLs are not lost. Open via Tab Hibernate → History.</p>
       <div class="blocker-section" style="margin-top:8px;padding-top:10px;">
         <p class="blocker-section-title">Ads and trackers</p>
         <div class="row">

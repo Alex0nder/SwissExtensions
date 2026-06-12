@@ -1,6 +1,6 @@
 /**
  * Swiss design system — black/white, minimal, functional.
- * Тема: :root по умолчанию тёмная; светлая — html[data-theme="light"] (см. theme_apply.js + uiTheme в storage).
+ * Theme: :root is dark by default; light via html[data-theme="light"] (theme_apply.js + uiTheme in storage).
  */
 :root {
   /* Backgrounds */
