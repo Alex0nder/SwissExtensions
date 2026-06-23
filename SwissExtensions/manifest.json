@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Swiss Extensions",
-  "version": "1.5.26",
+  "version": "1.5.27",
   "description": "Page Capture, Tab Hibernate, Memory Cleaner, Site Blocker, Site Data Clear — all in one",
   "minimum_chrome_version": "114",
   "homepage_url": "https://github.com/Alex0nder/SwissExtensions",
@@ -12,6 +12,7 @@
     "128": "icons/icon128.png"
   },
   "permissions": [
+    "favicon",
     "tabs",
     "tabGroups",
     "history",
@@ -53,13 +54,6 @@
     }
   },
   "side_panel": { "default_path": "side_panel.html" },
-  "content_scripts": [
-    {
-      "matches": ["<all_urls>"],
-      "js": ["content_script.js"],
-      "run_at": "document_idle"
-    }
-  ],
   "web_accessible_resources": [
     {
       "resources": ["content.js"],

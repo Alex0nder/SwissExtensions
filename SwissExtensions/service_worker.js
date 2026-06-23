@@ -11,7 +11,7 @@ const CHECK_PERIOD_OPTIONS = [1, 2, 5];
 const BACKUP_RETENTION_DAYS = 30;
 /** Site Blocker schedule alarm (Chrome may drop alarms after browser update). */
 const SITE_BLOCKER_SCHEDULE_ALARM = 'swissSiteBlockerSchedule';
-const SITE_BLOCKER_SCHEDULE_PERIOD_MINUTES = 0.5;
+const SITE_BLOCKER_SCHEDULE_PERIOD_MINUTES = 2;
 /** Periodically persist URLs of tabs on blocked domains (survives disable/uninstall). */
 const BLOCKER_PRESERVE_ALARM = 'swissBlockerPreserveTabs';
 const BLOCKER_PRESERVE_PERIOD_MINUTES = 2;
@@ -25,6 +25,7 @@ let lastPersistTime = 0;
 const PERSIST_THROTTLE_MS = 4000;
 /** One-time lightweight SW init per lifecycle — do not reset timers on every wake. */
 let swReadyPromise = null;
+const lastActiveTabByWindow = new Map();
 let placeholderMaintenanceScheduled = false;
 let siteBlockerNavEnforceChain = Promise.resolve();
 let lastBlockerOpenTabEnforceAt = 0;
@@ -319,6 +320,7 @@ async function applySavedTabGroups(pairs, { forceRegroup = false } = {}) {
  */
 async function isTabEligibleForSuspend(tab, { allowActive = false, settings: settingsPreloaded } = {}) {
   if (!tab || !tab.id) return false;
+  if (tab.discarded) return false;
   const settings = settingsPreloaded || await getSettings();
   if (tab.active && !allowActive) return false;
   if (tab.pinned && !settings.suspendPinnedTabs) return false;
@@ -739,11 +741,34 @@ function hasRestorableUrl(url) {
 /** Placeholder mode: save url+title, redirect to suspended.html with ?u= fallback if storage is lost. */
 const PLACEHOLDER_URL_PARAM_MAX = 1900;
 
-async function toDataUrlFromImageUrl(url) {
-  if (!url || (!url.startsWith('http://') && !url.startsWith('https://') && !url.startsWith('data:'))) return '';
-  if (url.startsWith('data:')) return url;
+function getExtensionFaviconUrl(pageUrl, size = 64) {
   try {
-    const res = await fetch(url, { credentials: 'omit', mode: 'cors' });
+    const u = new URL(pageUrl);
+    if (u.protocol !== 'http:' && u.protocol !== 'https:') return '';
+    const faviconUrl = new URL(chrome.runtime.getURL('/_favicon/'));
+    faviconUrl.searchParams.set('pageUrl', pageUrl);
+    faviconUrl.searchParams.set('size', String(size));
+    return faviconUrl.toString();
+  } catch (e) {
+    return '';
+  }
+}
+
+function resolveFaviconFetchUrl(url, pageUrl) {
+  if (!url) return pageUrl ? getExtensionFaviconUrl(pageUrl) : '';
+  if (url.startsWith('data:')) return url;
+  if (url.startsWith('chrome://favicon')) return pageUrl ? getExtensionFaviconUrl(pageUrl) : '';
+  if (url.startsWith('http://') || url.startsWith('https://')) return url;
+  if (url.includes('/_favicon/')) return url;
+  return pageUrl ? getExtensionFaviconUrl(pageUrl) : '';
+}
+
+async function toDataUrlFromImageUrl(url, pageUrl = '') {
+  const fetchUrl = resolveFaviconFetchUrl(url, pageUrl);
+  if (!fetchUrl) return '';
+  if (fetchUrl.startsWith('data:')) return fetchUrl;
+  try {
+    const res = await fetch(fetchUrl, { credentials: 'omit', mode: 'cors' });
     if (!res.ok) return '';
     const blob = await res.blob();
     if (!blob || !blob.type || !blob.type.startsWith('image/')) return '';
@@ -768,7 +793,7 @@ async function suspendPlaceholder(tabId, url, title, favIconUrl, meta = {}) {
   const safeUrl = url || '';
   const skipFavicon = meta.skipFavicon === true;
   const skipBookmark = meta.skipBookmark === true;
-  const favIconDataUrl = skipFavicon ? '' : await toDataUrlFromImageUrl(favIconUrl || '');
+  const favIconDataUrl = skipFavicon ? '' : await toDataUrlFromImageUrl(favIconUrl || '', safeUrl);
   const restoreKey = `suspended_${tabId}`;
   const payload = {
     url: safeUrl,
@@ -787,6 +812,7 @@ async function suspendPlaceholder(tabId, url, title, favIconUrl, meta = {}) {
     }
   } catch (_) {}
   await chrome.storage.local.set({ [restoreKey]: payload });
+  await writeSuspendedUrlIndex(payload);
   if (!skipBookmark) {
     try {
       const folderId = await getOrCreateSuspendedRecoveryFolder();
@@ -1365,6 +1391,53 @@ async function syncSuspendedStorageGroupMetaForTabIds(tabIds) {
   }
 }
 
+const SUSPENDED_URL_INDEX = 'suspendedUrlIndex';
+const SUSPENDED_URL_INDEX_MAX = 5000;
+
+async function writeSuspendedUrlIndex(payload) {
+  if (!payload?.url) return;
+  const uk = normalizeUrlKey(payload.url);
+  if (!uk) return;
+  const { [SUSPENDED_URL_INDEX]: idx = {} } = await chrome.storage.local.get(SUSPENDED_URL_INDEX);
+  idx[uk] = {
+    url: payload.url,
+    title: payload.title || '',
+    favIconUrl: payload.favIconUrl || '',
+    groupKey: payload.groupKey,
+    groupTitle: payload.groupTitle,
+    groupColor: payload.groupColor,
+    groupCollapsed: payload.groupCollapsed,
+    tabIndexInGroup: payload.tabIndexInGroup,
+    groupId: payload.groupId,
+    windowId: payload.windowId,
+    tabId: payload.tabId,
+    updatedAt: Date.now(),
+  };
+  const keys = Object.keys(idx);
+  if (keys.length > SUSPENDED_URL_INDEX_MAX) {
+    keys.sort((a, b) => (idx[a].updatedAt || 0) - (idx[b].updatedAt || 0));
+    for (let i = 0; i <= keys.length - SUSPENDED_URL_INDEX_MAX; i++) delete idx[keys[i]];
+  }
+  await chrome.storage.local.set({ [SUSPENDED_URL_INDEX]: idx });
+}
+
+async function lookupSuspendedUrlIndex(url) {
+  const uk = normalizeUrlKey(url);
+  if (!uk) return null;
+  const { [SUSPENDED_URL_INDEX]: idx = {} } = await chrome.storage.local.get(SUSPENDED_URL_INDEX);
+  const hit = idx[uk];
+  return hit?.url ? hit : null;
+}
+
+async function removeSuspendedUrlIndex(url) {
+  const uk = normalizeUrlKey(url);
+  if (!uk) return;
+  const { [SUSPENDED_URL_INDEX]: idx = {} } = await chrome.storage.local.get(SUSPENDED_URL_INDEX);
+  if (!idx[uk]) return;
+  delete idx[uk];
+  await chrome.storage.local.set({ [SUSPENDED_URL_INDEX]: idx });
+}
+
 /** Find suspended_* after Chrome session restore changes tab.id. */
 async function findSuspendedStorageForPlaceholderTab(tab, urlTabId) {
   if (!tab?.id) return null;
@@ -1384,6 +1457,13 @@ async function findSuspendedStorageForPlaceholderTab(tab, urlTabId) {
     fallbackUrl = new URL(tab.url || '').searchParams.get('u') || '';
   } catch (_) {}
   if (fallbackUrl && hasRestorableUrl(fallbackUrl)) {
+    const indexed = await lookupSuspendedUrlIndex(fallbackUrl);
+    if (indexed?.url) {
+      return {
+        item: { ...indexed, tabId: tab.id },
+        oldKey: urlTabId != null && !Number.isNaN(urlTabId) ? `suspended_${urlTabId}` : null,
+      };
+    }
     return {
       item: { url: fallbackUrl, title: tab.title || '', favIconUrl: '', tabId: tab.id },
       oldKey: urlTabId != null && !Number.isNaN(urlTabId) ? `suspended_${urlTabId}` : null,
@@ -1427,13 +1507,19 @@ async function rebindSinglePlaceholderTab(tab) {
 
   if (needsStorage) {
     await chrome.storage.local.set({ [currentKey]: item });
+    await writeSuspendedUrlIndex(item);
   }
   if (found.oldKey && found.oldKey !== currentKey) {
     await chrome.storage.local.remove(found.oldKey);
   }
 
   if (needsUrlUpdate) {
-    await chrome.tabs.update(tab.id, { url: newUrl });
+    if (tab.discarded) {
+      // Do not update URL of discarded tabs to prevent them from loading as blank pages.
+      // The URL will be updated later when the tab is activated/loaded and sends resolvePlaceholderData.
+    } else {
+      await chrome.tabs.update(tab.id, { url: newUrl });
+    }
   } else if (needsStorage) {
     chrome.tabs.sendMessage(tab.id, { type: 'placeholderRefresh' }).catch(() => {});
   }
@@ -2133,6 +2219,20 @@ async function runPlaceholderMaintenance() {
   }
 }
 
+async function initActiveTabsMap() {
+  try {
+    const activeTabs = await chrome.tabs.query({ active: true });
+    for (const tab of activeTabs) {
+      if (tab.id && tab.windowId) {
+        lastActiveTabByWindow.set(tab.windowId, tab.id);
+        markTabActive(tab.id);
+      }
+    }
+  } catch (e) {
+    console.warn('[TabHibernate] initActiveTabsMap failed', e);
+  }
+}
+
 /** Lightweight init on SW wake: alarms + restore activity map. No migrate/rebind or timer reset. */
 function ensureServiceWorkerReady() {
   if (!swReadyPromise) {
@@ -2140,16 +2240,15 @@ function ensureServiceWorkerReady() {
       const settings = await getSettings();
       await ensureAlarm(settings.checkPeriodMinutes);
       await getStoredState();
+      await initActiveTabsMap();
       await updateBadge();
       await ensureSiteBlockerAlarm();
       await ensureBlockerPreserveAlarm();
       if (!placeholderMaintenanceScheduled) {
         placeholderMaintenanceScheduled = true;
-        setTimeout(() => {
-          runPlaceholderMaintenance().catch((e) => {
-            console.warn('[TabHibernate] delayed placeholder maintenance failed', e);
-          });
-        }, 2200);
+        runPlaceholderMaintenance().catch((e) => {
+          console.warn('[TabHibernate] placeholder maintenance failed', e);
+        });
       }
     })().catch((e) => {
       swReadyPromise = null;
@@ -2178,9 +2277,9 @@ async function setSidePanelBehavior() {
 
 chrome.runtime.onStartup.addListener(async () => {
   try {
+    placeholderMaintenanceScheduled = false;
     await setSidePanelBehavior();
     await runPlaceholderMaintenance();
-    await new Promise((r) => setTimeout(r, 1500));
     await initOnStartup();
     await siteBlockerApplyRules();
     await siteBlockerApplyAdsRulesets();
@@ -2242,7 +2341,13 @@ chrome.alarms.onAlarm.addListener((alarm) => {
 });
 
 chrome.tabs.onActivated.addListener((activeInfo) => {
-  markTabActive(activeInfo.tabId);
+  const { tabId, windowId } = activeInfo;
+  const prevTabId = lastActiveTabByWindow.get(windowId);
+  if (prevTabId && prevTabId !== tabId) {
+    markTabActive(prevTabId); // Mark previous active tab in this window
+  }
+  lastActiveTabByWindow.set(windowId, tabId);
+  markTabActive(tabId);
 });
 
 chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
@@ -2258,11 +2363,27 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
   }
   if (changeInfo.status === 'complete') {
     chrome.tabs.get(tabId).then(async (tab) => {
-      if (!tab?.id || !isChromeBlockedPageUrl(tab.url || '')) return;
+      if (!tab?.id) return;
+      const url = tab.url || '';
+      if (isPlaceholderTabUrl(url) || isSuspendedPlaceholderUrl(url)) {
+        rebindSinglePlaceholderTab(tab).catch(() => {});
+        return;
+      }
+      if (!isChromeBlockedPageUrl(url)) return;
       const last = lastHttpUrlByTabId.get(tabId);
       if (last && hasRestorableUrl(last)) {
         await rememberBlockerTabUrl(tabId, last, tab.title);
       }
+      const domains = await getConfiguredBlockerDomains();
+      if (!domains.length) return;
+      const pageUrl = await resolveBlockerTabPageUrl(tab);
+      if (!pageUrl || !sbUrlMatchesBlockedDomains(pageUrl, domains)) return;
+      await suspendPlaceholder(tab.id, pageUrl, tab.title, tab.favIconUrl, {
+        groupId: tab.groupId,
+        windowId: tab.windowId,
+        skipBookmark: true,
+        skipFavicon: true,
+      });
     }).catch(() => {});
   }
   if (changeInfo.url || changeInfo.status === 'complete') {
@@ -2307,17 +2428,30 @@ if (chrome.webNavigation?.onBeforeNavigate) {
   });
 }
 
-chrome.tabs.onRemoved.addListener((tabId) => {
+/** Не удалять restore-данные при закрытии окна/браузера — иначе после перезагрузки placeholder-вкладки пустые. */
+chrome.tabs.onRemoved.addListener((tabId, removeInfo) => {
   lastActivityByTab.delete(tabId);
   lastHttpUrlByTabId.delete(tabId);
   persistLastActivity();
-  chrome.storage.local.remove(`suspended_${tabId}`);
-  chrome.storage.local.get(BLOCKER_TAB_URL_KEY).then((data) => {
-    const map = data[BLOCKER_TAB_URL_KEY];
-    if (!map || map[String(tabId)] == null) return;
-    delete map[String(tabId)];
-    chrome.storage.local.set({ [BLOCKER_TAB_URL_KEY]: map });
-  }).catch(() => {});
+  for (const [winId, tId] of lastActiveTabByWindow.entries()) {
+    if (tId === tabId) {
+      lastActiveTabByWindow.delete(winId);
+    }
+  }
+  const windowClosing = removeInfo?.isWindowClosing === true;
+  if (!windowClosing) {
+    chrome.storage.local.get(`suspended_${tabId}`).then((data) => {
+      const item = data[`suspended_${tabId}`];
+      if (item?.url) removeSuspendedUrlIndex(item.url).catch(() => {});
+    }).catch(() => {});
+    chrome.storage.local.remove(`suspended_${tabId}`);
+    chrome.storage.local.get(BLOCKER_TAB_URL_KEY).then((data) => {
+      const map = data[BLOCKER_TAB_URL_KEY];
+      if (!map || map[String(tabId)] == null) return;
+      delete map[String(tabId)];
+      chrome.storage.local.set({ [BLOCKER_TAB_URL_KEY]: map });
+    }).catch(() => {});
+  }
   updateBadge();
 });
 

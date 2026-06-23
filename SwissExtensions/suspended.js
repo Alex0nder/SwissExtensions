@@ -16,12 +16,15 @@ const pageTitleEl = document.getElementById('pageTitle');
 /** Current URL to restore (if any); used by both button and background click. */
 let currentRestoreUrl = null;
 
-/** Local browser favicon URL (no external requests from extension page). */
-function getLocalFaviconUrl(pageUrl) {
+/** MV3 favicon API — chrome://favicon2 is blocked from extension pages. */
+function getExtensionFaviconUrl(pageUrl, size = 64) {
   try {
     const u = new URL(pageUrl);
     if (u.protocol !== 'http:' && u.protocol !== 'https:') return '';
-    return `chrome://favicon2/?size=64&pageUrl=${encodeURIComponent(pageUrl)}`;
+    const url = new URL(chrome.runtime.getURL('/_favicon/'));
+    url.searchParams.set('pageUrl', pageUrl);
+    url.searchParams.set('size', String(size));
+    return url.toString();
   } catch (e) {
     return '';
   }
@@ -37,16 +40,17 @@ function getFallbackFaviconUrl(pageUrl) {
   }
 }
 
-/** Favicon candidates: saved icon → Chrome API → origin → DDG → Google. */
+/** Favicon candidates: saved icon → extension favicon API → origin → DDG → Google. */
 function faviconCandidateUrls(pageUrl, savedIcon) {
   const out = [];
   const add = (u) => {
     const s = (u || '').trim();
     if (!s || out.includes(s)) return;
+    if (s.startsWith('chrome://')) return;
     out.push(s);
   };
   add(typeof savedIcon === 'string' ? savedIcon : '');
-  add(getLocalFaviconUrl(pageUrl));
+  add(getExtensionFaviconUrl(pageUrl));
   try {
     const u = new URL(pageUrl);
     if (u.protocol === 'http:' || u.protocol === 'https:') {
@@ -310,3 +314,7 @@ function loadRestoreData() {
 }
 
 loadRestoreData();
+
+window.addEventListener('pageshow', (event) => {
+  if (event.persisted) loadRestoreData();
+});
