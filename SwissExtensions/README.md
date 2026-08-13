@@ -2,7 +2,7 @@
 
 Chrome MV3 extension: Page Capture, Tab Hibernate, Memory Cleaner, Site Blocker, Site Data Clear.
 
-**Version:** see `manifest.json` (current: 1.5.8).
+**Version:** see `manifest.json` (current: 1.5.48).
 
 ## Structure
 
@@ -10,8 +10,10 @@ Chrome MV3 extension: Page Capture, Tab Hibernate, Memory Cleaner, Site Blocker,
 |------|---------|
 | `manifest.json` | Extension manifest |
 | `service_worker.js` | Background: hibernate, blocker DNR, recovery, backups |
-| `side_panel.html` / `side_panel.js` | Main UI |
-| `history.html` / `history.js` | Closed tabs, backups, Site Blocker saved tabs, Chrome history recover |
+| `../frontend/apps/swiss-ui/` | React/Vite sources for Side Panel, History, Capture Result, and Suspended Page |
+| `ui-dist/` | Built extension UI referenced by the manifest and service worker |
+| `core_logic.js` | Pure, testable hibernation and restore rules |
+| `tests/` | Node tests and service-worker contracts |
 | `blocker/` | Declarative Net Request rulesets |
 | `icons/` | Extension and UI icons |
 | `scripts/package-swiss-extensions-store.sh` | Store ZIP build |
@@ -22,7 +24,7 @@ Chrome MV3 extension: Page Capture, Tab Hibernate, Memory Cleaner, Site Blocker,
 ./scripts/package-swiss-extensions-store.sh
 ```
 
-Output: `dist/SwissExtensions-v<version>-chrome-store.zip` (no `.md`, `_metadata/`, `scripts/`, `dist/`).
+Output: `dist/SwissExtensions-v<version>-chrome-store.zip` and `../downloads/SwissExtensions-v<version>.zip` (no `.md`, `_metadata/`, `scripts/`, `tests/`, or `dist/`).
 
 ## Docs
 

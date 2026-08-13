@@ -7,7 +7,7 @@
 - Удален `key` из `manifest.json` (для Web Store не нужен и часто мешает review).
 - Добавлены `icons` (`16/32/48/128`) и `action.default_icon`.
 - Нормализованы `host_permissions` до `["<all_urls>"]` без дублей.
-- Добавлен `web_accessible_resources` для `content.js`, который инжектится через `chrome.scripting.executeScript`.
+- Интерфейс собирается из `frontend/apps/swiss-ui` в `SwissExtensions/ui-dist`.
 - Для карточки Store: `minimum_chrome_version` **114** (Side Panel), `homepage_url` на репозиторий GitHub.
 
 ## 2) Подготовить пакет
@@ -16,10 +16,10 @@
 2. Собери ZIP: `./scripts/package-swiss-extensions-store.sh` → `dist/SwissExtensions-v*-chrome-store.zip` (без `.md`, `scripts/`, `_metadata/`, `.gitignore`).
 3. Либо вручную: запакуй **только содержимое** папки `SwissExtensions` (не родительскую `Extensions`), чтобы `manifest.json` лежал в **корне** ZIP.
 4. Обязательные файлы в пакете:
-   - `manifest.json`, `service_worker.js`
-   - `side_panel.html`, `side_panel.js`, `theme.css`, `theme_apply.js`
-   - `content.js`, `content_script.js`
-   - `result.html`, `result.js`, `history.html`, `history.js`, `suspended.html`, `suspended.js`
+   - `manifest.json`, `service_worker.js`, `core_logic.js`
+   - `content.js`
+   - `ui-dist/side_panel.html`, `ui-dist/history.html`, `ui-dist/result.html`, `ui-dist/suspended.html`
+   - `ui-dist/assets/`
    - `icons/`, `blocker/*.json`
 
 ## 3) Данные для карточки в Store (подготовить заранее)
@@ -65,4 +65,3 @@
 - `Tab Hibernate` делает backup/restore.
 - `Site Blocker` включает/выключает правила.
 - `Site Data Clear` очищает данные текущего сайта.
-

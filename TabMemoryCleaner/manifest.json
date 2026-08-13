@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Tab Memory Cleaner",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Discard background tabs to free RAM. Hotkey and domain exclusions.",
   "icons": {
     "16": "icons/icon16.png",

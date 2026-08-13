@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
     /* Swiss style: minimalism, strict */
     * { box-sizing: border-box; }
@@ -166,8 +167,18 @@
     }
     .preset-btn:hover { border-color: #000; background: #fff; }
   </style>
+  <link rel="stylesheet" href="swiss-ui.css">
 </head>
-<body>
+<body class="swiss-extension swiss-extension--wide">
+  <main class="swiss-shell">
+  <header class="swiss-header">
+    <span class="swiss-mark" aria-hidden="true"></span>
+    <div class="swiss-heading">
+      <h1>Site Blocker</h1>
+      <p>Block distracting sites and trackers</p>
+    </div>
+  </header>
+  <section class="swiss-card">
   <h2>Site Blocker</h2>
   <div class="toggle-row">
     <span>Blocking</span>
@@ -262,6 +273,8 @@
   </div>
   <p id="blockerStatus" class="hint"></p>
   <p class="hint">Enter domain without protocol</p>
+  </section>
+  </main>
   <script src="popup.js"></script>
 </body>
 </html>

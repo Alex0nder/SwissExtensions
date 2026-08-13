@@ -7,5 +7,13 @@ release-archives/
 *-webstore-v*.zip
 *webstore*.zip
 
+# Frontend monorepo
+frontend/node_modules/
+frontend/**/node_modules/
+frontend/**/dist/
+frontend/.turbo/
+# Built extension UI is required for Load unpacked / store zip
+# SwissExtensions/ui-dist/ is committed after build
+
 # Артефакты распакованного расширения в Chrome
 **/_metadata/

@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
     body {
       width: 268px;
@@ -57,8 +58,18 @@
     .ok { color: #0a0; }
     .hint { font-size: 10px; color: #999; margin-top: 8px; line-height: 1.35; }
   </style>
+  <link rel="stylesheet" href="swiss-ui.css">
 </head>
-<body>
+<body class="swiss-extension">
+  <main class="swiss-shell">
+  <header class="swiss-header">
+    <span class="swiss-mark" aria-hidden="true"></span>
+    <div class="swiss-heading">
+      <h1>Site Data Clear</h1>
+      <p>Clear cookies and storage for this site</p>
+    </div>
+  </header>
+  <section class="swiss-card">
   <h2>Clear site data</h2>
   <div class="presets">
     <div class="presets-title">Presets</div>
@@ -78,6 +89,8 @@
   <button type="button" class="btn-clear" id="btnClear">Clear for this site</button>
   <div id="status"></div>
   <p class="hint">Selection is saved. System pages and chrome-extension pages are unavailable.</p>
+  </section>
+  </main>
   <script src="popup.js"></script>
 </body>
 </html>

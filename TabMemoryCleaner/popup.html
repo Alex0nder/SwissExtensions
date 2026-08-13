@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
     * { box-sizing: border-box; }
     body {
@@ -80,10 +81,20 @@
     #status.err { color: #f66; }
     .kbd-hint { font-size: 10px; color: #555; margin-top: 10px; line-height: 1.4; }
   </style>
+  <link rel="stylesheet" href="swiss-ui.css">
 </head>
-<body>
+<body class="swiss-extension">
+  <main class="swiss-shell">
+  <header class="swiss-header">
+    <span class="swiss-mark" aria-hidden="true"></span>
+    <div class="swiss-heading">
+      <h1>Memory Cleaner</h1>
+      <p>Free memory from background tabs</p>
+    </div>
+  </header>
+  <section class="swiss-card">
   <h2>Tab Memory Cleaner</h2>
-  <button type="button" class="primary" id="btnDiscard">Discard background tabs</button>
+  <button type="button" class="primary" id="btnDiscard">Free background memory</button>
   <div class="row">
     <input type="checkbox" id="skipPinned" checked>
     <label for="skipPinned">Skip pinned tabs</label>
@@ -106,6 +117,8 @@
   </div>
   <p class="kbd-hint">Hotkey: Option+Shift+K (Chrome -> Manage extension -> Keyboard shortcuts).</p>
   <div id="status"></div>
+  </section>
+  </main>
   <script src="popup.js"></script>
 </body>
 </html>

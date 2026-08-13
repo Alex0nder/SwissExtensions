@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-labelledby="title">
+  <title id="title">Swiss Extensions</title>
+  <rect x="4" y="4" width="120" height="120" rx="22" fill="#D52B1E"/>
+  <path fill="#FFFFFF" d="M52 27h24v25h25v24H76v25H52V76H27V52h25z"/>
+</svg>

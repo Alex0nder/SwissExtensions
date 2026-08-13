@@ -1,0 +1,30 @@
+{
+  "name": "swiss-frontend",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "build": "turbo build",
+    "build:web": "npm run build -w web && node scripts/prepare-publish.mjs",
+    "build:swiss-ui": "npm run build -w swiss-ui",
+    "dev": "turbo dev",
+    "dev:web": "npm run dev -w web",
+    "dev:swiss-ui": "npm run dev -w swiss-ui",
+    "lint": "turbo lint",
+    "format": "turbo format",
+    "typecheck": "turbo typecheck"
+  },
+  "devDependencies": {
+    "prettier": "^3.8.3",
+    "prettier-plugin-tailwindcss": "^0.8.0",
+    "turbo": "^2.9.18",
+    "typescript": "~6"
+  },
+  "packageManager": "npm@10.9.2",
+  "engines": {
+    "node": ">=20"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ]
+}

@@ -2,6 +2,7 @@
 <html>
 <head>
   <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
     /* Swiss style: minimalism, strict */
     body {
@@ -45,16 +46,28 @@
     }
     .err { color: #000; }
   </style>
+  <link rel="stylesheet" href="swiss-ui.css">
 </head>
-<body>
-  <h2>Page capture 1440x1024</h2>
-  <button id="btnScan">Scan page</button>
-  <div class="capture-progress" id="captureProgress" style="display:none; margin-top:12px;">
-    <div style="height:4px; background:#e0e0e0; overflow:hidden; border-radius:2px;">
-      <div id="captureProgressFill" style="height:100%; background:#000; width:0%; transition:width 0.15s ease;"></div>
-    </div>
-  </div>
-  <div id="status"></div>
+<body class="swiss-extension swiss-extension--compact">
+  <main class="swiss-shell">
+    <header class="swiss-header">
+      <span class="swiss-mark" aria-hidden="true"></span>
+      <div class="swiss-heading">
+        <h1>Page Capture</h1>
+        <p>Save a full page as PNG or PDF</p>
+      </div>
+    </header>
+    <section class="swiss-card">
+      <h2>Page capture 1440x1024</h2>
+      <button id="btnScan">Scan page</button>
+      <div class="capture-progress" id="captureProgress" style="display:none; margin-top:12px;">
+        <div style="height:4px; background:#e0e0e0; overflow:hidden; border-radius:2px;">
+          <div id="captureProgressFill" style="height:100%; background:#000; width:0%; transition:width 0.15s ease;"></div>
+        </div>
+      </div>
+      <div id="status"></div>
+    </section>
+  </main>
   <script src="popup.js"></script>
 </body>
 </html>

@@ -1,6 +1,6 @@
 # Swiss Extensions — тексты для Chrome Web Store
 
-Версия пакета: **1.5.26** · [Developer Dashboard](https://chrome.google.com/webstore/devconsole)
+Версия пакета: **1.5.48** · [Developer Dashboard](https://chrome.google.com/webstore/devconsole)
 
 Privacy Policy: `https://github.com/Alex0nder/SwissExtensions/blob/main/PRIVACY_POLICY.md`
 
@@ -66,7 +66,7 @@ No bloat. No noise. Built for people who live in many tabs and want performance 
 
 ---
 
-## What's new (Release notes) — version 1.5.26
+## What's new (Release notes) — version 1.5.48
 
 **EN (full):**
 ```
@@ -264,5 +264,5 @@ Read/update tab group title, color, and membership when the user saves or restor
 ./scripts/package-swiss-extensions-store.sh
 ```
 
-Архив Store: `dist/SwissExtensions-v1.5.26-chrome-store.zip`  
-Сайт (Load unpacked): `downloads/SwissExtensions-v1.5.26.zip`
+Архив Store: `dist/SwissExtensions-v1.5.48-chrome-store.zip`
+Сайт (Load unpacked): `downloads/SwissExtensions-v1.5.48.zip`

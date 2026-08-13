@@ -1,12 +1,10 @@
-# Статический лендинг без сборки: корень репозитория = публикуемая папка.
-# В Netlify UI: Build command оставить пустым ИЛИ указать `true`.
-# Publish directory: `.` (точка) — должно совпадать с этим файлом.
+# Лендинг собирается из frontend/ (Vite + React + shadcn).
+# Publish directory: frontend/apps/web/dist
 
 [build]
-  command = "true"
-  publish = "."
+  command = "cd frontend && npm ci && npm run build:web"
+  publish = "frontend/apps/web/dist"
 
-# HTML: не кэшировать надолго — после деплоя подтягивается новая версия страницы.
 [[headers]]
   for = "/"
   [headers.values]
@@ -18,22 +16,10 @@
     Cache-Control = "public, max-age=0, must-revalidate"
 
 [[headers]]
-  for = "/**/*.html"
+  for = "/assets/*"
   [headers.values]
-    Cache-Control = "public, max-age=0, must-revalidate"
+    Cache-Control = "public, max-age=31536000, immutable"
 
-# CSS/JS: короткий TTL + revalidate, чтобы обновления стилей и скриптов не залипали.
-[[headers]]
-  for = "/css/*"
-  [headers.values]
-    Cache-Control = "public, max-age=300, must-revalidate"
-
-[[headers]]
-  for = "/js/*"
-  [headers.values]
-    Cache-Control = "public, max-age=300, must-revalidate"
-
-# Манифест и иконки: умеренно; при смене favicon — быстрее подхват.
 [[headers]]
   for = "/favicon/*"
   [headers.values]
@@ -44,7 +30,6 @@
   [headers.values]
     Cache-Control = "public, max-age=0, must-revalidate"
 
-# Архивы с версией в имени — можно кэшировать дольше (имя меняется при новом релизе).
 [[headers]]
   for = "/downloads/*.zip"
   [headers.values]
