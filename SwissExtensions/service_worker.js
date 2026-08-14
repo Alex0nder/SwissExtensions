@@ -63,6 +63,8 @@ let dailySessionSnapshotPromise = null;
 const placeholderGroupTransitionUntil = new Map();
 /** Last http(s) navigation URL per tab before chrome-error (Site Blocker). */
 const lastHttpUrlByTabId = new Map();
+/** Prevent onUpdated and webNavigation from converting the same blocked tab twice. */
+const blockerPlaceholderConversions = new Set();
 const BLOCKER_OPEN_TAB_ENFORCE_MS = 5 * 60 * 1000;
 
 async function getStoredState() {
@@ -297,12 +299,50 @@ async function discardInactivePlaceholder(tab) {
   // Active means visible inside its own window. The window does not need to
   // have OS focus to remain on screen, so killing this renderer causes a flash.
   if (tab.active) return false;
+  // Keep the renderer alive until Chrome has actually observed the page's
+  // favicon. A fixed delay races on busy sessions and leaves the extension
+  // action icon on every discarded placeholder.
+  await waitForPlaceholderFavicon(tab.id);
+  const fresh = await chrome.tabs.get(tab.id).catch(() => null);
+  if (!fresh || fresh.active || (!isPlaceholderTabUrl(fresh.url) && !isSuspendedPlaceholderUrl(fresh.url))) {
+    return false;
+  }
   try {
-    await chrome.tabs.discard(tab.id);
+    await chrome.tabs.discard(fresh.id);
     return true;
   } catch (_) {
     return false;
   }
+}
+
+function isResolvedPlaceholderFavicon(favIconUrl) {
+  const url = String(favIconUrl || '');
+  if (!url) return false;
+  return url.startsWith('data:image/')
+    || url.includes('/_favicon/')
+    || url.endsWith('/suspended-fallback.svg');
+}
+
+function waitForPlaceholderFavicon(tabId, timeoutMs = 2000) {
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      chrome.tabs.onUpdated.removeListener(onUpdated);
+      resolve();
+    };
+    const onUpdated = (updatedTabId, changeInfo, updatedTab) => {
+      if (updatedTabId !== tabId) return;
+      if (isResolvedPlaceholderFavicon(changeInfo.favIconUrl || updatedTab?.favIconUrl)) finish();
+    };
+    const timer = setTimeout(finish, timeoutMs);
+    chrome.tabs.onUpdated.addListener(onUpdated);
+    chrome.tabs.get(tabId).then((current) => {
+      if (isResolvedPlaceholderFavicon(current?.favIconUrl)) finish();
+    }).catch(finish);
+  });
 }
 
 async function openPlaceholderTabForItem(item, windowId = null) {
@@ -325,7 +365,7 @@ async function openPlaceholderTabForItem(item, windowId = null) {
   // batch at a time, then unload the inactive placeholder. It reloads normally
   // when the user activates it, without leaving a permanent spinner or using RAM.
   await waitForTabComplete(tab.id);
-  await chrome.tabs.discard(tab.id).catch(() => {});
+  await discardInactivePlaceholder(tab).catch(() => false);
   return tab;
 }
 
@@ -1000,11 +1040,7 @@ async function suspendPlaceholder(tabId, url, title, favIconUrl, meta = {}) {
       console.warn('[TabHibernate] suspended bookmark backup failed', e);
     }
   }
-  const params = new URLSearchParams({ tabId: String(tabId) });
-  if (safeUrl && encodeURIComponent(safeUrl).length <= PLACEHOLDER_URL_PARAM_MAX) {
-    params.set('u', safeUrl);
-  }
-  const suspendedUrl = chrome.runtime.getURL('ui-dist/suspended.html') + '?' + params.toString();
+  const suspendedUrl = buildSuspendedPlaceholderUrl(tabId, { url: safeUrl });
   try {
     placeholderGroupTransitionUntil.set(tabId, Date.now() + 5000);
     setTimeout(() => placeholderGroupTransitionUntil.delete(tabId), 6000);
@@ -1652,6 +1688,12 @@ async function getPlaceholderRestoreUrl(tab) {
 
 function buildSuspendedPlaceholderUrl(tabId, item) {
   const params = new URLSearchParams({ tabId: String(tabId) });
+  try {
+    const original = new URL(item?.url || '');
+    if (original.protocol === 'http:' || original.protocol === 'https:') {
+      params.set('o', original.origin + '/');
+    }
+  } catch (_) {}
   if (item?.url && encodeURIComponent(item.url).length <= PLACEHOLDER_URL_PARAM_MAX) {
     params.set('u', item.url);
   }
@@ -3305,12 +3347,7 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
       if (!domains.length) return;
       const pageUrl = await resolveBlockerTabPageUrl(tab);
       if (!pageUrl || !sbUrlMatchesBlockedDomains(pageUrl, domains)) return;
-      await suspendPlaceholder(tab.id, pageUrl, tab.title, tab.favIconUrl, {
-        groupId: tab.groupId,
-        windowId: tab.windowId,
-        skipBookmark: true,
-        skipFavicon: true,
-      });
+      await convertBlockedTabToPlaceholder(tab, pageUrl);
     }).catch(() => {});
   }
   if (changeInfo.url || changeInfo.status === 'complete') {
@@ -3385,6 +3422,21 @@ if (chrome.webNavigation?.onErrorOccurred) {
       await chrome.storage.local.remove(key);
       await removeRestoreAllowRule(data[key]?.allowRuleId);
     }).catch(() => {});
+
+    // DNR's `block` action briefly exposes chrome-error://chromewebdata with
+    // the responsible extension's icon. Convert as soon as the main-frame
+    // block is reported; onUpdated(status=complete) is only a fallback because
+    // Chrome does not consistently emit it for network error pages.
+    if (details.error !== 'net::ERR_BLOCKED_BY_CLIENT') return;
+    const pageUrl = details.url || '';
+    if (!pageUrl.startsWith('http://') && !pageUrl.startsWith('https://')) return;
+    getActiveBlockerDomains().then(async (domains) => {
+      if (!domains.length || !sbUrlMatchesBlockedDomains(pageUrl, domains)) return;
+      await rememberBlockerTabUrl(details.tabId, pageUrl);
+      const tab = await chrome.tabs.get(details.tabId).catch(() => null);
+      if (!tab?.id) return;
+      await convertBlockedTabToPlaceholder(tab, pageUrl);
+    }).catch((e) => console.warn('[SiteBlocker] blocked tab placeholder failed', e));
   });
 }
 
@@ -3670,6 +3722,24 @@ function isChromeBlockedPageUrl(url) {
   return Boolean(
     url && (url.startsWith('chrome-error://') || url.startsWith('chrome://network-error/'))
   );
+}
+
+async function convertBlockedTabToPlaceholder(tab, pageUrl) {
+  if (!tab?.id || !pageUrl || blockerPlaceholderConversions.has(tab.id)) return false;
+  if (isPlaceholderTabUrl(tab.url) || isSuspendedPlaceholderUrl(tab.url)) return true;
+  blockerPlaceholderConversions.add(tab.id);
+  try {
+    return await suspendPlaceholder(tab.id, pageUrl, tab.title || pageUrl, '', {
+      groupId: tab.groupId,
+      windowId: tab.windowId,
+      skipBookmark: true,
+      // The placeholder resolves the favicon by original URL. A chrome-error
+      // tab only exposes the extension icon, so it must never be persisted.
+      skipFavicon: true,
+    });
+  } finally {
+    blockerPlaceholderConversions.delete(tab.id);
+  }
 }
 
 async function getConfiguredBlockerDomains() {

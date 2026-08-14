@@ -37,6 +37,7 @@ fi
 rsync -a "$ROOT/" "$STAGE/" \
   --exclude '.DS_Store' \
   --exclude 'dist/' \
+  --exclude 'store-assets/' \
   --exclude 'scripts/' \
   --exclude 'tests/' \
   --exclude '_metadata/' \

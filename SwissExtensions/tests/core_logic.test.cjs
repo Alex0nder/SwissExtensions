@@ -91,6 +91,34 @@ test('placeholder rebind finishes before a background tab is discarded', () => {
   );
 });
 
+test('placeholder favicon is set before a background renderer is discarded', () => {
+  const worker = fs.readFileSync(path.join(__dirname, '..', 'service_worker.js'), 'utf8');
+  const bootstrap = fs.readFileSync(
+    path.join(__dirname, '..', '..', 'frontend', 'apps', 'swiss-ui', 'public', 'suspended-favicon-bootstrap.js'),
+    'utf8',
+  );
+  const html = fs.readFileSync(
+    path.join(__dirname, '..', '..', 'frontend', 'apps', 'swiss-ui', 'suspended.html'),
+    'utf8',
+  );
+  assert.match(worker, /params\.set\('o', original\.origin \+ '\/'\)/);
+  assert.match(worker, /await waitForPlaceholderFavicon\(tab\.id\)/);
+  assert.match(worker, /changeInfo\.favIconUrl/);
+  assert.match(html, /suspended-favicon-bootstrap\.js/);
+  assert.match(html, /suspended-fallback\.svg/);
+  assert.match(bootstrap, /chrome\.runtime\.getURL\("\/_favicon\/"\)/);
+  assert.match(bootstrap, /canvas\.toDataURL\("image\/png"\)/);
+});
+
+test('blocked main-frame errors are converted before Chrome keeps the extension icon', () => {
+  const worker = fs.readFileSync(path.join(__dirname, '..', 'service_worker.js'), 'utf8');
+  const handler = worker.split('if (chrome.webNavigation?.onErrorOccurred)')[1]
+    ?.split('function mutateBlockerTabUrlMap')[0] || '';
+  assert.match(handler, /ERR_BLOCKED_BY_CLIENT/);
+  assert.match(handler, /convertBlockedTabToPlaceholder\(tab, pageUrl\)/);
+  assert.match(worker, /const blockerPlaceholderConversions = new Set\(\)/);
+});
+
 test('restore progress contract uses the UI field name', () => {
   const worker = fs.readFileSync(path.join(__dirname, '..', 'service_worker.js'), 'utf8');
   assert.match(worker, /restoreProgress:\s*\{\s*done:/);

@@ -1,38 +1,39 @@
-# Chrome Web Store — тексты (Swiss-style, marketing)
+# Chrome Web Store copy
 
-## Short description (до 132 символов)
+## Short description (up to 132 characters)
 
-**Вариант A (рекомендую):**  
-`One side panel. Five tools. Calmer Chrome — capture, hibernate, free RAM, block noise, clear site data.`
+**Option A (recommended):**
+`One calm side panel: search tabs and history, capture pages, free RAM, block noise, and clear site data.`
 
-**Вариант B (короче):**  
-`Five tools, one panel: capture pages, tame tabs, block distractions, clear site data. Less clutter.`
+**Option B (shorter):**
+`Search, capture, tame tabs, block distractions, and clear site data from one private side panel.`
 
 ---
 
 ## Full description (Detailed description)
 
-**Заголовок-удав (опционально, первая строка):**  
+**Optional opening line:**
 Less clutter. More focus.
 
-**Основной текст:**
+**Main copy:**
 
-Your browser shouldn’t feel like a second job. **Swiss Extensions** packs five practical tools into **one minimal side panel** — so you move faster, use less RAM, and stay on task.
+Your browser shouldn’t feel like a second job. **Swiss Extensions** brings practical tools into **one minimal side panel** — so you move faster, use less RAM, and stay on task.
 
 **What’s inside**
 
-1. **Page Capture** — Long pages, clean exports: **PNG or PDF** (tiled capture, crisp results).  
-2. **Tab Hibernate** — Suspend what you’re not using; **restore** when you’re back.  
-3. **Memory Cleaner** — **Discard background tabs** to free memory — without closing your active tab.  
-4. **Site Blocker** — Block distracting domains with **built-in rules** and your **own list**.  
-5. **Site Data Clear** — Clear **cookies**, **localStorage**, and **sessionStorage** for the **current site** — on your terms.
+1. **Swiss Command** — Search open tabs, bookmarks, and browsing history locally.
+2. **Page Capture** — Long pages, clean exports: **PNG or PDF** (tiled capture, crisp results).
+3. **Tab Hibernate** — Suspend what you’re not using; **restore** when you’re back.
+4. **Memory Cleaner** — **Discard background tabs** to free memory — without closing your active tab.
+5. **Site Blocker** — Block distracting domains with **built-in rules** and your **own list**.
+6. **Site Data Clear** — Clear **cookies**, **localStorage**, and **sessionStorage** for the **current site** — on your terms.
 
 No bloat. No noise. Just the actions you need — **tight layout**, **clear controls**, built for people who live in **many tabs** and want **performance and focus** through the day.
 
 ---
 
-## Подсказки по стилю (почему так)
+## Style notes
 
-- Короткие абзацы и нумерованный список — как в типографике / плакате.  
-- Акцент на выгоде (скорость, RAM, фокус), без крикливых обещаний.  
-- Английский для международного стора; при желании можно сделать RU-версию отдельно.
+- Use short paragraphs and a numbered list for quick scanning.
+- Focus on concrete benefits such as speed, memory, and attention without exaggerated claims.
+- Use English for the international listing and add other languages as separate Store localizations.

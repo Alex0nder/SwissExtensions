@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { Button } from "@workspace/ui/components/button"
 import { Badge } from "@workspace/ui/components/badge"
 import {
@@ -25,6 +25,7 @@ import { Switch } from "@workspace/ui/components/switch"
 import { Textarea } from "@workspace/ui/components/textarea"
 import {
   Archive,
+  Bookmark,
   Camera,
   ClockRotateRight,
   Cpu,
@@ -32,15 +33,22 @@ import {
   NavArrowDown,
   NavArrowRight,
   Refresh,
+  Search,
   Shield,
   Trash,
   WindowTabs,
 } from "iconoir-react"
 import { PanelHeader, Row, StatusLine } from "@/components/panel-shell"
 import { getLocal, sendMessage, setLocal } from "@/lib/chrome"
+import {
+  commandFaviconUrl,
+  type CommandResult,
+  openCommandResult,
+  searchBrowser,
+} from "@/lib/command-search"
 import "./side-panel.css"
 
-type View = "home" | "capture" | "tabs" | "memory" | "blocker" | "clear"
+type View = "home" | "command" | "capture" | "tabs" | "memory" | "blocker" | "clear"
 
 type Settings = {
   enabled: boolean
@@ -93,6 +101,12 @@ const blocks: {
   description: string
   icon: typeof Camera
 }[] = [
+  {
+    id: "command",
+    title: "Swiss Command",
+    description: "Search tabs, bookmarks, history",
+    icon: Search,
+  },
   {
     id: "capture",
     title: "Page Capture",
@@ -147,6 +161,7 @@ export function SidePanelApp() {
         className={`swiss-panel ${view === "home" ? "swiss-panel-home" : "swiss-panel-detail"} flex min-h-0 min-w-0 flex-col overflow-hidden`}
       >
         {view === "home" && <HomeView onOpen={setView} />}
+        {view === "command" && <CommandView onBack={back} />}
         {view === "capture" && <CaptureView onBack={back} />}
         {view === "tabs" && <TabsView onBack={back} />}
         {view === "memory" && <MemoryView onBack={back} />}
@@ -175,7 +190,7 @@ function HomeView({
                 key={b.id}
                 type="button"
                 onClick={() => onOpen(b.id)}
-                className={`tool-island group${index === blocks.length - 1 ? " tool-island-wide" : ""}`}
+                className={`tool-island group${blocks.length % 2 === 1 && index === blocks.length - 1 ? " tool-island-wide" : ""}`}
               >
                 <span aria-hidden="true" className="tool-island-icon">
                   <Icon className="size-5" />
@@ -198,6 +213,166 @@ function HomeView({
         </div>
       </div>
     </main>
+  )
+}
+
+function CommandView({ onBack }: { onBack: () => void }) {
+  const [query, setQuery] = useState("")
+  const [results, setResults] = useState<CommandResult[]>([])
+  const [selected, setSelected] = useState(0)
+  const [status, setStatus] = useState("")
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    inputRef.current?.focus()
+  }, [])
+
+  useEffect(() => {
+    let current = true
+    const timer = window.setTimeout(() => {
+      void searchBrowser(query)
+        .then((next) => {
+          if (!current) return
+          setResults(next)
+          setSelected(0)
+          setStatus(next.length ? `${next.length} results` : "No matching results")
+        })
+        .catch((error) => {
+          if (current) setStatus(error instanceof Error ? error.message : String(error))
+        })
+    }, 90)
+    return () => {
+      current = false
+      window.clearTimeout(timer)
+    }
+  }, [query])
+
+  const open = async (result: CommandResult) => {
+    try {
+      await openCommandResult(result)
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : String(error))
+    }
+  }
+
+  return (
+    <>
+      <PanelHeader title="Swiss Command" onBack={onBack} />
+      <main className="command-workspace swiss-scroll flex min-h-0 flex-1 flex-col overflow-hidden p-4">
+        <div className="command-search-wrap">
+          <Search aria-hidden="true" className="size-[19px] shrink-0 text-muted-foreground" />
+          <label htmlFor="swiss-command-search" className="sr-only">
+            Search open tabs, bookmarks, and history
+          </label>
+          <input
+            ref={inputRef}
+            id="swiss-command-search"
+            type="search"
+            role="combobox"
+            aria-autocomplete="list"
+            aria-controls="swiss-command-results"
+            aria-expanded="true"
+            aria-activedescendant={results[selected] ? `swiss-command-result-${selected}` : undefined}
+            autoComplete="off"
+            spellCheck={false}
+            placeholder="Search your browser…"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "ArrowDown") {
+                event.preventDefault()
+                setSelected((value) => Math.min(results.length - 1, value + 1))
+              } else if (event.key === "ArrowUp") {
+                event.preventDefault()
+                setSelected((value) => Math.max(0, value - 1))
+              } else if (event.key === "Enter" && results[selected]) {
+                event.preventDefault()
+                void open(results[selected])
+              } else if (event.key === "Escape") {
+                event.preventDefault()
+                if (query) setQuery("")
+                else onBack()
+              }
+            }}
+          />
+          {query ? (
+            <button
+              type="button"
+              className="command-clear"
+              aria-label="Clear search"
+              onClick={() => {
+                setQuery("")
+                inputRef.current?.focus()
+              }}
+            >
+              ×
+            </button>
+          ) : null}
+        </div>
+        <p className="command-status" role="status" aria-live="polite">
+          {status}
+        </p>
+        <ul
+          id="swiss-command-results"
+          className="command-result-list swiss-scroll"
+          role="listbox"
+          aria-label="Search results"
+        >
+          {results.map((result, index) => (
+            <li
+              key={`${result.kind}-${result.id}-${result.url}`}
+              id={`swiss-command-result-${index}`}
+              role="option"
+              aria-selected={index === selected}
+              className="command-result"
+              onMouseMove={() => setSelected(index)}
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => void open(result)}
+            >
+              <span className="command-result-icon" aria-hidden="true">
+                {result.kind === "tab" ? (
+                  <>
+                    <WindowTabs className="size-[17px]" />
+                    <img
+                      src={commandFaviconUrl(result.url)}
+                      alt=""
+                      onError={(event) => {
+                        event.currentTarget.hidden = true
+                      }}
+                    />
+                  </>
+                ) : result.kind === "bookmark" ? (
+                  <Bookmark className="size-[17px]" />
+                ) : (
+                  <ClockRotateRight className="size-[17px]" />
+                )}
+              </span>
+              <span className="min-w-0">
+                <span className="block truncate text-[13px] leading-tight font-semibold tracking-[-0.01em]">
+                  {result.title || result.host}
+                </span>
+                <span className="mt-1 block truncate text-[10px] text-muted-foreground">
+                  {result.host || result.url}
+                </span>
+              </span>
+              <span className="text-[9px] tracking-[0.06em] text-muted-foreground uppercase">
+                {result.kind}
+              </span>
+            </li>
+          ))}
+          {!results.length ? (
+            <li className="command-empty">
+              {query ? "No matching tabs, bookmarks, or history." : "Your browser activity will appear here."}
+            </li>
+          ) : null}
+        </ul>
+        <div className="command-hints" aria-hidden="true">
+          <span><kbd>↑</kbd><kbd>↓</kbd> Select</span>
+          <span><kbd>↵</kbd> Open</span>
+          <span><kbd>esc</kbd> Clear</span>
+        </div>
+      </main>
+    </>
   )
 }
 

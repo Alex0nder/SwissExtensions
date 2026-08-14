@@ -1,8 +1,8 @@
 # Swiss Extensions
 
-Chrome MV3 extension: Page Capture, Tab Hibernate, Memory Cleaner, Site Blocker, Site Data Clear.
+Chrome MV3 extension: Swiss Command, Page Capture, Tab Hibernate, Memory Cleaner, Site Blocker, and Site Data Clear.
 
-**Version:** see `manifest.json` (current: 1.5.48).
+**Version:** see `manifest.json` (current: 1.5.49).
 
 ## Structure
 

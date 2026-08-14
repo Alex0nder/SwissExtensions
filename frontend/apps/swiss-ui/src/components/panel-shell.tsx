@@ -10,12 +10,12 @@ export function PanelHeader({
   onBack: () => void
 }) {
   return (
-    <header className="flex min-h-16 shrink-0 items-center gap-2 px-4 py-2">
+    <header className="flex min-h-14 shrink-0 items-center gap-2 px-3 py-2">
       <Button
         type="button"
         variant="ghost"
         size="icon"
-        className="-ml-2 size-11 rounded-xl text-muted-foreground hover:text-foreground"
+        className="size-10 rounded-xl text-muted-foreground hover:text-foreground active:scale-[0.96]"
         onClick={onBack}
         aria-label="Back to tools"
       >

@@ -114,7 +114,7 @@ export function SuspendedApp() {
   const hasScreenshot = Boolean(previewDataUrl && !imageFailed)
 
   useEffect(() => {
-    if (!fallbackFaviconUrl) return
+    if (!visibleFavicon) return
 
     let cancelled = false
     const link =
@@ -133,21 +133,20 @@ export function SuspendedApp() {
       canvas.height = 32
       const context = canvas.getContext("2d")
       if (!context) return
-      context.filter = "grayscale(1) saturate(0) opacity(0.72)"
       context.drawImage(favicon, 0, 0, 32, 32)
       try {
         link.href = canvas.toDataURL("image/png")
       } catch {
-        link.href = fallbackFaviconUrl
+        link.href = visibleFavicon
       }
     }
-    favicon.src = fallbackFaviconUrl
+    favicon.src = visibleFavicon
 
     return () => {
       cancelled = true
       favicon.onload = null
     }
-  }, [fallbackFaviconUrl])
+  }, [visibleFavicon])
 
   return (
     <main

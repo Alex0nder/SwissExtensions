@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Swiss Command</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <main class="command-shell">
+      <header class="command-header">
+        <span class="swiss-mark" aria-hidden="true"></span>
+        <div>
+          <h1>Swiss Command</h1>
+          <p>Tabs, bookmarks, and history</p>
+        </div>
+        <kbd>⌥⇧S</kbd>
+      </header>
+
+      <div class="search-wrap">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="11" cy="11" r="6.5"></circle>
+          <path d="m16 16 4 4"></path>
+        </svg>
+        <label class="sr-only" for="command-search">Search tabs, bookmarks, and history</label>
+        <input
+          id="command-search"
+          type="search"
+          placeholder="Search your browser…"
+          autocomplete="off"
+          spellcheck="false"
+          role="combobox"
+          aria-autocomplete="list"
+          aria-controls="command-results"
+          aria-expanded="true"
+        />
+        <button id="clear-search" type="button" aria-label="Clear search" hidden>×</button>
+      </div>
+
+      <p class="result-status" id="result-status" role="status" aria-live="polite"></p>
+      <ul id="command-results" class="result-list" role="listbox" aria-label="Search results"></ul>
+
+      <footer class="command-footer" aria-hidden="true">
+        <span><kbd>↑</kbd><kbd>↓</kbd> Select</span>
+        <span><kbd>↵</kbd> Open</span>
+        <span><kbd>esc</kbd> Clear</span>
+      </footer>
+    </main>
+    <script src="command-core.js"></script>
+    <script src="popup.js"></script>
+  </body>
+</html>

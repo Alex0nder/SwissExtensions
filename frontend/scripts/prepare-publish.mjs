@@ -2,7 +2,7 @@
 /**
  * After Vite build: copy favicon/ and downloads/ into apps/web/dist for Netlify.
  */
-import { cpSync, existsSync, mkdirSync, rmSync } from "node:fs"
+import { cpSync, existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
 
@@ -30,3 +30,32 @@ for (const { from, to } of copies) {
   cpSync(from, to, { recursive: true })
   console.log(`Copied ${path.basename(from)} → dist/${path.basename(to)}`)
 }
+
+// Manual Netlify deploys only receive the contents of dist, so netlify.toml at
+// the repository root is not available. Keep the equivalent cache policy in
+// the deploy bundle itself.
+const headers = `/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+
+/
+  Cache-Control: public, max-age=0, must-revalidate
+
+/index.html
+  Cache-Control: public, max-age=0, must-revalidate
+
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/favicon/*
+  Cache-Control: public, max-age=3600, must-revalidate
+
+/favicon/site.webmanifest
+  Cache-Control: public, max-age=0, must-revalidate
+
+/downloads/*.zip
+  Cache-Control: public, max-age=86400, immutable
+`
+
+writeFileSync(path.join(dist, "_headers"), headers)
+console.log("Created dist/_headers for manual Netlify deploys")

@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Swiss Extensions · Store Assets</title>
+    <style>
+      * { box-sizing: border-box; }
+      html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; }
+      body {
+        color: #171717;
+        background: #f2f2f0;
+        font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+      .artboard {
+        position: relative;
+        width: 100vw;
+        height: 100vh;
+        overflow: hidden;
+        isolation: isolate;
+        background:
+          linear-gradient(90deg, rgba(249, 248, 244, .99) 0%, rgba(249, 248, 244, .95) 42%, rgba(249, 248, 244, .3) 72%, rgba(249, 248, 244, .06) 100%),
+          url("./source/alpine-generated.png") center / cover no-repeat;
+      }
+      .artboard::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        z-index: -1;
+        background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(231,234,235,.18));
+      }
+      .brand {
+        position: absolute;
+        top: 42px;
+        left: 54px;
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        font-size: 18px;
+        font-weight: 700;
+        letter-spacing: -.02em;
+      }
+      .mark {
+        position: relative;
+        width: 34px;
+        height: 34px;
+        flex: none;
+        border-radius: 8px;
+        background: #d52b1e;
+        box-shadow: inset 0 0 0 1px rgba(0,0,0,.08);
+      }
+      .mark::before, .mark::after {
+        content: "";
+        position: absolute;
+        inset: 50% auto auto 50%;
+        width: 18px;
+        height: 6px;
+        border-radius: 1px;
+        background: white;
+        transform: translate(-50%, -50%);
+      }
+      .mark::after { transform: translate(-50%, -50%) rotate(90deg); }
+      .copy {
+        position: absolute;
+        left: 74px;
+        top: 190px;
+        width: 570px;
+      }
+      .kicker {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 20px;
+        color: #bb291f;
+        font-size: 13px;
+        font-weight: 750;
+        letter-spacing: .14em;
+        text-transform: uppercase;
+      }
+      .kicker::before { content: ""; width: 34px; height: 3px; background: currentColor; }
+      h1 {
+        margin: 0;
+        max-width: 560px;
+        font-size: clamp(54px, 5.1vw, 72px);
+        line-height: .98;
+        letter-spacing: -.055em;
+        text-wrap: balance;
+      }
+      .subcopy {
+        max-width: 480px;
+        margin: 26px 0 0;
+        color: #555754;
+        font-size: 19px;
+        line-height: 1.45;
+        letter-spacing: -.015em;
+      }
+      .privacy {
+        display: inline-flex;
+        align-items: center;
+        gap: 9px;
+        margin-top: 30px;
+        color: #444643;
+        font-size: 13px;
+        font-weight: 650;
+      }
+      .privacy::before {
+        content: "";
+        width: 8px;
+        height: 8px;
+        border-radius: 999px;
+        background: #d52b1e;
+        box-shadow: 0 0 0 4px rgba(213,43,30,.12);
+      }
+      .product {
+        position: absolute;
+        top: 58px;
+        right: 86px;
+        width: 420px;
+        height: 800px;
+        overflow: hidden;
+        border-radius: 30px;
+        background: #f5f5f5;
+        box-shadow: 0 32px 70px rgba(26, 31, 34, .2), 0 2px 10px rgba(26, 31, 34, .12);
+        outline: 1px solid rgba(0,0,0,.08);
+        transform: scale(.83);
+        transform-origin: top right;
+      }
+      .product img { display: block; width: 100%; height: 100%; object-fit: cover; }
+      .index {
+        position: absolute;
+        left: 54px;
+        bottom: 42px;
+        color: #777975;
+        font-size: 12px;
+        font-variant-numeric: tabular-nums;
+        letter-spacing: .12em;
+        text-transform: uppercase;
+      }
+      .promo .copy { top: 138px; width: 610px; }
+      .promo h1 { font-size: 66px; max-width: 620px; }
+      .promo .product {
+        top: 44px;
+        right: 72px;
+        transform: scale(.58) rotate(1deg);
+      }
+      .promo .product.second {
+        top: 93px;
+        right: 310px;
+        transform: scale(.46) rotate(-3deg);
+        filter: saturate(.86);
+      }
+      .small .artboard { background-position: 55% center; }
+      .small .brand { top: 24px; left: 26px; gap: 9px; font-size: 14px; }
+      .small .mark { width: 25px; height: 25px; border-radius: 6px; }
+      .small .mark::before, .small .mark::after { width: 13px; height: 4px; }
+      .small .copy { top: 78px; left: 28px; width: 255px; }
+      .small .kicker { margin-bottom: 10px; font-size: 8px; gap: 6px; }
+      .small .kicker::before { width: 19px; height: 2px; }
+      .small h1 { max-width: 245px; font-size: 31px; line-height: .98; }
+      .small .subcopy { width: 220px; margin-top: 12px; font-size: 11px; line-height: 1.38; }
+      .small .product {
+        top: 25px;
+        right: -60px;
+        transform: scale(.28) rotate(2deg);
+      }
+      .small .privacy, .small .index { display: none; }
+    </style>
+  </head>
+  <body>
+    <main class="artboard">
+      <div class="brand"><span class="mark" aria-hidden="true"></span>Swiss Extensions</div>
+      <section class="copy">
+        <div class="kicker" id="kicker">One side panel</div>
+        <h1 id="headline">Six tools. One calm browser.</h1>
+        <p class="subcopy" id="subcopy">Search, capture, hibernate, clean memory, block distractions, and clear site data.</p>
+        <div class="privacy">Private by design · Data stays on your device</div>
+      </section>
+      <div class="product second" id="product-secondary" hidden><img alt="" /></div>
+      <div class="product"><img id="screen" alt="Swiss Extensions interface" /></div>
+      <div class="index" id="index">01 / 05</div>
+    </main>
+    <script>
+      const assets = {
+        home: {
+          kicker: "One side panel",
+          headline: "Six tools. One calm browser.",
+          subcopy: "Search, capture, hibernate, clean memory, block distractions, and clear site data.",
+          screen: "home.png",
+          index: "01 / 05",
+        },
+        command: {
+          kicker: "Swiss Command",
+          headline: "Find anything in your browser.",
+          subcopy: "Search open tabs, bookmarks, and history from one private command palette.",
+          screen: "command.png",
+          index: "02 / 05",
+        },
+        hibernate: {
+          kicker: "Tab Hibernate",
+          headline: "Put inactive tabs to sleep.",
+          subcopy: "Reduce memory use while keeping every page ready to restore when you return.",
+          screen: "hibernate.png",
+          index: "03 / 05",
+        },
+        memory: {
+          kicker: "Memory Cleaner",
+          headline: "Free memory. Keep your place.",
+          subcopy: "Discard background tabs without closing them. Protect pinned, audible, grouped, or private tabs.",
+          screen: "memory.png",
+          index: "04 / 05",
+        },
+        blocker: {
+          kicker: "Site Blocker",
+          headline: "Block distractions. Save tabs first.",
+          subcopy: "Use your blocklist and focus schedule while preserving tabs for later recovery.",
+          screen: "blocker.png",
+          index: "05 / 05",
+        },
+        promo: {
+          kicker: "Private productivity suite",
+          headline: "Your browser, under control.",
+          subcopy: "Six focused tools in one minimal side panel. No account. No cloud upload.",
+          screen: "command.png",
+          secondary: "home.png",
+          index: "Swiss Extensions · Manifest V3",
+          className: "promo",
+        },
+        small: {
+          kicker: "Six tools · one panel",
+          headline: "Your browser, under control.",
+          subcopy: "Search, capture, save RAM, and stay focused.",
+          screen: "home.png",
+          className: "small",
+        },
+      }
+      const key = new URLSearchParams(location.search).get("asset") || "home"
+      const asset = assets[key] || assets.home
+      document.body.className = asset.className || ""
+      document.getElementById("kicker").textContent = asset.kicker
+      document.getElementById("headline").textContent = asset.headline
+      document.getElementById("subcopy").textContent = asset.subcopy
+      document.getElementById("screen").src = `./source/${asset.screen}`
+      document.getElementById("index").textContent = asset.index || ""
+      const secondary = document.getElementById("product-secondary")
+      if (asset.secondary) {
+        secondary.hidden = false
+        secondary.querySelector("img").src = `./source/${asset.secondary}`
+      }
+    </script>
+  </body>
+</html>

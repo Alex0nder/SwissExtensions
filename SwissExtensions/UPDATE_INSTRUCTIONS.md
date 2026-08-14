@@ -1,31 +1,34 @@
-# Обновление расширения без потери вкладок
+# Update Swiss Extensions without losing tabs
 
-## Перед кнопкой «Обновить» в chrome://extensions
+Suspended placeholder tabs belong to a specific extension installation. A manual removal or reinstall can change the unpacked extension ID, making placeholders from the previous installation unavailable. Back up your tabs before updating.
 
-1. Side Panel → Tab Hibernate → **Backup all tabs now** (или **Backup to bookmarks**).
-2. По желанию: **Restore all** — разбудить заглушки в обычные вкладки, затем снова backup.
-3. Только после этого нажимайте **Обновить** у расширения.
+## Before clicking Reload or reinstalling
 
-С версии **1.5.6** перед обновлением делается автоматический снимок вкладок; «Recover lost tabs» ищет URL также в закладках **Tab Hibernate → Emergency Recovery** и **Tab Backup**.
+1. Open **Side Panel → Tab Hibernate**.
+2. Select **Backup all tabs now** or **Backup to bookmarks**.
+3. Optionally select **Restore all** to turn placeholders back into normal tabs, then create one more backup.
+4. Only after the backup completes, reload or reinstall the extension from `chrome://extensions/`.
 
-## Проблема
-При обновлении (Remove + Load unpacked или новая загрузка) Chrome может назначать новый ID расширения. Вкладки‑заглушки (suspended) ссылаются на старый ID и закрываются.
+Swiss Extensions also creates an automatic snapshot before supported updates. Recovery searches local extension storage and the **Tab Hibernate → Emergency Recovery** and **Tab Backup** bookmark folders.
 
-## Перед обновлением (ручной Reload)
-1. Откройте Side Panel → Tab Hibernate
-2. Нажмите **«Restore all»** (Восстановить все) — разбудите все suspended вкладки
-3. Только после этого обновляйте расширение (Refresh или Load unpacked)
+## Recover tabs after an update
 
-## Восстановление после обновления
-Если вкладки всё же закрылись:
-1. Tab Hibernate → **«Recover lost tabs»**
-2. Восстанавливаются URL из закладок и storage
-3. **Вкладки создаются как placeholder** — страницы не загружаются до клика «Restore», экономия RAM и CPU при 100+ вкладках
+If suspended tabs were closed or their placeholders no longer work:
 
-## Сохранение backup
-Tab Hibernate автоматически делает backup в закладки. Проверьте папку закладок — там должны быть URL сохранённых вкладок.
+1. Open **Side Panel → Tab Hibernate**.
+2. Select **Recover lost tabs**.
+3. Review the recovered URLs from local storage and bookmarks.
+4. Restore the required tabs. Recovered tabs may first open as lightweight placeholders so pages do not all load at once.
 
-## После зависания и принудительного завершения браузера
-1. **Вкладки** — Tab Hibernate → History. URL сохраняются в closedAndSaved до закрытия вкладок.
-2. **Расширение пропало** — chrome://extensions → найдите Swiss Extensions → кнопка «Обновить» (Reload). Если отключено — включите.
-3. **Профилактика** — при 1000+ вкладках добавлены задержки между операциями, чтобы снизить риск зависания.
+## Recover after a browser crash or force quit
+
+- Open **Tab Hibernate → History** and check the saved tab list.
+- Check the **Emergency Recovery** and **Tab Backup** bookmark folders.
+- If the extension is disabled, open `chrome://extensions/`, enable Swiss Extensions, and select **Reload**.
+- Restore very large sessions in batches to avoid loading hundreds of pages simultaneously.
+
+## Important limitations
+
+- Removing an unpacked extension can remove its local extension storage.
+- A bookmark backup is safer than relying on local storage alone when reinstalling.
+- Unsaved form data and in-page application state may be lost when a tab is suspended, discarded, or restored.

@@ -1,34 +1,34 @@
-# Page Capture — тайлы 1440×1024
+# Page Capture — 1440 × 1024 tiles
 
-Расширение Chrome: скрин страницы не одной длинной полоской (как в GoFullPage), а **тайлами фиксированного размера 1440×1024** с экспортом в **PNG** (несколько файлов) или **PDF** (многостраничный).
+A Chrome extension that captures a long page as fixed-size 1440 × 1024 tiles and exports them as separate PNG files or a multipage PDF.
 
-## Как работает (по аналогии с GoFullPage)
+## Install
 
-1. Окно браузера временно меняется на **1440×1024**.
-2. Страница прокручивается с шагом 1024 px; на каждом шаге делается `captureVisibleTab()`.
-3. Каждый кадр — тайл 1440×1024 (на Retina может быть 2880×2048, в PDF/PNG приводится к 1440×1024 по смыслу страницы).
-4. Окно возвращается к прежнему размеру.
+1. Open `chrome://extensions/`.
+2. Enable **Developer mode**.
+3. Select **Load unpacked** and choose the `PdfExtensions` folder.
 
-## Установка
+## Use
 
-1. Откройте `chrome://extensions/`.
-2. Включите «Режим разработчика».
-3. «Загрузить распакованное расширение» → выберите папку `PdfExtensions`.
+1. Open an `http://` or `https://` page.
+2. Select the extension icon.
+3. Choose **Download PNG tiles** to save numbered PNG files.
+4. Choose **Download PDF** to create one document with a page for each tile.
 
-## Использование
+## How capture works
 
-1. Откройте нужную страницу (http/https).
-2. Нажмите на иконку расширения.
-3. **Скачать PNG (тайлы)** — сохраняются файлы `page-capture_YYYY-MM-DD_1.png`, `_2.png`, …
-4. **Скачать PDF** — открывается вкладка, формируется PDF и предлагается скачать один файл со всеми страницами 1440×1024.
+1. The browser window is temporarily resized to 1440 × 1024.
+2. The extension scrolls the page in 1024-pixel steps and calls `captureVisibleTab()` at each position.
+3. High-density displays may produce 2880 × 2048 source images; exports preserve the intended 1440 × 1024 page proportions.
+4. The original browser-window size and maximized state are restored after capture.
 
-## Формат
+## Output
 
-- **Тайл:** ширина 1440 px, высота 1024 px.
-- **PNG:** каждый тайл — отдельный файл.
-- **PDF:** ландшафт, размер страницы 1440×1024 px, по одной странице на тайл.
+- **PNG:** one numbered file per 1440 × 1024 tile.
+- **PDF:** one landscape page per tile in a single document.
 
-## Ограничения
+## Limitations
 
-- Работает только на страницах `http://` и `https://`.
-- Окно на время захвата ресайзится; после захвата размер восстанавливается (максимизированное окно снова максимизируется).
+- Capture is limited to supported web pages; Chrome internal pages cannot be captured.
+- The browser window changes size temporarily during capture.
+- Very long or dynamically loaded pages may require additional time to render while scrolling.

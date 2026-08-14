@@ -1,35 +1,56 @@
-# Extensions (Swiss family)
+# Swiss Extensions
 
-В репозитории два варианта:
+A family of private, local-first Chrome extensions for tab management, page capture, focus, and site-data cleanup.
 
-- **`SwissExtensions/`** — один пакет (Side Panel): захват страницы, Tab Hibernate, Memory Cleaner, Site Blocker, Site Data Clear. Больше прав в `manifest.json` → ревью в Chrome Web Store обычно дольше и с большим числом вопросов.
-- **Отдельные папки ниже** — те же идеи с **минимальными** правами под задачу. Их удобнее подавать в Store по одному: меньше поверхность для проверки, проще обосновать каждое разрешение.
+This repository provides two ways to use the tools:
 
-## Отдельные расширения (рекомендуется для публикации)
+- **`SwissExtensions/`** is the all-in-one Side Panel package. It contains every tool, but requires broader permissions.
+- **Standalone extension folders** contain one focused tool each, with the narrowest practical permission set. These packages are easier to review and publish separately in the Chrome Web Store.
 
-| Папка | Название для Store | Суть |
-|--------|-------------------|------|
-| `PdfExtensions/` | Page Capture (tiles / PNG) | Скан страницы, плитки, экспорт PNG; `activeTab` + узкие `host_permissions` где возможно |
-| `TabHibernate/` | Tab Hibernate | Сон вкладок, закладки-бэкап, side panel |
-| `TabMemoryCleaner/` | Tab Memory Cleaner | Discard фоновых вкладок, горячая клавиша |
-| `SiteBlocker/` | Site Blocker | DNR, списки блокировки, отдельный `background.js` |
-| `SiteDataClear/` | Site Data Clear | Очистка данных сайта по кнопке |
+## Available extensions
 
-Загрузка в режиме разработчика: для каждого пункта — **Load unpacked** и выбор **соответствующей папки** (не корень репозитория).
+| Folder | Extension | What it does |
+| --- | --- | --- |
+| [SwissCommand/](SwissCommand/) | Swiss Command | Searches open tabs, bookmarks, and browsing history locally. |
+| [PdfExtensions/](PdfExtensions/) | Page Capture | Captures long pages as fixed-size PNG tiles or a multipage PDF. |
+| [TabHibernate/](TabHibernate/) | Tab Hibernate | Suspends inactive tabs and backs up their URLs to bookmarks and local storage. |
+| [TabMemoryCleaner/](TabMemoryCleaner/) | Tab Memory Cleaner | Discards background tabs to free memory without closing them. |
+| [SiteBlocker/](SiteBlocker/) | Site Blocker | Blocks distracting sites and provides lightweight ad/tracker filtering. |
+| [SiteDataClear/](SiteDataClear/) | Site Data Clear | Clears cookies and browser storage for the current site on demand. |
+| [SwissExtensions/](SwissExtensions/) | Swiss Extensions | Combines all six tools in one Chrome Side Panel. |
 
-## Монолит (опционально)
+Each folder contains its own `README.md` with feature details and limitations.
 
-`SwissExtensions/` — для тех, кто хочет одну иконку и одну панель. Можно оставить как «suite» или не публиковать в Store, если цель — быстрее пройти модерацию через сплиты.
+## Install in Developer mode
 
-Единственный актуальный исходник монолитного расширения находится в `SwissExtensions/`.
-Store-архив создаётся только скриптом `SwissExtensions/scripts/package-swiss-extensions-store.sh`.
+1. Clone or download this repository.
+2. Open `chrome://extensions/` in Chrome.
+3. Enable **Developer mode**.
+4. Select **Load unpacked**.
+5. Choose one extension folder, such as `SwissCommand`, `PdfExtensions`, or `SwissExtensions`. Do not select the repository root.
 
-## Установка (developer mode)
+Chrome 114 or newer is recommended for extensions that use the Side Panel API.
 
-1. `chrome://extensions/` → **Режим разработчика**.
-2. **Загрузить распакованное** → указать папку нужного расширения (например `PdfExtensions` или `SwissExtensions`).
+## Updating without losing suspended tabs
 
-## Privacy / лицензия
+Before manually reloading or reinstalling Swiss Extensions, back up your tabs from **Side Panel → Tab Hibernate → Backup all tabs now**. See [UPDATE_INSTRUCTIONS.md](SwissExtensions/UPDATE_INSTRUCTIONS.md) for the complete recovery procedure.
 
-- Политика (для Store): https://github.com/Alex0nder/SwissExtensions/blob/main/PRIVACY_POLICY.md  
-- Лицензия: MIT (см. файлы в подпроектах при наличии).
+## Building the all-in-one Store package
+
+Run the packaging script from the suite directory:
+
+```bash
+cd SwissExtensions
+./scripts/package-swiss-extensions-store.sh
+```
+
+The script creates the Chrome Web Store archive in `SwissExtensions/dist/` and a developer-mode archive in `downloads/`.
+
+Before publishing, follow the [Chrome Web Store checklist](SwissExtensions/PUBLISHING_CHECKLIST.md). Store copy and permission explanations are maintained in [STORE_LISTING.md](SwissExtensions/STORE_LISTING.md).
+
+## Privacy and license
+
+- [Privacy Policy](PRIVACY_POLICY.md)
+- MIT licenses are included in the applicable extension folders.
+
+The extensions are designed to process browser data locally. Review each extension's manifest and privacy disclosures before publishing.

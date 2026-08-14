@@ -8,6 +8,7 @@ import {
   Globe,
   NavArrowRight,
   Shield,
+  Search,
   Trash,
   WindowTabs,
   X,
@@ -15,12 +16,12 @@ import {
 
 import creatorPortrait from "./assets/creator-portrait.jpg"
 
-const SWISS_VERSION = "1.5.48"
+const SWISS_VERSION = "1.5.49"
 const STORE_URL =
   "https://chromewebstore.google.com/detail/obemilbkkamjohnlhlbmcmnoifojhjip?utm_source=item-share-cb"
-const GITHUB_URL = "https://github.com/Alex0nder/SwissExtensions"
+const GITHUB_URL = "https://github.com/navorina-labs/SwissExtensions"
 const PRIVACY_URL =
-  "https://github.com/Alex0nder/SwissExtensions/blob/main/PRIVACY_POLICY.md"
+  "https://github.com/navorina-labs/SwissExtensions/blob/main/PRIVACY_POLICY.md"
 
 const contactLinks = [
   {
@@ -46,6 +47,14 @@ const contactLinks = [
 ]
 
 const downloads = [
+  {
+    name: "Swiss Command",
+    description: "Search tabs, bookmarks, and history.",
+    preview: "Find anything in your browser",
+    icon: Search,
+    version: "1.0.0",
+    file: "SwissCommand-v1.0.0.zip",
+  },
   {
     name: "Page Capture",
     description: "Save a full page as PNG or PDF.",
@@ -136,7 +145,7 @@ function ProductPreview() {
 
               return (
                 <div
-                  className={`panel-row${index === downloads.length - 1 ? " panel-row-wide" : ""}`}
+                  className={`panel-row${downloads.length % 2 === 1 && index === downloads.length - 1 ? " panel-row-wide" : ""}`}
                   key={item.name}
                 >
                   <span className="panel-icon">

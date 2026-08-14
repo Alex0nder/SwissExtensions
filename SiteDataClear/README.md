@@ -1,22 +1,23 @@
 # Site Data Clear
 
-Chrome-расширение: очистка cookies, localStorage и sessionStorage для текущего сайта. Пользователь выбирает, что именно удалить.
+A Chrome extension that clears selected cookies and browser storage for the current site. Nothing is removed until the user chooses the data types and confirms the action.
 
-## Установка
+## Install
 
-1. Откройте `chrome://extensions/`.
-2. Включите «Режим разработчика».
-3. «Загрузить распакованное расширение» → выберите папку `SiteDataClear`.
+1. Open `chrome://extensions/`.
+2. Enable **Developer mode**.
+3. Select **Load unpacked** and choose the `SiteDataClear` folder.
 
-## Использование
+## Use
 
-1. Откройте нужный сайт.
-2. Нажмите на иконку расширения.
-3. Отметьте: Cookies, localStorage, sessionStorage (по желанию).
-4. «Очистить для этого сайта» — данные удаляются, страница перезагружается.
+1. Open the site whose data you want to clear.
+2. Select the extension icon.
+3. Choose the data types to remove, such as cookies, local storage, session storage, or cache storage.
+4. Confirm the action. The selected data is removed for the current site and the page reloads.
 
-## Технические детали
+## Technical details
 
-- **cookies / localStorage:** `chrome.browsingData.remove()` с фильтром по origin.
-- **sessionStorage:** внедрение скрипта в страницу, `sessionStorage.clear()`.
-- Нужен хотя бы один выбранный пункт; для chrome:// и системных страниц не работает.
+- Cookies and supported storage types are removed with `chrome.browsingData.remove()` using the current origin as a filter.
+- Session storage is cleared by running `sessionStorage.clear()` in the current page.
+- At least one data type must be selected.
+- The extension cannot operate on `chrome://` pages or other protected browser pages.

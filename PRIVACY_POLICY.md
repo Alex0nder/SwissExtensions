@@ -62,5 +62,4 @@ This policy may be updated to reflect product or legal changes. The latest versi
 ## Contact
 
 Repository and contact point:
-https://github.com/Alex0nder/SwissExtensions
-
+https://github.com/navorina-labs/SwissExtensions

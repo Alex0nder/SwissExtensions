@@ -2,7 +2,7 @@
 
 Chrome extension (Manifest V3) that reduces memory usage by suspending inactive tabs after a timeout or on demand, and saves URLs to bookmarks and local storage. The UI opens in the **Side Panel** when you click the extension icon.
 
-- **Repository:** [github.com/Alex0nder/TabHibernate](https://github.com/Alex0nder/TabHibernate)
+- **Repository:** [SwissExtensions/TabHibernate](https://github.com/navorina-labs/SwissExtensions/tree/main/TabHibernate)
 
 **Requirements:** Chrome 88+ with Manifest V3 support; Chrome 114+ recommended for Side Panel.
 

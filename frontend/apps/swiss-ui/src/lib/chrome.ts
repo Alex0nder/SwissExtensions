@@ -94,9 +94,29 @@ export function installDevChromeMock() {
     tabs: {
       create: async () => undefined,
       query: async () => [
-        { id: 1, url: "https://example.com", active: true },
+        { id: 1, windowId: 1, title: "Swiss Extensions", url: "https://github.com/navorina-labs/SwissExtensions", active: true },
+        { id: 2, windowId: 1, title: "Chrome Extensions documentation", url: "https://developer.chrome.com/docs/extensions", active: false },
+        { id: 3, windowId: 1, title: "Design notes", url: "https://www.notion.so/design-notes", active: false },
       ],
+      update: async () => undefined,
       reload: async () => undefined,
+    },
+    windows: {
+      update: async () => undefined,
+    },
+    bookmarks: {
+      search: async () => [
+        { id: "b1", title: "Swiss typography", url: "https://www.typography.com/" },
+      ],
+      getRecent: async () => [
+        { id: "b1", title: "Swiss typography", url: "https://www.typography.com/", dateAdded: Date.now() },
+        { id: "b2", title: "Chrome Web Store", url: "https://chromewebstore.google.com/", dateAdded: Date.now() - 60_000 },
+      ],
+    },
+    history: {
+      search: async () => [
+        { id: "h1", title: "Chrome Extensions", url: "https://developer.chrome.com/docs/extensions", lastVisitTime: Date.now() - 120_000 },
+      ],
     },
     browsingData: {
       remove: async () => undefined,

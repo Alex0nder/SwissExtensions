@@ -1,8 +1,8 @@
 # Swiss Extensions — тексты для Chrome Web Store
 
-Версия пакета: **1.5.48** · [Developer Dashboard](https://chrome.google.com/webstore/devconsole)
+Версия пакета: **1.5.49** · [Developer Dashboard](https://chrome.google.com/webstore/devconsole)
 
-Privacy Policy: `https://github.com/Alex0nder/SwissExtensions/blob/main/PRIVACY_POLICY.md`
+Privacy Policy: `https://github.com/navorina-labs/SwissExtensions/blob/main/PRIVACY_POLICY.md`
 
 ---
 
@@ -24,19 +24,21 @@ Capture, tab hibernate, RAM cleaner, site blocker with tab backup, history recov
 
 **EN — вставить в карточку Store:**
 
-Your browser shouldn’t feel like a second job. Swiss Extensions packs five practical tools into one minimal side panel — so you move faster, use less RAM, and stay on task.
+Your browser shouldn’t feel like a second job. Swiss Extensions brings practical browser tools into one minimal side panel — so you move faster, use less RAM, and stay on task.
 
 What’s inside
 
-1. **Page Capture** — Long pages, clean exports: tiled PNG capture (full scroll stitched in the browser).
+1. **Swiss Command** — Search open tabs, bookmarks, and browsing history from one private command palette.
 
-2. **Tab Hibernate** — Suspend inactive tabs as lightweight placeholders or discard; restore when you’re back. Backup to bookmarks and local history. **Recover lost tabs** after crashes or extension updates.
+2. **Page Capture** — Long pages, clean exports: tiled PNG capture (full scroll stitched in the browser).
 
-3. **Memory Cleaner** — Discard background tabs to free memory without closing your active tab.
+3. **Tab Hibernate** — Suspend inactive tabs as lightweight placeholders or discard; restore when you’re back. Backup to bookmarks and local history. **Recover lost tabs** after crashes or extension updates.
 
-4. **Site Blocker** — Block distracting domains with built-in filter lists plus your own blocklist, whitelist, and focus schedule. **Auto-save open tabs** on blocked sites to plugin History and Chrome bookmarks so you can restore them later.
+4. **Memory Cleaner** — Discard background tabs to free memory without closing your active tab.
 
-5. **Site Data Clear** — Clear cookies, localStorage, and sessionStorage for the current site — only when you confirm.
+5. **Site Blocker** — Block distracting domains with built-in filter lists plus your own blocklist, whitelist, and focus schedule. **Auto-save open tabs** on blocked sites to plugin History and Chrome bookmarks so you can restore them later.
+
+6. **Site Data Clear** — Clear cookies, localStorage, and sessionStorage for the current site — only when you confirm.
 
 **Tab recovery (local, on your device)**
 
@@ -54,9 +56,9 @@ No bloat. No noise. Built for people who live in many tabs and want performance 
 
 **RU (опционально, отдельная локаль):**
 
-Браузер не должен ощущаться второй работой. Swiss Extensions — пять инструментов в одной боковой панели: быстрее, меньше RAM, больше фокуса.
+Браузер не должен ощущаться второй работой. Swiss Extensions объединяет полезные инструменты в одной боковой панели: быстрее, меньше RAM, больше фокуса.
 
-**Внутри:** захват длинных страниц (PNG); гибернация вкладок с восстановлением; очистка RAM; блокировка сайтов по списку и расписанию; очистка данных текущего сайта по кнопке.
+**Внутри:** поиск по вкладкам, закладкам и истории; захват длинных страниц (PNG); гибернация вкладок с восстановлением; очистка RAM; блокировка сайтов; очистка данных текущего сайта.
 
 **Восстановление вкладок (только на устройстве):** резервная копия перед обновлением; восстановление из storage и закладок; поиск потерянных URL в истории Chrome; отдельный раздел History; автосохранение вкладок на заблокированных сайтах.
 
@@ -66,25 +68,21 @@ No bloat. No noise. Built for people who live in many tabs and want performance 
 
 ---
 
-## What's new (Release notes) — version 1.5.48
+## What's new (Release notes) — version 1.5.49
 
 **EN (full):**
 ```
-Tab Hibernate: fix tab groups being renamed or split by background maintenance — your Chrome group titles and membership stay as you set them.
-
-Tab Hibernate: sync placeholder group metadata when you rename or move tabs; Group same URLs updates storage after grouping.
+Swiss Command: search open tabs, bookmarks, and browsing history from one private command palette. Navigate results with the keyboard and open them without leaving the side panel.
 ```
 
 **EN (short, if character limit):**
 ```
-Fix tab group rename/split overridden by background sync; placeholder group metadata stays in sync with Chrome.
+Add Swiss Command: fast local search across tabs, bookmarks, and history with keyboard navigation.
 ```
 
 **RU:**
 ```
-Tab Hibernate: исправлено — фоновое обслуживание больше не сбрасывает переименование групп и не сливает разделённые вручную.
-
-Tab Hibernate: синхронизация метаданных группы при rename/move; после Group same URLs storage обновляется.
+Добавлен Swiss Command: быстрый локальный поиск по вкладкам, закладкам и истории с клавиатурной навигацией.
 ```
 
 ---
@@ -264,5 +262,5 @@ Read/update tab group title, color, and membership when the user saves or restor
 ./scripts/package-swiss-extensions-store.sh
 ```
 
-Архив Store: `dist/SwissExtensions-v1.5.48-chrome-store.zip`
-Сайт (Load unpacked): `downloads/SwissExtensions-v1.5.48.zip`
+Архив Store: `dist/SwissExtensions-v1.5.49-chrome-store.zip`
+Сайт (Load unpacked): `downloads/SwissExtensions-v1.5.49.zip`
