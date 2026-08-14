@@ -302,7 +302,11 @@ async function discardInactivePlaceholder(tab) {
   // Keep the renderer alive until Chrome has actually observed the page's
   // favicon. A fixed delay races on busy sessions and leaves the extension
   // action icon on every discarded placeholder.
-  await waitForPlaceholderFavicon(tab.id);
+  const faviconReady = await waitForPlaceholderFavicon(tab.id);
+  // If the renderer is unloaded before the canvas-backed favicon is ready,
+  // Chrome falls back to the extension icon for every suspended tab. Leave the
+  // page alive on timeout; a later maintenance/update pass can retry safely.
+  if (!faviconReady) return false;
   const fresh = await chrome.tabs.get(tab.id).catch(() => null);
   if (!fresh || fresh.active || (!isPlaceholderTabUrl(fresh.url) && !isSuspendedPlaceholderUrl(fresh.url))) {
     return false;
@@ -319,29 +323,28 @@ function isResolvedPlaceholderFavicon(favIconUrl) {
   const url = String(favIconUrl || '');
   if (!url) return false;
   return url.startsWith('data:image/')
-    || url.includes('/_favicon/')
     || url.endsWith('/suspended-fallback.svg');
 }
 
-function waitForPlaceholderFavicon(tabId, timeoutMs = 2000) {
+function waitForPlaceholderFavicon(tabId, timeoutMs = 8000) {
   return new Promise((resolve) => {
     let settled = false;
-    const finish = () => {
+    const finish = (ready = false) => {
       if (settled) return;
       settled = true;
       clearTimeout(timer);
       chrome.tabs.onUpdated.removeListener(onUpdated);
-      resolve();
+      resolve(ready);
     };
     const onUpdated = (updatedTabId, changeInfo, updatedTab) => {
       if (updatedTabId !== tabId) return;
-      if (isResolvedPlaceholderFavicon(changeInfo.favIconUrl || updatedTab?.favIconUrl)) finish();
+      if (isResolvedPlaceholderFavicon(changeInfo.favIconUrl || updatedTab?.favIconUrl)) finish(true);
     };
-    const timer = setTimeout(finish, timeoutMs);
+    const timer = setTimeout(() => finish(false), timeoutMs);
     chrome.tabs.onUpdated.addListener(onUpdated);
     chrome.tabs.get(tabId).then((current) => {
-      if (isResolvedPlaceholderFavicon(current?.favIconUrl)) finish();
-    }).catch(finish);
+      if (isResolvedPlaceholderFavicon(current?.favIconUrl)) finish(true);
+    }).catch(() => finish(false));
   });
 }
 
@@ -3322,6 +3325,16 @@ chrome.windows.onFocusChanged.addListener((windowId) => {
 chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
   if (typeof changeInfo.audible === 'boolean') {
     markTabActive(tabId);
+  }
+  // A busy placeholder may finish its canvas favicon after the page's load
+  // event. Retry the safe discard at that point instead of leaving its
+  // renderer resident indefinitely.
+  if (changeInfo.favIconUrl && isResolvedPlaceholderFavicon(changeInfo.favIconUrl)) {
+    chrome.tabs.get(tabId).then((tab) => {
+      if (isPlaceholderTabUrl(tab?.url) || isSuspendedPlaceholderUrl(tab?.url)) {
+        discardInactivePlaceholder(tab).catch(() => false);
+      }
+    }).catch(() => {});
   }
   if (changeInfo.url) {
     const navUrl = changeInfo.url;

@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Swiss Extensions",
-  "version": "1.5.49",
-  "description": "Swiss Command, Page Capture, Tab Hibernate, Memory Cleaner, Site Blocker, Site Data Clear — all in one",
+  "version": "1.5.50",
+  "description": "Swiss Command, Swiss Lens, Page Capture, Tab Hibernate, Memory Cleaner, Site Blocker, Site Data Clear — all in one",
   "minimum_chrome_version": "114",
   "homepage_url": "https://github.com/navorina-labs/SwissExtensions",
   "icons": {
@@ -29,6 +29,13 @@
     "webNavigation"
   ],
   "host_permissions": ["<all_urls>"],
+  "content_scripts": [
+    {
+      "matches": ["http://*/*", "https://*/*"],
+      "js": ["lens-core.js", "content.js"],
+      "run_at": "document_start"
+    }
+  ],
   "background": { "service_worker": "service_worker.js" },
   "commands": {
     "suspend-current-tab": {

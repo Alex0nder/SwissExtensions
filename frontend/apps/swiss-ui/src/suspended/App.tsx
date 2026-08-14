@@ -133,6 +133,7 @@ export function SuspendedApp() {
       canvas.height = 32
       const context = canvas.getContext("2d")
       if (!context) return
+      context.filter = "grayscale(1)"
       context.drawImage(favicon, 0, 0, 32, 32)
       try {
         link.href = canvas.toDataURL("image/png")

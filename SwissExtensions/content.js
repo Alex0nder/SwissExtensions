@@ -10,6 +10,7 @@ globalThis.__swissPageCaptureInjected = true;
 const HIDE_CLASS = 'page-capture-hide-fixed';
 const CAPTURE_ACTIVE_CLASS = 'page-capture-active';
 const CAPTURE_FAILSAFE_MS = 2 * 60 * 1000;
+const LENS_STYLE_ID = 'swiss-lens-overrides';
 
 let scrollRootCache = null;
 let restoreFailsafeTimer = null;
@@ -146,7 +147,33 @@ function showFloating() {
   document.documentElement.classList.remove(CAPTURE_ACTIVE_CLASS);
 }
 
+function applySwissLens(settings) {
+  if (!globalThis.SwissLensCore) return false;
+  let style = document.getElementById(LENS_STYLE_ID);
+  if (!style) {
+    style = document.createElement('style');
+    style.id = LENS_STYLE_ID;
+    (document.head || document.documentElement).appendChild(style);
+  }
+  const safe = globalThis.SwissLensCore.sanitizeSettings(settings);
+  style.textContent = globalThis.SwissLensCore.buildLensCss(safe);
+  document.documentElement.toggleAttribute('data-swiss-lens', safe.enabled);
+  return true;
+}
+
+async function loadSwissLensProfile() {
+  if (!globalThis.SwissLensCore) return;
+  const siteKey = globalThis.SwissLensCore.siteKeyFromUrl(location.href);
+  if (!siteKey) return applySwissLens({ enabled: false });
+  const { swissLensProfiles = {} } = await chrome.storage.local.get('swissLensProfiles');
+  applySwissLens(globalThis.SwissLensCore.settingsForSite(swissLensProfiles, siteKey));
+}
+
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+  if (msg.type === 'swissLensApply') {
+    sendResponse({ ok: applySwissLens(msg.settings) });
+    return true;
+  }
   if (msg.type === 'getPageHeight') {
     const root = getScrollRoot();
     const height =
@@ -200,4 +227,10 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     return true;
   }
 });
+
+chrome.storage.onChanged.addListener((changes, areaName) => {
+  if (areaName === 'local' && changes.swissLensProfiles) void loadSwissLensProfile();
+});
+
+void loadSwissLensProfile();
 })();
