@@ -100,6 +100,7 @@ export function installDevChromeMock() {
       ],
       update: async () => undefined,
       reload: async () => undefined,
+      sendMessage: async () => ({ ok: true }),
     },
     windows: {
       update: async () => undefined,

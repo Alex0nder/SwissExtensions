@@ -31,7 +31,10 @@
         const canvas = document.createElement("canvas")
         canvas.width = 32
         canvas.height = 32
-        canvas.getContext("2d")?.drawImage(image, 0, 0, 32, 32)
+        const context = canvas.getContext("2d")
+        if (!context) throw new Error("Canvas is unavailable")
+        context.filter = "grayscale(1)"
+        context.drawImage(image, 0, 0, 32, 32)
         link.href = canvas.toDataURL("image/png")
       } catch {
         link.href = faviconUrl.toString()

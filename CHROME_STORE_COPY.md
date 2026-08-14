@@ -22,11 +22,12 @@ Your browser shouldn’t feel like a second job. **Swiss Extensions** brings pra
 **What’s inside**
 
 1. **Swiss Command** — Search open tabs, bookmarks, and browsing history locally.
-2. **Page Capture** — Long pages, clean exports: **PNG or PDF** (tiled capture, crisp results).
-3. **Tab Hibernate** — Suspend what you’re not using; **restore** when you’re back.
-4. **Memory Cleaner** — **Discard background tabs** to free memory — without closing your active tab.
-5. **Site Blocker** — Block distracting domains with **built-in rules** and your **own list**.
-6. **Site Data Clear** — Clear **cookies**, **localStorage**, and **sessionStorage** for the **current site** — on your terms.
+2. **Swiss Lens** — Increase text size, reduce motion, improve contrast, and hide common distractions per site.
+3. **Page Capture** — Long pages, clean exports: **PNG or PDF** (tiled capture, crisp results).
+4. **Tab Hibernate** — Suspend what you’re not using; **restore** when you’re back.
+5. **Memory Cleaner** — **Discard background tabs** to free memory — without closing your active tab.
+6. **Site Blocker** — Block distracting domains with **built-in rules** and your **own list**.
+7. **Site Data Clear** — Clear **cookies**, **localStorage**, and **sessionStorage** for the **current site** — on your terms.
 
 No bloat. No noise. Just the actions you need — **tight layout**, **clear controls**, built for people who live in **many tabs** and want **performance and focus** through the day.
 

@@ -1,6 +1,6 @@
 # Swiss Extensions — тексты для Chrome Web Store
 
-Версия пакета: **1.5.49** · [Developer Dashboard](https://chrome.google.com/webstore/devconsole)
+Версия пакета: **1.5.50** · [Developer Dashboard](https://chrome.google.com/webstore/devconsole)
 
 Privacy Policy: `https://github.com/navorina-labs/SwissExtensions/blob/main/PRIVACY_POLICY.md`
 
@@ -30,15 +30,17 @@ What’s inside
 
 1. **Swiss Command** — Search open tabs, bookmarks, and browsing history from one private command palette.
 
-2. **Page Capture** — Long pages, clean exports: tiled PNG capture (full scroll stitched in the browser).
+2. **Swiss Lens** — Increase text size, reduce motion, improve contrast, and hide common distractions per site.
 
-3. **Tab Hibernate** — Suspend inactive tabs as lightweight placeholders or discard; restore when you’re back. Backup to bookmarks and local history. **Recover lost tabs** after crashes or extension updates.
+3. **Page Capture** — Long pages, clean exports: tiled PNG capture (full scroll stitched in the browser).
 
-4. **Memory Cleaner** — Discard background tabs to free memory without closing your active tab.
+4. **Tab Hibernate** — Suspend inactive tabs as lightweight placeholders or discard; restore when you’re back. Backup to bookmarks and local history. **Recover lost tabs** after crashes or extension updates.
 
-5. **Site Blocker** — Block distracting domains with built-in filter lists plus your own blocklist, whitelist, and focus schedule. **Auto-save open tabs** on blocked sites to plugin History and Chrome bookmarks so you can restore them later.
+5. **Memory Cleaner** — Discard background tabs to free memory without closing your active tab.
 
-6. **Site Data Clear** — Clear cookies, localStorage, and sessionStorage for the current site — only when you confirm.
+6. **Site Blocker** — Block distracting domains with built-in filter lists plus your own blocklist, whitelist, and focus schedule. **Auto-save open tabs** on blocked sites to plugin History and Chrome bookmarks so you can restore them later.
+
+7. **Site Data Clear** — Clear cookies, localStorage, and sessionStorage for the current site — only when you confirm.
 
 **Tab recovery (local, on your device)**
 
@@ -68,21 +70,21 @@ No bloat. No noise. Built for people who live in many tabs and want performance 
 
 ---
 
-## What's new (Release notes) — version 1.5.49
+## What's new (Release notes) — version 1.5.50
 
 **EN (full):**
 ```
-Swiss Command: search open tabs, bookmarks, and browsing history from one private command palette. Navigate results with the keyboard and open them without leaving the side panel.
+Swiss Lens: save local readability preferences for each site. Increase text size, hide common distractions, use a high-contrast reading theme, and reduce page motion.
 ```
 
 **EN (short, if character limit):**
 ```
-Add Swiss Command: fast local search across tabs, bookmarks, and history with keyboard navigation.
+Add Swiss Lens: local, per-site controls for text size, distractions, contrast, and motion.
 ```
 
 **RU:**
 ```
-Добавлен Swiss Command: быстрый локальный поиск по вкладкам, закладкам и истории с клавиатурной навигацией.
+Добавлен Swiss Lens: локальные настройки размера текста, чистого режима, контраста и движения для каждого сайта.
 ```
 
 ---
@@ -262,5 +264,5 @@ Read/update tab group title, color, and membership when the user saves or restor
 ./scripts/package-swiss-extensions-store.sh
 ```
 
-Архив Store: `dist/SwissExtensions-v1.5.49-chrome-store.zip`
-Сайт (Load unpacked): `downloads/SwissExtensions-v1.5.49.zip`
+Архив Store: `dist/SwissExtensions-v1.5.50-chrome-store.zip`
+Сайт (Load unpacked): `downloads/SwissExtensions-v1.5.50.zip`

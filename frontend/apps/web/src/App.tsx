@@ -4,6 +4,7 @@ import {
   Camera,
   Cpu,
   Download,
+  Eye,
   Github,
   Globe,
   NavArrowRight,
@@ -16,7 +17,7 @@ import {
 
 import creatorPortrait from "./assets/creator-portrait.jpg"
 
-const SWISS_VERSION = "1.5.49"
+const SWISS_VERSION = "1.5.50"
 const STORE_URL =
   "https://chromewebstore.google.com/detail/obemilbkkamjohnlhlbmcmnoifojhjip?utm_source=item-share-cb"
 const GITHUB_URL = "https://github.com/navorina-labs/SwissExtensions"
@@ -54,6 +55,14 @@ const downloads = [
     icon: Search,
     version: "1.0.0",
     file: "SwissCommand-v1.0.0.zip",
+  },
+  {
+    name: "Swiss Lens",
+    description: "Make websites calmer and easier to read.",
+    preview: "Improve readability",
+    icon: Eye,
+    version: "1.0.0",
+    file: "SwissLens-v1.0.0.zip",
   },
   {
     name: "Page Capture",

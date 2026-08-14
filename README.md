@@ -12,12 +12,13 @@ This repository provides two ways to use the tools:
 | Folder | Extension | What it does |
 | --- | --- | --- |
 | [SwissCommand/](SwissCommand/) | Swiss Command | Searches open tabs, bookmarks, and browsing history locally. |
+| [SwissLens/](SwissLens/) | Swiss Lens | Applies local readability and accessibility preferences per site. |
 | [PdfExtensions/](PdfExtensions/) | Page Capture | Captures long pages as fixed-size PNG tiles or a multipage PDF. |
 | [TabHibernate/](TabHibernate/) | Tab Hibernate | Suspends inactive tabs and backs up their URLs to bookmarks and local storage. |
 | [TabMemoryCleaner/](TabMemoryCleaner/) | Tab Memory Cleaner | Discards background tabs to free memory without closing them. |
 | [SiteBlocker/](SiteBlocker/) | Site Blocker | Blocks distracting sites and provides lightweight ad/tracker filtering. |
 | [SiteDataClear/](SiteDataClear/) | Site Data Clear | Clears cookies and browser storage for the current site on demand. |
-| [SwissExtensions/](SwissExtensions/) | Swiss Extensions | Combines all six tools in one Chrome Side Panel. |
+| [SwissExtensions/](SwissExtensions/) | Swiss Extensions | Combines the browser tools in one Chrome Side Panel. |
 
 Each folder contains its own `README.md` with feature details and limitations.
 

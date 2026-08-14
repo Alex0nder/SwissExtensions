@@ -29,6 +29,7 @@ import {
   Camera,
   ClockRotateRight,
   Cpu,
+  Eye,
   FloppyDisk,
   NavArrowDown,
   NavArrowRight,
@@ -48,7 +49,15 @@ import {
 } from "@/lib/command-search"
 import "./side-panel.css"
 
-type View = "home" | "command" | "capture" | "tabs" | "memory" | "blocker" | "clear"
+type View = "home" | "command" | "lens" | "capture" | "tabs" | "memory" | "blocker" | "clear"
+
+type LensSettings = {
+  enabled: boolean
+  fontScale: number
+  cleanPage: boolean
+  highContrast: boolean
+  reduceMotion: boolean
+}
 
 type Settings = {
   enabled: boolean
@@ -95,6 +104,14 @@ const defaultSettings: Settings = {
   smartDiscardDomains: "",
 }
 
+const defaultLensSettings: LensSettings = {
+  enabled: false,
+  fontScale: 115,
+  cleanPage: false,
+  highContrast: false,
+  reduceMotion: false,
+}
+
 const blocks: {
   id: View
   title: string
@@ -106,6 +123,12 @@ const blocks: {
     title: "Swiss Command",
     description: "Search tabs, bookmarks, history",
     icon: Search,
+  },
+  {
+    id: "lens",
+    title: "Swiss Lens",
+    description: "Make websites easier to read",
+    icon: Eye,
   },
   {
     id: "capture",
@@ -162,6 +185,7 @@ export function SidePanelApp() {
       >
         {view === "home" && <HomeView onOpen={setView} />}
         {view === "command" && <CommandView onBack={back} />}
+        {view === "lens" && <LensView onBack={back} />}
         {view === "capture" && <CaptureView onBack={back} />}
         {view === "tabs" && <TabsView onBack={back} />}
         {view === "memory" && <MemoryView onBack={back} />}
@@ -372,6 +396,122 @@ function CommandView({ onBack }: { onBack: () => void }) {
           <span><kbd>esc</kbd> Clear</span>
         </div>
       </main>
+    </>
+  )
+}
+
+function LensView({ onBack }: { onBack: () => void }) {
+  const [siteKey, setSiteKey] = useState("")
+  const [tabId, setTabId] = useState<number | null>(null)
+  const [settings, setSettings] = useState<LensSettings>(defaultLensSettings)
+  const [status, setStatus] = useState("Loading current site…")
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      void (async () => {
+        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
+        let host = ""
+        try {
+          const parsed = new URL(tab?.url || "")
+          if (parsed.protocol === "http:" || parsed.protocol === "https:") host = parsed.hostname
+        } catch {
+          host = ""
+        }
+        setTabId(tab?.id ?? null)
+        setSiteKey(host)
+        if (!host) {
+          setStatus("Swiss Lens is unavailable on this page.")
+          return
+        }
+        const data = await getLocal<{ swissLensProfiles?: Record<string, LensSettings> }>("swissLensProfiles")
+        setSettings({ ...defaultLensSettings, ...(data.swissLensProfiles?.[host] || {}) })
+        setStatus(`Settings for ${host}`)
+      })().catch((error) => setStatus(error instanceof Error ? error.message : String(error)))
+    }, 0)
+    return () => window.clearTimeout(timer)
+  }, [])
+
+  const save = async (next: LensSettings) => {
+    if (!siteKey) return
+    const safe: LensSettings = {
+      enabled: next.enabled === true,
+      fontScale: Math.min(180, Math.max(100, Number(next.fontScale) || 115)),
+      cleanPage: next.cleanPage === true,
+      highContrast: next.highContrast === true,
+      reduceMotion: next.reduceMotion === true,
+    }
+    setSettings(safe)
+    const data = await getLocal<{ swissLensProfiles?: Record<string, LensSettings> }>("swissLensProfiles")
+    await setLocal({
+      swissLensProfiles: { ...(data.swissLensProfiles || {}), [siteKey]: safe },
+    })
+    if (tabId != null) {
+      await chrome.tabs.sendMessage(tabId, { type: "swissLensApply", settings: safe }).catch(() => undefined)
+    }
+    setStatus(safe.enabled ? `Applied to ${siteKey}` : `Lens is off for ${siteKey}`)
+  }
+
+  const disabled = !siteKey
+
+  return (
+    <>
+      <PanelHeader title="Swiss Lens" onBack={onBack} />
+      <div className="swiss-scroll flex-1 space-y-3 overflow-y-auto p-4">
+        <Card className="gap-0 p-3 py-1">
+          <Row label="Improve readability">
+            <Switch
+              aria-label="Improve readability on this site"
+              checked={settings.enabled}
+              disabled={disabled}
+              onCheckedChange={(enabled) => void save({ ...settings, enabled })}
+            />
+          </Row>
+        </Card>
+
+        <section aria-labelledby="lens-text-title" className="space-y-2">
+          <div className="px-1">
+            <h2 id="lens-text-title" className="text-xs font-semibold">Text</h2>
+            <p className="mt-1 truncate text-[11px] text-muted-foreground">{siteKey || "Open a regular website to use Swiss Lens."}</p>
+          </div>
+          <Card className="gap-3 p-4 py-4">
+            <div className="flex items-center justify-between gap-3">
+              <Label htmlFor="lens-font-scale" className="text-xs">Text size</Label>
+              <output htmlFor="lens-font-scale" className="text-[11px] text-muted-foreground tabular-nums">{settings.fontScale}%</output>
+            </div>
+            <input
+              id="lens-font-scale"
+              className="lens-range"
+              type="range"
+              min="100"
+              max="180"
+              step="5"
+              value={settings.fontScale}
+              disabled={disabled || !settings.enabled}
+              onChange={(event) => void save({ ...settings, fontScale: Number(event.target.value) })}
+            />
+          </Card>
+        </section>
+
+        <section aria-labelledby="lens-display-title" className="space-y-2">
+          <h2 id="lens-display-title" className="px-1 text-xs font-semibold">Display</h2>
+          <Card className="gap-0 p-3 py-1">
+            <Row label="Clean page">
+              <Switch aria-label="Hide sidebars and common distractions" checked={settings.cleanPage} disabled={disabled || !settings.enabled} onCheckedChange={(cleanPage) => void save({ ...settings, cleanPage })} />
+            </Row>
+            <Row label="High contrast">
+              <Switch aria-label="Use a high contrast reading theme" checked={settings.highContrast} disabled={disabled || !settings.enabled} onCheckedChange={(highContrast) => void save({ ...settings, highContrast })} />
+            </Row>
+            <Row label="Reduce motion">
+              <Switch aria-label="Reduce animations and smooth scrolling" checked={settings.reduceMotion} disabled={disabled || !settings.enabled} onCheckedChange={(reduceMotion) => void save({ ...settings, reduceMotion })} />
+            </Row>
+          </Card>
+        </section>
+
+        <Button variant="secondary" className="h-10 w-full rounded-xl active:scale-[0.96]" disabled={disabled} onClick={() => void save(defaultLensSettings)}>
+          Reset this site
+        </Button>
+        <StatusLine>{status}</StatusLine>
+      </div>
     </>
   )
 }

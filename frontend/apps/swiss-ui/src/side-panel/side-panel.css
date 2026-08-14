@@ -231,6 +231,16 @@
   font: 500 9px ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
+.lens-range {
+  width: 100%;
+  accent-color: var(--primary);
+}
+
+.lens-range:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 4px;
+}
+
 @container (max-width: 420px) {
   .tool-island-grid {
     grid-template-columns: 1fr;

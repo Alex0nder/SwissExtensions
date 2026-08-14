@@ -104,10 +104,18 @@ test('placeholder favicon is set before a background renderer is discarded', () 
   assert.match(worker, /params\.set\('o', original\.origin \+ '\/'\)/);
   assert.match(worker, /await waitForPlaceholderFavicon\(tab\.id\)/);
   assert.match(worker, /changeInfo\.favIconUrl/);
+  assert.match(worker, /if \(!faviconReady\) return false/);
+  assert.match(worker, /changeInfo\.favIconUrl && isResolvedPlaceholderFavicon/);
+  assert.doesNotMatch(
+    worker.split('function isResolvedPlaceholderFavicon')[1]
+      ?.split('function waitForPlaceholderFavicon')[0] || '',
+    /\/_favicon\//,
+  );
   assert.match(html, /suspended-favicon-bootstrap\.js/);
   assert.match(html, /suspended-fallback\.svg/);
   assert.match(bootstrap, /chrome\.runtime\.getURL\("\/_favicon\/"\)/);
   assert.match(bootstrap, /canvas\.toDataURL\("image\/png"\)/);
+  assert.match(bootstrap, /context\.filter = "grayscale\(1\)"/);
 });
 
 test('blocked main-frame errors are converted before Chrome keeps the extension icon', () => {

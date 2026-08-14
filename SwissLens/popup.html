@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Swiss Lens</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <main class="lens-shell">
+      <header class="lens-header">
+        <span class="swiss-mark" aria-hidden="true"></span>
+        <div>
+          <h1>Swiss Lens</h1>
+          <p id="site-name">Current website</p>
+        </div>
+      </header>
+
+      <section class="lens-controls" aria-labelledby="settings-title">
+        <h2 id="settings-title" class="sr-only">Readability settings</h2>
+        <label class="control-row control-row-main" for="lens-enabled">
+          <span><strong>Improve readability</strong><small>Use saved settings on this site</small></span>
+          <input id="lens-enabled" type="checkbox" role="switch" />
+        </label>
+
+        <div class="range-control">
+          <div class="range-label"><label for="font-scale">Text size</label><output id="font-value" for="font-scale">115%</output></div>
+          <input id="font-scale" type="range" min="100" max="180" step="5" value="115" />
+        </div>
+
+        <label class="control-row" for="clean-page">
+          <span><strong>Clean page</strong><small>Hide sidebars and distractions</small></span>
+          <input id="clean-page" type="checkbox" role="switch" />
+        </label>
+        <label class="control-row" for="high-contrast">
+          <span><strong>High contrast</strong><small>Use clear text and link colors</small></span>
+          <input id="high-contrast" type="checkbox" role="switch" />
+        </label>
+        <label class="control-row" for="reduce-motion">
+          <span><strong>Reduce motion</strong><small>Stop animations and smooth scrolling</small></span>
+          <input id="reduce-motion" type="checkbox" role="switch" />
+        </label>
+      </section>
+
+      <button id="reset" type="button" class="reset-button">Reset this site</button>
+      <p id="status" class="status" role="status" aria-live="polite"></p>
+    </main>
+    <script src="lens-core.js"></script>
+    <script src="popup.js"></script>
+  </body>
+</html>
