@@ -1,6 +1,6 @@
 {
-  "name": "SWEX",
-  "short_name": "SWEX",
+  "name": "Swiss Extensions",
+  "short_name": "Swiss",
   "icons": [
     {
       "src": "/favicon/web-app-manifest-192x192.png",
@@ -15,7 +15,7 @@
       "purpose": "maskable"
     }
   ],
-  "theme_color": "#111111",
-  "background_color": "#111111",
+  "theme_color": "#d52b1e",
+  "background_color": "#ffffff",
   "display": "standalone"
 }

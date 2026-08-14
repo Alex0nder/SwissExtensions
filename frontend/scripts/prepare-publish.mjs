@@ -31,6 +31,12 @@ for (const { from, to } of copies) {
   console.log(`Copied ${path.basename(from)} → dist/${path.basename(to)}`)
 }
 
+cpSync(
+  path.join(repoRoot, "favicon", "favicon.ico"),
+  path.join(dist, "favicon.ico")
+)
+console.log("Copied favicon.ico → dist/favicon.ico")
+
 // Manual Netlify deploys only receive the contents of dist, so netlify.toml at
 // the repository root is not available. Keep the equivalent cache policy in
 // the deploy bundle itself.
